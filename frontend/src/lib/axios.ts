@@ -1,48 +1,34 @@
-// lib/axios.ts
 import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000',
-  headers: { 'Content-Type': 'application/json' },
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    headers: { 'Content-Type': 'application/json' }
 });
 
-// Attach the same token used by the auth flows to every browser request.
-api.interceptors.request.use(
-  (config) => {
-    if (typeof window !== 'undefined') {
-      const accessToken = localStorage.getItem('access_token');
-      const stored = localStorage.getItem('user');
-      let userToken: string | undefined;
-      if (stored) {
-        try {
-          const user = JSON.parse(stored) as { token?: unknown };
-          userToken = typeof user.token === 'string' ? user.token : undefined;
-        } catch {
-          userToken = undefined;
-        }
-      }
-      const token = accessToken || userToken;
-      if (token) {
+api.interceptors.request.use((config) => {
+    // Get token from auth store (which syncs with localStorage)
+    const token = useAuthStore.getState().accessToken || 
+                  (typeof window !== 'undefined' ? localStorage.getItem('access_token') : null);
+    if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-      }
     }
     return config;
-  },
-  (error) => Promise.reject(error)
-);
+});
 
-// 🚫 Response interceptor – handle 401 globally
+// Response interceptor for 401 handling
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (typeof window !== 'undefined' && error.response?.status === 401) {
-      localStorage.removeItem('user');
-      localStorage.removeItem('access_token');
-      window.location.href = '/auth/login';
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // Clear auth and redirect to login
+            if (typeof window !== 'undefined') {
+                useAuthStore.getState().logout();
+                window.location.href = '/auth/login';
+            }
+        }
+        return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
 );
 
 export default api;
-export { api as apiClient };

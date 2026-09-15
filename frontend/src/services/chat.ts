@@ -8,9 +8,6 @@ export interface User {
   full_name?: string;
 }
 
-export type Chat = Conversation;
-
-// ---------- Types ----------
 export interface Conversation {
   id: number | string;
   title: string;
@@ -25,6 +22,7 @@ export interface Conversation {
   messages?: any[];
   createdAt?: string;
   updatedAt?: string;
+  workspace?: string;
 }
 
 export interface SendMessageResponse {
@@ -36,53 +34,68 @@ export interface SendMessageResponse {
   project_id?: number;
 }
 
-// ---------- Chat Service ----------
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  createdAt: string;
+  status?: "sending" | "streaming" | "done" | "error" | "stopped";
+  edited?: boolean;
+  bookmarked?: boolean;
+  attachments?: any[];
+  model?: string;
+}
+
 export const chat = {
   /**
    * Fetch all conversations for the authenticated user.
-   * GET /api/chat/chats
+   * GET /api/conversations?workspace=chat|code
    */
-  list: async (_user?: User): Promise<Conversation[]> => {
-    const res = await api.get('/api/chat/chats');
+  list: async (workspace: "chat" | "code" = "chat"): Promise<Conversation[]> => {
+    const res = await api.get(`/api/conversations?workspace=${workspace}`);
     return res.data;
   },
 
   /**
    * Create a new conversation with a given title.
-   * POST /api/chat/chats
+   * POST /api/conversations
    */
-  create: async (title: string, _user?: User): Promise<Conversation> => {
-    const res = await api.post('/api/chat/chats', { title });
+  create: async (title: string, workspace: "chat" | "code" = "chat"): Promise<Conversation> => {
+    const res = await api.post('/api/conversations', { title, workspace });
     return res.data;
   },
 
   /**
    * Delete a conversation by its ID.
-   * DELETE /api/chat/chats/{id}
+   * DELETE /api/conversations/{id}
    */
-  delete: async (convId: number | string, _user?: User): Promise<void> => {
-    await api.delete(`/api/chat/chats/${convId}`);
+  delete: async (convId: number | string): Promise<void> => {
+    await api.delete(`/api/conversations/${convId}`);
   },
 
-  rename: async (convId: number | string, title: string, _user?: User): Promise<void> => {
-    await api.patch(`/api/chat/chats/${convId}`, { title });
+  rename: async (convId: number | string, title: string): Promise<void> => {
+    await api.patch(`/api/conversations/${convId}`, { title });
   },
 
-  pin: async (_convId: number | string, _pinned: boolean, _user?: User): Promise<void> => {},
-  archive: async (_convId: number | string, _user?: User): Promise<void> => {},
-  addMessage: async (_convId: number | string, _message: unknown, _user?: User): Promise<void> => {},
+  pin: async (convId: number | string, pinned: boolean): Promise<void> => {
+    if (pinned) {
+      await api.post(`/api/conversations/${convId}/pin`);
+    } else {
+      await api.delete(`/api/conversations/${convId}/pin`);
+    }
+  },
+
+  archive: async (convId: number | string): Promise<void> => {
+    await api.post(`/api/conversations/${convId}/archive`);
+  },
 
   /**
    * Send a message to the chat API (persistent + memory aware).
    * POST /api/chat/send
-   *
-   * @param message - the user's message
-   * @param chatId - optional existing chat ID; if omitted, a new chat is created
-   * @param createProject - if true, auto‑create a project from code blocks in the reply
    */
   sendMessage: async (
     message: string,
-    chatId?: number,
+    chatId?: number | string,
     createProject: boolean = false
   ): Promise<SendMessageResponse> => {
     const res = await api.post('/api/chat/send', {
@@ -93,19 +106,99 @@ export const chat = {
     return res.data;
   },
 
-  get: async (message: string, _user?: User): Promise<{ response?: string }> => {
+  /**
+   * Streaming chat endpoint
+   * POST /api/chat
+   */
+  streamMessage: async (
+    message: string,
+    conversationId: string,
+    model: string,
+    workspace: "chat" | "code",
+    onChunk: (chunk: string) => void,
+    signal?: AbortSignal
+  ): Promise<{ response: string; files?: any[] }> => {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream, application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify({
+        message,
+        model,
+        conversation_id: conversationId,
+        workspace,
+        stream: true,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      let msg = "Failed to get response from AI";
+      try {
+        const err = await response.json();
+        msg = err.message || err.detail || msg;
+      } catch {}
+      throw new Error(msg);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    let text = "";
+
+    if (contentType.includes("text/event-stream") && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const raw of lines) {
+          const line = raw.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          try {
+            const evt = JSON.parse(payload);
+            if (typeof evt === "string") text += evt;
+            else if (evt.delta) text += evt.delta;
+            else if (evt.token) text += evt.token;
+            else if (evt.content) text += evt.content;
+            else if (evt.response) text += evt.response;
+            onChunk(text);
+          } catch {
+            text += payload;
+            onChunk(text);
+          }
+        }
+      }
+    } else {
+      const data = await response.json();
+      text = data.response || data.message || JSON.stringify(data);
+    }
+
+    return { response: text };
+  },
+
+  get: async (message: string): Promise<{ response?: string }> => {
     const res = await api.post('/api/chat', { message });
     return res.data;
   },
 };
 
-// ---------- Convenience wrapper (for use in ChatInput) ----------
-export async function createConversation(text: string): Promise<Conversation> {
+export async function createConversation(text: string, workspace: "chat" | "code" = "chat"): Promise<Conversation> {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('user');
     if (!stored) throw new Error('Not authenticated – please login');
   }
-  return chat.create(text);
+  return chat.create(text, workspace);
 }
 
 export default chat;

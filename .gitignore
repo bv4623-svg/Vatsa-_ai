@@ -1,0 +1,14 @@
+node_modules/
+.next/
+__pycache__/
+*.pyc
+.env
+.env.local
+*.log
+*.db
+*.db.bak
+*.bak-*
+vatsa-ai-debug.zip
+tsconfig.tsbuildinfo
+.DS_Store
+.aider*

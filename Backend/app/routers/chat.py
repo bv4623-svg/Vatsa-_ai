@@ -143,3 +143,14 @@ async def chat_endpoint(
         db.commit()
 
     return result
+
+# Non-streaming send endpoint (used by chat.ts service)
+@router.post("/chat/send")
+async def send_message_endpoint(
+    req: ChatRequest,
+    current_user_opt: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    # Same logic as chat_endpoint but without streaming
+    req.stream = False
+    return await chat_endpoint(req, current_user_opt, db)

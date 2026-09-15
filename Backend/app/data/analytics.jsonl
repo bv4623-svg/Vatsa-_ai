@@ -1,0 +1,7 @@
+{"timestamp": "2026-07-18T09:16:58.204962", "user_id": null, "query": "hi3", "intent": "PROGRAMMING", "model": "gemini-2.5-flash", "latency": 6.774012565612793, "difficulty": "LOW", "variant": "A", "tier": "free"}
+{"timestamp": "2026-07-18T09:17:15.505764", "user_id": null, "query": "which are u", "intent": "PROGRAMMING", "model": "gemini-2.5-flash", "latency": 1.2644853591918945, "difficulty": "LOW", "variant": "A", "tier": "free"}
+{"timestamp": "2026-07-18T09:17:30.543744", "user_id": null, "query": "name batta kya hai tu", "intent": "PROGRAMMING", "model": "gemini-2.5-flash", "latency": 3.148728132247925, "difficulty": "LOW", "variant": "A", "tier": "free"}
+{"timestamp": "2026-07-18T09:17:45.201497", "user_id": null, "query": "he", "intent": "PROGRAMMING", "model": "gemini-2.5-flash", "latency": 2.5710842609405518, "difficulty": "LOW", "variant": "A", "tier": "free"}
+{"timestamp": "2026-07-18T10:20:44.583227", "user_id": null, "query": "give me list of all model u are using", "intent": "FINANCE", "model": "gemini-2.5-flash", "latency": 6.354959011077881, "difficulty": "LOW", "variant": "A", "tier": "free"}
+{"timestamp": "2026-07-18T10:20:58.935522", "user_id": null, "query": "hea", "intent": "PROGRAMMING", "model": "gemini-2.5-flash", "latency": 2.9319705963134766, "difficulty": "LOW", "variant": "A", "tier": "free"}
+{"timestamp": "2026-09-08T16:24:31.524844+00:00", "prompt": "smoke-test"}

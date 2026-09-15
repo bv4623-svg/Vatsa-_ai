@@ -1,0 +1,1448 @@
+﻿# ============================================================
+# main.py — Vatsa AI Router + FastAPI (FIXED v7)
+# ============================================================
+import asyncio
+import io
+import json
+import logging
+import os
+import re
+import sys
+import time
+import hashlib
+import secrets
+import uuid
+import base64 as _b64
+import urllib.parse
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Tuple, Union
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from contextlib import asynccontextmanager
+
+# --- Windows UTF-8 fix (prevents "âš ï¸" mojibake) ---
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+import aiohttp
+from dotenv import load_dotenv, find_dotenv
+
+from fastapi import FastAPI, HTTPException, Depends, Request, status, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.routing import APIRouter
+from pydantic import BaseModel, EmailStr, Field
+import uvicorn
+
+from jose import jwt, JWTError
+from sqlalchemy import create_engine, Column, String, Boolean, JSON, DateTime, select
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+
+# ---------- PDF parsing ----------
+try:
+    import pdfplumber
+    PDF_SUPPORT = True
+except ImportError:
+    PDF_SUPPORT = False
+    print("[WARN] pdfplumber not installed. Run: pip install pdfplumber")
+
+# ---------- OCR (optional) ----------
+TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+POPPLER_PATH   = r"C:\poppler\poppler-24.08.0\Library\bin"
+
+OCR_SUPPORT = False
+try:
+    import pytesseract
+    from pdf2image import convert_from_bytes
+    if os.path.exists(TESSERACT_PATH):
+        pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+    else:
+        print(f"[WARN] Tesseract not found at {TESSERACT_PATH}")
+    try:
+        _tess_ver = pytesseract.get_tesseract_version()
+        OCR_SUPPORT = True
+        print(f"[OK] OCR support enabled (tesseract v{_tess_ver})")
+    except Exception as _e:
+        OCR_SUPPORT = False
+        print(f"[WARN] Tesseract installed but not accessible: {_e}")
+    if os.path.exists(POPPLER_PATH):
+        print(f"[OK] Poppler path set: {POPPLER_PATH}")
+    else:
+        print(f"[WARN] Poppler not found at {POPPLER_PATH} - OCR may fail")
+except ImportError as _e:
+    OCR_SUPPORT = False
+    print(f"[INFO] OCR not available ({_e}). For scanned PDFs run: pip install pytesseract pdf2image")
+
+# ---------- .env loading ----------
+env_path = Path(__file__).resolve().parent / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+    print(f"[OK] Loaded .env from: {env_path}")
+else:
+    load_dotenv(find_dotenv(usecwd=True))
+    print("[WARN] .env not found, using system env or fallback.")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("VatsaRouterX")
+
+# ============================================================
+# Custom exceptions
+# ============================================================
+class OpenRouterError(Exception):
+    """Raised when OpenRouter returns a non-200 response."""
+    def __init__(self, code: int, message: str, remedy: str = "", model: str = ""):
+        self.code = code
+        self.message = message
+        self.remedy = remedy
+        self.model = model
+        super().__init__(f"OpenRouter [{code}] {message}")
+
+class ModelCallError(Exception):
+    """Raised by VatsaRouter.call_model after all attempts fail."""
+    def __init__(self, code: int, message: str, remedy: str = "", model: str = ""):
+        self.code = code
+        self.message = message
+        self.remedy = remedy
+        self.model = model
+        super().__init__(f"[{code}] {message} (model={model})")
+
+# ============================================================
+# Frontend model name -> OpenRouter model ID mapping
+# ============================================================
+MODEL_NAME_MAPPING = {
+    "claude-opus-5":     "anthropic/claude-3.5-sonnet",
+    "gpt-5.6-luna":      "openai/gpt-4o",
+    "gemini-3.6-flash":  "google/gemini-2.5-pro",
+    "deepseek-v3.2":     "deepseek/deepseek-chat",
+}
+
+# ============================================================
+# IMAGE GENERATION (Pollinations.ai)
+# ============================================================
+IMAGE_GEN_PATTERNS = [
+    r"\b(generate|create|make|draw|paint|render|produce|design)\s+(an?\s+|me\s+)?(ultra[\s-]?realistic\s+|realistic\s+|detailed\s+|hd\s+|high[\s-]?quality\s+)?(image|picture|photo|illustration|artwork|drawing|portrait|art)\b",
+    r"\bimage\s+of\s+",
+    r"\bpicture\s+of\s+",
+    r"\bdraw\s+(me\s+)?",
+    r"\bpaint\s+(me\s+)?",
+    r"^imagine\s+",
+    r"^/imagine\s+",
+]
+
+_REALISTIC_KEYWORDS = [
+    "realistic","photo","photograph","photography","portrait","real",
+    "man","woman","person","face","human","boy","girl","guy","lady",
+    "cinematic","dslr","camera","selfie","model",
+]
+_ART_KEYWORDS = [
+    "anime","cartoon","manga","painting","drawing","sketch",
+    "illustration","watercolor","pixel art","concept art",
+    "digital art","fanart","chibi",
+]
+_TEXT_KEYWORDS = ["text","logo","poster","sign","typography","banner"]
+
+def _clean_prompt(query):
+    q = query.strip()
+    q = re.sub(r"^(please\s+)?(generate|create|make|draw|paint|render|produce|design|imagine|show)\s+", "", q, flags=re.I)
+    q = re.sub(r"^(me\s+)?(an?\s+)?", "", q, flags=re.I)
+    q = re.sub(
+        r"^(ultra\s*[\s-]?\s*realstic\s+|ultra\s*[\s-]?\s*realistic\s+|realstic\s+|realistic\s+|hyper\s*[\s-]?\s*realistic\s+|detailed\s+|hd\s+|high\s*[\s-]?\s*quality\s+|4k\s+|8k\s+)",
+        "", q, flags=re.I,
+    )
+    q = re.sub(r"^(image|picture|photo|photograph|illustration|artwork|drawing|portrait|art|pic)\s+", "", q, flags=re.I)
+    q = re.sub(r"^(of\s+|showing\s+|with\s+)", "", q, flags=re.I)
+    q = re.sub(r"^(a\s+|an\s+|the\s+)", "", q, flags=re.I)
+    typos = {r"\brealstic\b":"realistic", r"\bultr\b":"ultra", r"\bportriat\b":"portrait",
+             r"\bpotrait\b":"portrait", r"\bwomn\b":"woman", r"\bmna\b":"man"}
+    for wrong, right in typos.items():
+        q = re.sub(wrong, right, q, flags=re.I)
+    q = q.strip().strip(".,!?;:-")
+    if len(q.split()) <= 1:
+        q = f"{q} portrait, beautiful lighting, detailed" if q else "beautiful realistic portrait"
+    return q or "beautiful realistic portrait"
+
+def _pick_image_model(prompt):
+    return "flux"
+
+def _enhance_prompt(prompt, model):
+    p = prompt.strip().rstrip(".,!?")
+    lower = p.lower()
+    has_quality = sum(1 for q in ["8k","4k","photorealistic","masterpiece","detailed","hyperrealistic"] if q in lower)
+    if has_quality >= 2:
+        return p
+    realistic_suffix = (
+        ", photorealistic, hyperrealistic, 8k uhd, professional photography, "
+        "sharp focus, natural skin texture, cinematic lighting, shot on DSLR, "
+        "depth of field, highly detailed, masterpiece, award winning photo"
+    )
+    art_suffix = ", masterpiece, best quality, ultra detailed, vibrant colors, 8k"
+    l = p.lower()
+    is_realistic = any(k in l for k in _REALISTIC_KEYWORDS)
+    return p + (realistic_suffix if is_realistic else art_suffix)
+
+def _pick_dimensions(prompt):
+    l = prompt.lower()
+    if any(k in l for k in ["portrait","vertical","tall","phone"]):   return (768, 1024)
+    if any(k in l for k in ["landscape","wide","panorama","horizontal"]): return (1024, 768)
+    return (1024, 1024)
+
+def detect_image_gen(query):
+    q = query.lower().strip()
+    for pat in IMAGE_GEN_PATTERNS:
+        if re.search(pat, q):
+            return _clean_prompt(query)
+    return None
+
+async def generate_image_pollinations(prompt, model=None):
+    clean = _clean_prompt(prompt)
+    if not model:
+        model = _pick_image_model(clean)
+    enhanced = _enhance_prompt(clean, model)
+    w, h = _pick_dimensions(clean)
+    seed = int(time.time() * 1000) % 100000000
+    encoded = urllib.parse.quote(enhanced)
+
+    url = (
+        f"https://image.pollinations.ai/prompt/{encoded}"
+        f"?width={w}&height={h}"
+        f"&nologo=true&nofeed=true&enhance=true&private=true"
+        f"&model={model}&seed={seed}"
+    )
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as resp:
+                if resp.status != 200:
+                    logger.error(f"Pollinations HTTP {resp.status}")
+                    return {"image_url": url, "prompt": clean, "model": model}
+                img_bytes = await resp.read()
+
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(img_bytes))
+            iw, ih = img.size
+            crop_h = max(0, ih - 70)
+            cropped = img.crop((0, 0, iw, crop_h))
+            buf = io.BytesIO()
+            if cropped.mode in ("RGBA", "P"):
+                cropped = cropped.convert("RGB")
+            cropped.save(buf, format="JPEG", quality=92)
+            b64 = _b64.b64encode(buf.getvalue()).decode()
+            logger.info(f"Image OK model={model} {w}x{h} cropped -> {len(b64)//1024}KB")
+            return {"image_url": f"data:image/jpeg;base64,{b64}", "prompt": clean, "model": model}
+        except Exception as crop_err:
+            logger.error(f"Crop failed: {crop_err}, sending original")
+            b64 = _b64.b64encode(img_bytes).decode()
+            return {"image_url": f"data:image/png;base64,{b64}", "prompt": clean, "model": model}
+    except Exception as e:
+        logger.error(f"Image gen fetch failed: {e}")
+        return {"image_url": url, "prompt": clean, "model": model}
+
+# ============================================================
+# OpenRouter Provider — raises OpenRouterError on failure
+# ============================================================
+class OpenRouterProvider:
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+        if not self.api_key:
+            logger.error("OPENROUTER_API_KEY not set! API calls will fail.")
+        self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}" if self.api_key else "",
+            "Content-Type": "application/json",
+        }
+
+    async def generate_async(self, messages, model, max_tokens=500, temperature=0.7, **kwargs):
+        if not self.api_key:
+            raise OpenRouterError(401, "OPENROUTER_API_KEY is not set. Add it to your .env file.", model=model)
+
+        payload = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
+        payload.update(kwargs)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(self.base_url, headers=self.headers, json=payload, timeout=120) as resp:
+                body_text = await resp.text()
+                if resp.status != 200:
+                    code, message, remedy = resp.status, body_text, ""
+                    try:
+                        err = json.loads(body_text).get("error", {})
+                        code    = err.get("code", resp.status) or resp.status
+                        message = err.get("message", body_text)
+                        remedy  = err.get("metadata", {}).get("remedy_hint", "")
+                    except Exception:
+                        pass
+                    raise OpenRouterError(int(code) if str(code).isdigit() else resp.status,
+                                          message, remedy, model)
+
+                try:
+                    data = json.loads(body_text)
+                except Exception as e:
+                    raise OpenRouterError(502, f"Invalid JSON from OpenRouter: {e}", model=model)
+
+                if "choices" in data and len(data["choices"]) > 0:
+                    content = data["choices"][0].get("message", {}).get("content", "")
+                    return {"content": content, "raw": data}
+                raise OpenRouterError(502, "OpenRouter returned no choices", model=model)
+
+# ============================================================
+# Health Monitor
+# ============================================================
+class ModelHealthMonitor:
+    def __init__(self, failure_threshold=2, cooldown_seconds=60):
+        self.failure_count: Dict[str, int] = {}
+        self.last_failure_time: Dict[str, float] = {}
+        self.failure_threshold = failure_threshold
+        self.cooldown_seconds = cooldown_seconds
+
+    async def is_healthy(self, model_id):
+        if model_id not in self.failure_count:
+            return True
+        if self.failure_count[model_id] >= self.failure_threshold:
+            if time.time() - self.last_failure_time.get(model_id, 0) > self.cooldown_seconds:
+                self.failure_count.pop(model_id, None)
+                self.last_failure_time.pop(model_id, None)
+                return True
+            return False
+        return True
+
+    async def record_success(self, model_id):
+        self.failure_count.pop(model_id, None)
+        self.last_failure_time.pop(model_id, None)
+
+    async def record_failure(self, model_id, error):
+        self.failure_count[model_id] = self.failure_count.get(model_id, 0) + 1
+        self.last_failure_time[model_id] = time.time()
+
+# ============================================================
+# Tools
+# ============================================================
+class SearchTool:
+    def __init__(self):
+        self.api_key = os.getenv("TAVILY_API_KEY")
+
+    async def execute(self, query, **kwargs):
+        if not self.api_key:
+            return {"success": False, "error": "Search not configured"}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "https://api.tavily.com/search",
+                    json={"api_key": self.api_key, "query": query, "max_results": 3, "search_depth": "basic"},
+                    timeout=20,
+                ) as resp:
+                    if resp.status != 200:
+                        return {"success": False, "error": f"Search API {resp.status}"}
+                    data = await resp.json()
+                    results = data.get("results", [])
+                    if not results:
+                        return {"success": True, "result": "No results found."}
+                    snippets = "\n".join(f"- {r.get('title','')}: {r.get('content','')[:250]}" for r in results[:3])
+                    return {"success": True, "result": snippets}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+class CalculatorTool:
+    async def execute(self, expression, **kwargs):
+        try:
+            if not re.match(r'^[\d+\-*/()\s.]+$', expression):
+                return {"success": False, "error": "Invalid characters"}
+            return {"success": True, "result": str(eval(expression, {"__builtins__": {}}, {}))}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+def get_tool(tool_name):
+    if tool_name == "search":
+        return SearchTool()
+    elif tool_name == "calculator":
+        return CalculatorTool()
+    class DummyTool:
+        async def execute(self, **kwargs):
+            return {"success": False, "error": f"Tool '{tool_name}' not implemented"}
+    return DummyTool()
+
+# ============================================================
+# Fallback catalog + free rescue models
+# ============================================================
+FALLBACK_MODELS = {
+    "openai/gpt-4o": {"provider":"openai","max_tokens":128000,"cost_per_1k_input":0.005,"cost_per_1k_output":0.015,"capabilities":["chat","coding","vision","reasoning"],"latency_score":0.92,"reliability":0.98},
+    "openai/gpt-4o-mini": {"provider":"openai","max_tokens":64000,"cost_per_1k_input":0.002,"cost_per_1k_output":0.006,"capabilities":["chat","coding","vision"],"latency_score":0.96,"reliability":0.97},
+    "anthropic/claude-3.5-sonnet": {"provider":"anthropic","max_tokens":200000,"cost_per_1k_input":0.003,"cost_per_1k_output":0.015,"capabilities":["chat","coding","reasoning"],"latency_score":0.90,"reliability":0.98},
+    "google/gemini-2.5-pro": {"provider":"google","max_tokens":1000000,"cost_per_1k_input":0.0025,"cost_per_1k_output":0.0075,"capabilities":["chat","coding","vision","reasoning"],"latency_score":0.88,"reliability":0.98},
+    "meta-llama/llama-3.3-70b-instruct": {"provider":"meta","max_tokens":128000,"cost_per_1k_input":0.0008,"cost_per_1k_output":0.0024,"capabilities":["chat","coding","reasoning"],"latency_score":0.88,"reliability":0.97},
+}
+
+# Tried in order when a paid model returns 402 (out of credits).
+FREE_RESCUE_MODELS = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemini-2.0-flash-exp:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+]
+
+# ============================================================
+# Enterprise Policy
+# ============================================================
+class EnterprisePolicy:
+    def __init__(self, budget_cap_usd_per_request=0.1, allowed_models=None, allowed_tools=None):
+        self.budget_cap_usd_per_request = budget_cap_usd_per_request
+        self.allowed_models = allowed_models or []
+        self.allowed_tools  = allowed_tools or []
+
+    def is_model_allowed(self, model_id, catalog):
+        return True if not self.allowed_models else model_id in self.allowed_models
+
+    def is_tool_allowed(self, tool_name):
+        return True if not self.allowed_tools else tool_name in self.allowed_tools
+
+    def to_dict(self):
+        return {"budget_cap_usd_per_request": self.budget_cap_usd_per_request,
+                "allowed_models": self.allowed_models, "allowed_tools": self.allowed_tools}
+
+class PolicyEngine:
+    def __init__(self, policy): self.policy = policy
+    def is_model_allowed(self, m, c): return self.policy.is_model_allowed(m, c)
+    def is_tool_allowed(self, t): return self.policy.is_tool_allowed(t)
+
+# ============================================================
+# Helper Engines
+# ============================================================
+class VatsaIntelligenceScore:
+    @staticmethod
+    def compute(query, difficulty, confidence, domain, tool_count, context_len):
+        base = (difficulty / 10) * 50 + confidence * 30 + (tool_count / 5) * 10 + min(context_len / 1000, 10)
+        return min(100, max(0, base))
+
+class InputAnalyzer:
+    def analyze(self, query, session):
+        return {"language": "en", "length": len(query),
+                "has_code": bool(re.search(r'```|def |class |import ', query))}
+
+INTENTS = {
+    "coding":    {"keywords": ["code","program","function","class","import","react","python","java"]},
+    "debugging": {"keywords": ["bug","error","debug","fix","crash"]},
+    "general":   {"keywords": ["hello","hi","what","who","where","when"]},
+    "math":      {"keywords": ["math","calculate","equation","integral","derivative"]},
+    "vision":    {"keywords": ["image","picture","photo","diagram","chart"]},
+    "search":    {"keywords": ["search","find","lookup","latest","news"]},
+}
+
+@dataclass
+class IntentMatch:
+    intent: str
+    confidence: float
+    band: str
+    matched_keywords: List[str] = field(default_factory=list)
+
+@dataclass
+class ClassificationResult:
+    query: str
+    primary_intent: IntentMatch
+    secondary_intents: List[IntentMatch]
+    is_multi_intent: bool
+    disclaimer: Optional[str] = None
+    def to_dict(self):
+        return {
+            "query": self.query,
+            "primary_intent": {"intent": self.primary_intent.intent,
+                               "confidence": round(self.primary_intent.confidence,1),
+                               "band": self.primary_intent.band,
+                               "matched_keywords": self.primary_intent.matched_keywords},
+            "secondary_intents": [{"intent": m.intent, "confidence": round(m.confidence,1),
+                                    "band": m.band, "matched_keywords": m.matched_keywords}
+                                   for m in self.secondary_intents],
+            "is_multi_intent": self.is_multi_intent,
+            "disclaimer": self.disclaimer,
+        }
+
+def confidence_band(score):
+    if score >= 90.0: return "HIGH"
+    if score >= 60.0: return "MEDIUM"
+    return "LOW"
+
+class IntentEngineLegacy:
+    def classify_full(self, query):
+        scores = {}
+        for name, data in INTENTS.items():
+            score = 0
+            for kw in data.get("keywords", []):
+                if kw in query.lower(): score += 0.15
+            scores[name] = min(100, score * 100)
+        primary = max(scores, key=scores.get)
+        return ClassificationResult(
+            query=query,
+            primary_intent=IntentMatch(intent=primary, confidence=scores[primary],
+                                        band=confidence_band(scores[primary]), matched_keywords=[]),
+            secondary_intents=[], is_multi_intent=False, disclaimer=None
+        )
+    def detect_with_confidence(self, query): return {}
+
+class DifficultyEngine:
+    def score(self, query, intents):
+        return min(10, len(query)/100 + (1 if any(x in query for x in ["def ","class ","import "]) else 0))
+
+class DomainEngine:
+    def detect(self, query):
+        if any(x in query.lower() for x in ["code","function","class"]): return "programming"
+        return "general"
+
+class ContextEngine:
+    def analyze(self, session): return {"history_len": len(session.get("history", []))}
+
+class ConversationMemory:
+    def load_user(self, user_id): return {"preferences": {}}
+
+class PromptAnalyzer:
+    def analyze(self, query):
+        w = {"coding":0,"reasoning":0,"math":0,"vision":0,"creativity":0}
+        l = query.lower()
+        if any(x in l for x in ["code","program","function"]): w["coding"] = 0.7
+        if any(x in l for x in ["explain","why","how","reason"]): w["reasoning"] = 0.6
+        if any(x in l for x in ["math","calculate","equation"]): w["math"] = 0.8
+        if any(x in l for x in ["image","picture","see"]): w["vision"] = 0.9
+        if any(x in l for x in ["write","story","poem"]): w["creativity"] = 0.5
+        return w
+
+class ToolPlanner:
+    def plan(self, query, weights):
+        tools = []
+        l = query.lower()
+        search_triggers = ["search for","look up","google ","latest news","current price",
+                           "today's","recent news","breaking","weather in","stock price","who won"]
+        if any(kw in l for kw in search_triggers): tools.append("search")
+        if re.search(r'\d+\s*[\+\-\*/]\s*\d+', query): tools.append("calculator")
+        return tools
+
+class ModelRankingEngine:
+    def __init__(self, catalog): self.catalog = catalog
+    def rank_models(self, requirements, user_tier, policy=None, exclude=None):
+        exclude = exclude or []
+        models = []
+        for mid, info in self.catalog.models.items():
+            if mid in exclude: continue
+            if policy and not policy.is_model_allowed(mid, self.catalog): continue
+            caps = info.get("capabilities", [])
+            score = 50
+            for cap, weight in requirements.items():
+                if cap in caps: score += weight * 30
+            if user_tier == "free" and info.get("cost_per_1k_input", 0) > 0.001: score -= 10
+            score += info.get("latency_score", 0.5) * 10 + info.get("reliability", 0.9) * 10
+            models.append({"id": mid, "score": score})
+        models.sort(key=lambda x: x["score"], reverse=True)
+        return models[:10]
+
+class CostOptimizer:
+    def __init__(self, catalog): self.catalog = catalog
+    def estimate_cost(self, model_id, prompt_tokens, completion_tokens):
+        info = self.catalog.get_model(model_id)
+        if not info: return 0.0
+        return (info.get("cost_per_1k_input",0)  * prompt_tokens / 1000
+              + info.get("cost_per_1k_output",0) * completion_tokens / 1000)
+    def choose_cost_effective(self, ranked, input_tokens, output_tokens, max_acceptable_score=70, budget_cap=0.1):
+        for m in ranked:
+            c = self.estimate_cost(m["id"], input_tokens, output_tokens)
+            if c <= budget_cap and m["score"] >= max_acceptable_score: return m["id"]
+        return ranked[0]["id"] if ranked else None
+
+class LatencyOptimizer:
+    def __init__(self, catalog): self.catalog = catalog
+    def choose_fastest(self, ranked, input_tokens, output_tokens, min_score=60):
+        for m in ranked:
+            info = self.catalog.get_model(m["id"])
+            if info and info.get("latency_score", 0) >= 0.85 and m["score"] >= min_score:
+                return m["id"]
+        return ranked[0]["id"] if ranked else None
+
+class ParallelRouter:
+    async def route_parallel(self, query, model_ids, call_func):
+        tasks = [call_func(m, query) for m in model_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return {mid: ("" if isinstance(res, Exception) else res) for mid, res in zip(model_ids, results)}
+
+class VerificationEngine:
+    async def verify(self, response, query, model_id, call_func):
+        prompt = f"Verify if the following response correctly answers the query. Reply with 'verified' or 'not verified'.\nQuery: {query}\nResponse: {response}"
+        try:
+            ver = await call_func(model_id, prompt)
+            return {"verified": "verified" in str(ver).lower(), "message": ver}
+        except Exception:
+            return {"verified": True, "message": "Verification failed, assuming true"}
+
+class HallucinationDetector:
+    def detect(self, response, sources):
+        return {"confidence": 0.9 if len(sources) == 0 else 0.95, "flags": []}
+
+class AdaptiveLearning:
+    def update(self, *args, **kwargs): pass
+    def get_best_model(self, *args, **kwargs): return None
+
+class BenchmarkEngine: pass
+class PersonaEngine:
+    def get_preferred_models(self, user_type): return []
+class ConfidenceEngine: pass
+
+class ExecutionPlanner:
+    def plan(self, query, tools): return [{"tool": t, "order": i} for i, t in enumerate(tools)]
+
+class AIToAICollaborator:
+    async def collaborate(self, query, model_ids, call_func):
+        responses = {}
+        for mid in model_ids: responses[mid] = await call_func(mid, query)
+        merged = max(responses.values(), key=len) if responses else ""
+        return {"merged": merged, "responses": responses}
+
+class SmartCache:
+    def __init__(self, ttl=3600): self.cache = {}; self.ttl = ttl
+    def get(self, key):
+        if key in self.cache:
+            data, ts = self.cache[key]
+            if time.time() - ts < self.ttl: return data
+            del self.cache[key]
+        return None
+    def set(self, key, value): self.cache[key] = (value, time.time())
+
+class AnalyticsEngine:
+    def log(self, entry): logger.info(f"Analytics: {entry}")
+
+class RouterFeedbackLoop: pass
+
+class FollowupGenerator:
+    def generate(self, query, intent, response):
+        return [{"text": "Can I help with something else?", "action": "help"},
+                {"text": "Do you need more details?", "action": "details"}]
+
+# ============================================================
+# Model Catalog
+# ============================================================
+class ModelCatalog:
+    def __init__(self, cache_file="model_catalog.json", ttl=3600):
+        self.cache_file = cache_file
+        self.ttl = ttl
+        self.models: Dict[str, dict] = {}
+        self.last_updated = 0.0
+        self._load_cache()
+
+    def _load_cache(self):
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, 'r') as f:
+                    data = json.load(f)
+                    if time.time() - data.get("timestamp", 0) < self.ttl:
+                        self.models = data["models"]
+                        self.last_updated = data["timestamp"]
+                        logger.info(f"Loaded {len(self.models)} models from cache")
+                        return
+            except Exception:
+                pass
+        self.models = FALLBACK_MODELS.copy()
+        logger.warning(f"[WARN] No cache found, using fallback list of {len(self.models)} models.")
+
+    async def refresh(self, api_key=None):
+        if not api_key:
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                logger.warning("Cannot refresh catalog: No API key")
+                return
+        headers = {"Authorization": f"Bearer {api_key}"}
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get("https://openrouter.ai/api/v1/models", headers=headers, timeout=30) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        new_models = {}
+                        for m in data.get("data", []):
+                            pricing = m.get("pricing", {})
+                            new_models[m["id"]] = {
+                                "provider": m.get("provider", "openrouter"),
+                                "max_tokens": m.get("context_length", 128000),
+                                "cost_per_1k_input": float(pricing.get("prompt", 0) or 0),
+                                "cost_per_1k_output": float(pricing.get("completion", 0) or 0),
+                                "capabilities": ["chat"],
+                                "latency_score": m.get("latency", {}).get("score", 0.5) or 0.5,
+                                "reliability": 0.95,
+                            }
+                        if new_models:
+                            self.models = new_models
+                            self.last_updated = time.time()
+                            with open(self.cache_file, 'w') as f:
+                                json.dump({"models": self.models, "timestamp": self.last_updated}, f)
+                            logger.info(f"[OK] Catalog refreshed: {len(self.models)} models")
+                    else:
+                        logger.warning(f"Catalog refresh HTTP {resp.status}")
+            except Exception as e:
+                logger.error(f"Catalog refresh failed: {e}")
+
+    def get_model_ids(self): return list(self.models.keys())
+    def get_model(self, mid): return self.models.get(mid)
+    def get_models_by_capability(self, capability):
+        return [mid for mid, m in self.models.items() if capability in m.get("capabilities", [])]
+
+# ============================================================
+# Main Router
+# ============================================================
+class VatsaRouter:
+    def __init__(self, enterprise_policy=None):
+        self.catalog = ModelCatalog()
+        self.policy = enterprise_policy or EnterprisePolicy()
+        self.policy_engine = PolicyEngine(self.policy)
+        self.input_analyzer = InputAnalyzer()
+        self.intent_engine = IntentEngineLegacy()
+        self.difficulty_engine = DifficultyEngine()
+        self.domain_engine = DomainEngine()
+        self.context_engine = ContextEngine()
+        self.memory_engine = ConversationMemory()
+        self.prompt_analyzer = PromptAnalyzer()
+        self.tool_planner = ToolPlanner()
+        self.ranking_engine = ModelRankingEngine(self.catalog)
+        self.cost_optimizer = CostOptimizer(self.catalog)
+        self.latency_optimizer = LatencyOptimizer(self.catalog)
+        self.parallel_router = ParallelRouter()
+        self.verification_engine = VerificationEngine()
+        self.hallucination_detector = HallucinationDetector()
+        self.learning_engine = AdaptiveLearning()
+        self.failover = ModelHealthMonitor()
+        self.benchmark_engine = BenchmarkEngine()
+        self.persona_engine = PersonaEngine()
+        self.confidence_engine = ConfidenceEngine()
+        self.execution_planner = ExecutionPlanner()
+        self.collaborator = AIToAICollaborator()
+        self.smart_cache = SmartCache()
+        self.analytics_engine = AnalyticsEngine()
+        self.feedback_loop = RouterFeedbackLoop()
+        self.provider = OpenRouterProvider()
+        self.followup_generator = FollowupGenerator()
+
+        self.identity_patterns = [
+            r"(which|what)\s+(model|ai|artificial intelligence|llm|language model)\s+(are you|do you use|is this|u use|u)",
+            r"(are you|is this)\s+(chatgpt|gpt|claude|gemini|grok|deepseek|openai|anthropic|google)",
+            r"who\s+(made|created|developed|built)\s+(you|this)",
+            r"(which|what)\s+version\s+(of|are you)",
+            r"tell\s+me\s+about\s+yourself"
+        ]
+        logger.info(f"VatsaRouter initialized with {len(self.catalog.models)} models.")
+
+    def _is_identity_query(self, query):
+        q = query.lower().strip()
+        return any(re.search(p, q) for p in self.identity_patterns)
+
+    async def call_model(self, model_id, query, max_tokens=800, language="en"):
+        """Call one model. Raises ModelCallError on failure (does NOT return a string)."""
+        if model_id == "tencent/hy4-preview":
+            model_id = "openai/gpt-4o"
+
+        if not await self.failover.is_healthy(model_id):
+            raise ModelCallError(503, f"Model {model_id} is cooling down after repeated failures.", model=model_id)
+
+        try:
+            messages = [{"role": "user", "content": query}]
+            response = await self.provider.generate_async(
+                messages, model=model_id, max_tokens=max_tokens, temperature=0.7
+            )
+            content = response.get("content", "") if isinstance(response, dict) else str(response)
+            if not content or not content.strip():
+                raise ModelCallError(502, "Model returned an empty response.", model=model_id)
+            await self.failover.record_success(model_id)
+            return content
+        except OpenRouterError as e:
+            await self.failover.record_failure(model_id, str(e))
+            raise ModelCallError(e.code, e.message, e.remedy, e.model or model_id) from e
+        except ModelCallError:
+            raise
+        except Exception as e:
+            await self.failover.record_failure(model_id, str(e))
+            raise ModelCallError(500, str(e), model=model_id) from e
+
+    def _is_valid_model(self, model_name):
+        if not model_name: return False
+        if model_name.lower() in ["auto", "openrouter/auto", "openrouter/auto-beta"]: return False
+        return bool(self.catalog.get_model(model_name))
+
+    def _map_model_name(self, model_name):
+        """Returns a valid catalog id, or None if nothing usable."""
+        if not model_name: return None
+        name = model_name.strip()
+        bare = name.lstrip("~")
+        if self._is_valid_model(name): return name
+        if self._is_valid_model(bare): return bare
+        mapped = MODEL_NAME_MAPPING.get(name) or MODEL_NAME_MAPPING.get(bare)
+        if mapped and self._is_valid_model(mapped): return mapped
+        return None
+
+    async def _execute_tools(self, tools, query, session):
+        sources, tool_output = [], ""
+        for tool_name in tools:
+            if not self.policy_engine.is_tool_allowed(tool_name): continue
+            try:
+                tool = get_tool(tool_name)
+                params = {}
+                if tool_name == "search": params["query"] = query
+                elif tool_name == "calculator":
+                    expr_match = re.search(r'[\d+\-*/()\s]+', query)
+                    params["expression"] = expr_match.group().strip() if expr_match else query
+                result = await tool.execute(**params)
+                if result.get("success"):
+                    sources.append({"title": f"Tool: {tool_name}", "content": result.get("result","")})
+                    tool_output += f"\n[{tool_name} results]: {result.get('result','')}\n"
+            except Exception as e:
+                logger.error(f"Error executing tool {tool_name}: {e}")
+        return sources, tool_output
+
+    def _estimate_tokens(self, text):
+        return 0 if text is None else len(text) // 4
+
+    def _build_candidate_chain(self, mapped_preferred, ranked, chosen_model, exclude=None):
+        """Ordered list of model ids to try."""
+        exclude = set(exclude or [])
+        chain = []
+        def add(m):
+            if m and m not in exclude and m not in chain:
+                chain.append(m)
+        add(mapped_preferred)
+        add(chosen_model)
+        for m in ranked:
+            add(m["id"])
+        # Final safety nets
+        add("openai/gpt-4o-mini")
+        add("meta-llama/llama-3.3-70b-instruct")
+        return chain
+
+    async def route(self, query, user_id=None, preferred_model=None, user_tier="free",
+                    session=None, attachments=None):
+        if not query or not query.strip():
+            query = "Hi, how are you?"
+        start_time = time.time()
+        session = session or {}
+
+        attachment_context = ""
+        if attachments:
+            for att in attachments:
+                attachment_context += f"\n\n=== ATTACHED FILE: {att.get('filename','file')} ===\n{att.get('text','')}\n=== END FILE ===\n"
+        if attachment_context:
+            query = query + attachment_context
+            logger.info(f"Attached {len(attachments)} file(s), total query len: {len(query)}")
+
+        # Identity shortcut
+        if self._is_identity_query(query):
+            return {
+                "status": "success", "query": query, "primary_intent": "identity", "intent_confidence": 1.0,
+                "vis": 0, "difficulty_score": 1, "domain": "general", "tools_planned": [], "execution_plan": [],
+                "selected_model": "system_identity_handler", "provider": "vatsa", "sources": [], "followups": [],
+                "cost": 0.0, "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                "response": "I am Vatsa AI, an advanced AI assistant developed by Vatsa Group. How can I assist you today?",
+                "verification": None, "hallucination": {"confidence": 1.0, "flags": []},
+                "latency_seconds": round(time.time()-start_time, 4), "user_tier": user_tier,
+                "response_language": "en", "model_ranking_snapshot": [],
+                "policy_applied": self.policy.to_dict() if self.policy else None, "metadata": {}
+            }
+
+        cache_key = hashlib.md5((query + str(user_id) + str(preferred_model)).encode()).hexdigest()
+        cached = self.smart_cache.get(cache_key)
+        if cached:
+            return json.loads(cached)
+
+        input_analysis = self.input_analyzer.analyze(query, session)
+        response_language = input_analysis.get("language", "en")
+        intent_result = self.intent_engine.classify_full(query)
+        primary_intent = intent_result.primary_intent.intent
+        confidence = intent_result.primary_intent.confidence / 100.0
+        difficulty_score = self.difficulty_engine.score(query, [])
+        domain = self.domain_engine.detect(query)
+        context = self.context_engine.analyze(session)
+        _user_memory = self.memory_engine.load_user(user_id) if user_id else {}
+        history_text = " ".join([msg.get("content","") for msg in session.get("history", [])])
+        context_len = self._estimate_tokens(history_text + query)
+        prompt_weights = self.prompt_analyzer.analyze(query)
+        tools = [t for t in self.tool_planner.plan(query, prompt_weights) if self.policy_engine.is_tool_allowed(t)]
+        vis = VatsaIntelligenceScore.compute(query, difficulty_score, confidence, domain, len(tools), context_len)
+
+        requirements = {
+            "coding": prompt_weights.get("coding",0), "reasoning": prompt_weights.get("reasoning",0),
+            "math": prompt_weights.get("math",0), "vision": prompt_weights.get("vision",0),
+            "creative": prompt_weights.get("creativity",0)
+        }
+        total_req = sum(requirements.values())
+        if total_req > 0:
+            for k in requirements: requirements[k] /= total_req
+        else:
+            requirements = {"reasoning": 0.5, "coding": 0.5}
+
+        mapped_preferred = self._map_model_name(preferred_model) if preferred_model else None
+        ranked = self.ranking_engine.rank_models(requirements, user_tier, policy=self.policy) or [{"id": "openai/gpt-4o", "score": 50}]
+
+        sources, tool_output = ([], "")
+        if tools:
+            sources, tool_output = await self._execute_tools(tools, query, session)
+
+        effective_query = query
+        if tool_output:
+            effective_query = f"{query}\n\n[Tool results - do NOT mention 'tools' to the user:]\n{tool_output}"
+
+        # Pick a starting model
+        if mapped_preferred:
+            chosen_model = mapped_preferred
+        else:
+            input_tokens = self._estimate_tokens(effective_query)
+            speed_pref = session.get("speed_preference", "balanced")
+            if speed_pref == "fast" or vis < 40:
+                chosen_model = self.latency_optimizer.choose_fastest(ranked, input_tokens, 800, min_score=60)
+            else:
+                chosen_model = self.cost_optimizer.choose_cost_effective(
+                    ranked, input_tokens, 800,
+                    max_acceptable_score=70, budget_cap=self.policy.budget_cap_usd_per_request)
+            if not chosen_model:
+                chosen_model = "openai/gpt-4o"
+
+        # --- Try models in order, on 402 jump straight to free rescue models ---
+        response = None
+        used_model = None
+        last_error: Optional[ModelCallError] = None
+        tried: List[str] = []
+
+        candidates = self._build_candidate_chain(mapped_preferred, ranked, chosen_model)
+        hit_402 = False
+
+        for candidate in candidates:
+            if not await self.failover.is_healthy(candidate):
+                continue
+            tried.append(candidate)
+            try:
+                response = await self.call_model(candidate, effective_query, 800, response_language)
+                used_model = candidate
+                break
+            except ModelCallError as e:
+                last_error = e
+                logger.warning(f"Model {candidate} failed [{e.code}]: {e.message}")
+                if e.code == 402:
+                    hit_402 = True
+                    break  # No point trying more paid models - try free rescue below
+                continue
+
+        # If we got 402 or ran out of paid candidates, try free models
+        if response is None:
+            for free_mid in FREE_RESCUE_MODELS:
+                if free_mid in tried: continue
+                tried.append(free_mid)
+                try:
+                    response = await self.call_model(free_mid, effective_query, 800, response_language)
+                    used_model = free_mid
+                    logger.info(f"[OK] Rescued with free model: {free_mid}")
+                    break
+                except ModelCallError as e:
+                    last_error = e
+                    logger.warning(f"Free model {free_mid} failed [{e.code}]: {e.message}")
+                    continue
+
+        # Still nothing? Raise a proper error
+        if response is None or used_model is None:
+            err = last_error or ModelCallError(502, "All models failed.")
+            logger.error(f"All candidates failed. tried={tried}")
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "error_code": "insufficient_credits" if hit_402 else "provider_error",
+                    "message": err.message,
+                    "remedy": err.remedy or (
+                        "Add credits at https://openrouter.ai/settings/credits"
+                        if hit_402 else ""
+                    ),
+                    "model": err.model,
+                    "tried_models": tried,
+                },
+            )
+
+        # Success path
+        hallucination = self.hallucination_detector.detect(response, [s.get("content","") for s in sources])
+        execution_plan = self.execution_planner.plan(query, tools)
+        followups = self.followup_generator.generate(query, primary_intent, response)
+
+        prompt_tokens = self._estimate_tokens(effective_query + history_text)
+        completion_tokens = self._estimate_tokens(response)
+        cost = self.cost_optimizer.estimate_cost(used_model, prompt_tokens, completion_tokens)
+        usage = {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens}
+
+        elapsed = time.time() - start_time
+        self.analytics_engine.log({
+            "user_id": user_id, "query": query[:80], "model": used_model,
+            "latency": round(elapsed, 2), "vis": round(vis, 1), "tools": tools,
+            "attachments": len(attachments) if attachments else 0,
+            "success": True,
+            "fallback_used": used_model != chosen_model,
+        })
+
+        clean_query = query.split("\n\n=== ATTACHED FILE:")[0]
+
+        result = {
+            "status": "success", "query": clean_query, "primary_intent": primary_intent,
+            "intent_confidence": confidence, "vis": vis, "difficulty_score": difficulty_score,
+            "domain": domain, "tools_planned": tools, "execution_plan": execution_plan,
+            "selected_model": used_model, "provider": "openrouter",
+            "sources": sources, "followups": followups, "cost": cost, "usage": usage,
+            "response": response, "verification": None, "hallucination": hallucination,
+            "latency_seconds": round(elapsed, 2), "user_tier": user_tier,
+            "policy_applied": self.policy.to_dict() if self.policy else None,
+            "model_ranking_snapshot": ranked[:5], "response_language": response_language,
+            "metadata": {
+                "tools_executed": tools,
+                "attachment_count": len(attachments) if attachments else 0,
+                "total_models": len(self.catalog.models),
+                "fallback_used": used_model != chosen_model,
+            }
+        }
+        # Only cache successful, non-fallback results to avoid poisoning the cache
+        if used_model == chosen_model:
+            self.smart_cache.set(cache_key, json.dumps(result))
+        return result
+
+VatsaRouterPro = VatsaRouter
+
+# ============================================================
+# Database
+# ============================================================
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String, unique=True, index=True)
+    full_name = Column(String)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    profile_completed = Column(Boolean, default=False)
+    settings = Column(JSON, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+DATABASE_URL = "sqlite:///./test.db"
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base.metadata.create_all(bind=engine)
+
+def get_password_hash(password):
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+    return f"pbkdf2_sha256$100000${salt}${dk.hex()}"
+
+def verify_password(plain, hashed):
+    try:
+        algorithm, iterations, salt, hash_hex = hashed.split('$')
+        if algorithm != "pbkdf2_sha256": return False
+        dk = hashlib.pbkdf2_hmac('sha256', plain.encode(), salt.encode(), int(iterations))
+        return dk.hex() == hash_hex
+    except Exception:
+        return False
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+def create_access_token(data, expires_delta=None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# ============================================================
+# FastAPI
+# ============================================================
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials",
+                                          headers={"WWW-Authenticate": "Bearer"})
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if email is None: raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    def _get():
+        with SessionLocal() as db:
+            return db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    user = await asyncio.to_thread(_get)
+    if user is None: raise credentials_exception
+    return user
+
+FILE_STORE: Dict[str, Dict[str, Any]] = {}
+CONVERSATIONS: Dict[str, Dict[str, Any]] = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await router_instance.catalog.refresh(os.getenv("OPENROUTER_API_KEY"))
+    logger.info("[OK] Database tables ensured.")
+    yield
+
+app = FastAPI(title="Vatsa AI Router", version="2.1", lifespan=lifespan)
+router_instance = VatsaRouter()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+)
+
+auth_router = APIRouter()
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+@auth_router.post("/register", response_model=Token)
+async def register(user: UserCreate):
+    def _reg():
+        with SessionLocal() as db:
+            existing = db.execute(select(User).where(User.email == user.email)).scalar_one_or_none()
+            if existing: raise HTTPException(400, "Email already registered")
+            new_user = User(email=user.email, hashed_password=get_password_hash(user.password),
+                            full_name=user.full_name, is_verified=True)
+            db.add(new_user); db.commit(); db.refresh(new_user)
+            return new_user
+    try:
+        await asyncio.to_thread(_reg)
+    except HTTPException:
+        raise
+    return {"access_token": create_access_token({"sub": user.email}), "token_type": "bearer"}
+
+@auth_router.post("/token", response_model=Token)
+async def login_oauth(form_data: OAuth2PasswordRequestForm = Depends()):
+    def _login():
+        with SessionLocal() as db:
+            u = db.execute(select(User).where(User.email == form_data.username)).scalar_one_or_none()
+            if not u or not verify_password(form_data.password, u.hashed_password):
+                raise HTTPException(400, "Incorrect email or password")
+            return u
+    try:
+        user = await asyncio.to_thread(_login)
+    except HTTPException:
+        raise
+    return {"access_token": create_access_token({"sub": user.email}), "token_type": "bearer"}
+
+@auth_router.post("/login", response_model=Token)
+async def login_json(login_data: LoginRequest):
+    def _login():
+        with SessionLocal() as db:
+            u = db.execute(select(User).where(User.email == login_data.email)).scalar_one_or_none()
+            if not u or not verify_password(login_data.password, u.hashed_password):
+                raise HTTPException(400, "Incorrect email or password")
+            return u
+    try:
+        user = await asyncio.to_thread(_login)
+    except HTTPException:
+        raise
+    return {"access_token": create_access_token({"sub": user.email}), "token_type": "bearer"}
+
+@auth_router.get("/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return {"email": current_user.email, "full_name": current_user.full_name,
+            "is_active": current_user.is_active, "is_verified": current_user.is_verified,
+            "profile_completed": current_user.profile_completed, "tier": "free"}
+
+app.include_router(auth_router, prefix="/auth")
+
+# ---- Conversations ----
+conversations_router = APIRouter(prefix="/api")
+
+class CreateConvRequest(BaseModel):
+    title: Optional[str] = "New Chat"
+
+class UpdateConvRequest(BaseModel):
+    title: Optional[str] = None
+
+@conversations_router.get("/conversations")
+async def get_conversations(current_user: User = Depends(get_current_user)):
+    user_convs = [c for c in CONVERSATIONS.values() if c.get("user_id") == current_user.email]
+    user_convs.sort(key=lambda c: (not c.get("pinned", False), c.get("updatedAt", "")))
+    user_convs.reverse()
+    logger.info(f"GET /api/conversations -> {len(user_convs)} for {current_user.email}")
+    return user_convs
+
+@conversations_router.post("/conversations")
+async def create_conversation(payload: CreateConvRequest = CreateConvRequest(),
+                               current_user: User = Depends(get_current_user)):
+    conv_id = f"conv_{uuid.uuid4().hex[:12]}"
+    now = datetime.utcnow().isoformat()
+    conv = {"id": conv_id, "title": payload.title or "New Chat", "messages": [],
+            "user_id": current_user.email, "createdAt": now, "updatedAt": now,
+            "pinned": False, "favorite": False, "archived": False}
+    CONVERSATIONS[conv_id] = conv
+    logger.info(f"Created conversation {conv_id} for {current_user.email}")
+    return conv
+
+@conversations_router.patch("/conversations/{conv_id}")
+async def update_conversation(conv_id: str, payload: UpdateConvRequest,
+                               current_user: User = Depends(get_current_user)):
+    conv = CONVERSATIONS.get(conv_id)
+    if not conv: raise HTTPException(404, "Conversation not found")
+    if payload.title is not None: conv["title"] = payload.title
+    conv["updatedAt"] = datetime.utcnow().isoformat()
+    return conv
+
+@conversations_router.delete("/conversations/{conv_id}")
+async def delete_conversation(conv_id: str, current_user: User = Depends(get_current_user)):
+    CONVERSATIONS.pop(conv_id, None)
+    logger.info(f"Deleted conversation {conv_id}")
+    return {"success": True}
+
+@conversations_router.delete("/conversations")
+async def delete_all_conversations(current_user: User = Depends(get_current_user)):
+    to_del = [cid for cid, c in CONVERSATIONS.items() if c.get("user_id") == current_user.email]
+    for cid in to_del: CONVERSATIONS.pop(cid, None)
+    return {"success": True, "deleted": len(to_del)}
+
+@conversations_router.post("/conversations/{conv_id}/pin")
+async def pin_conv(conv_id: str, current_user: User = Depends(get_current_user)):
+    if conv_id in CONVERSATIONS: CONVERSATIONS[conv_id]["pinned"] = True
+    return {"success": True}
+
+@conversations_router.delete("/conversations/{conv_id}/pin")
+async def unpin_conv(conv_id: str, current_user: User = Depends(get_current_user)):
+    if conv_id in CONVERSATIONS: CONVERSATIONS[conv_id]["pinned"] = False
+    return {"success": True}
+
+@conversations_router.post("/conversations/{conv_id}/favorite")
+async def fav_conv(conv_id: str, current_user: User = Depends(get_current_user)):
+    if conv_id in CONVERSATIONS: CONVERSATIONS[conv_id]["favorite"] = True
+    return {"success": True}
+
+@conversations_router.delete("/conversations/{conv_id}/favorite")
+async def unfav_conv(conv_id: str, current_user: User = Depends(get_current_user)):
+    if conv_id in CONVERSATIONS: CONVERSATIONS[conv_id]["favorite"] = False
+    return {"success": True}
+
+@conversations_router.post("/conversations/{conv_id}/archive")
+async def archive_conv(conv_id: str, current_user: User = Depends(get_current_user)):
+    if conv_id in CONVERSATIONS: CONVERSATIONS[conv_id]["archived"] = True
+    return {"success": True}
+
+@conversations_router.post("/conversations/{conv_id}/duplicate")
+async def duplicate_conv(conv_id: str, current_user: User = Depends(get_current_user)):
+    src = CONVERSATIONS.get(conv_id)
+    if not src: raise HTTPException(404, "Not found")
+    new_id = f"conv_{uuid.uuid4().hex[:12]}"
+    now = datetime.utcnow().isoformat()
+    new_conv = {**src, "id": new_id, "title": f"{src['title']} (copy)", "createdAt": now, "updatedAt": now}
+    CONVERSATIONS[new_id] = new_conv
+    return new_conv
+
+app.include_router(conversations_router)
+
+# ---- Uploads ----
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    file_id = str(uuid.uuid4())
+    raw = await file.read()
+    if len(raw) > 20 * 1024 * 1024: raise HTTPException(400, "File too large (max 20MB)")
+    filename = file.filename or "file"
+    try:
+        text = _extract_text_from_bytes(raw, filename)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, f"Could not read file: {e}")
+    text = (text or "").strip()[:20000]
+    if not text: raise HTTPException(400, "Could not extract any text from file")
+    FILE_STORE[file_id] = {"filename": filename, "text": text, "user_id": current_user.email,
+                           "uploaded_at": time.time(), "size_bytes": len(raw)}
+    logger.info(f"Uploaded {filename} -> {file_id} ({len(text)} chars)")
+    return {"file_id": file_id, "filename": filename, "chars": len(text), "size_bytes": len(raw)}
+
+def _extract_text_from_bytes(raw: bytes, filename: str) -> str:
+    lower = filename.lower()
+    if lower.endswith(".pdf"):
+        if not PDF_SUPPORT:
+            raise HTTPException(500, "PDF support not installed. Run: pip install pdfplumber")
+        text = ""
+        try:
+            with pdfplumber.open(io.BytesIO(raw)) as pdf:
+                text = "\n".join((p.extract_text() or "") for p in pdf.pages)
+            logger.info(f"pdfplumber extracted {len(text)} chars from {filename}")
+        except Exception as e:
+            logger.error(f"pdfplumber failed on {filename}: {e}")
+
+        if not text.strip() and OCR_SUPPORT:
+            logger.info(f"pdfplumber empty -> trying OCR on {filename}")
+            try:
+                images = convert_from_bytes(raw, poppler_path=POPPLER_PATH)
+                text = "\n".join(pytesseract.image_to_string(img) for img in images)
+                logger.info(f"OCR extracted {len(text)} chars from {filename}")
+            except Exception as e:
+                logger.error(f"OCR failed on {filename}: {e}")
+        return text
+
+    if lower.endswith((".txt",".md",".csv",".json",".log",".py",".js",".ts",".html",".css")):
+        return raw.decode("utf-8", errors="ignore")
+    raise HTTPException(400, f"Unsupported file type: {filename}")
+
+def _parse_attachment(att: Union[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if isinstance(att, str):
+        info = FILE_STORE.get(att)
+        if not info:
+            logger.warning(f"Attachment file_id {att} not found")
+            return None
+        return {"filename": info.get("filename", "file"), "text": info.get("text", "")}
+
+    if isinstance(att, dict):
+        filename = att.get("name") or att.get("filename") or "file"
+        content = att.get("content") or ""
+        logger.info(f"Attachment: name={filename} type={att.get('type')} content_len={len(content)}")
+
+        if att.get("text"):
+            return {"filename": filename, "text": att["text"]}
+        if not content:
+            logger.warning(f"Attachment {filename} has empty content")
+            return None
+
+        b64_data = content
+        if content.strip().startswith("data:") and "," in content:
+            b64_data = content.split(",", 1)[1]
+        pad = len(b64_data) % 4
+        if pad: b64_data += "=" * (4 - pad)
+
+        try:
+            raw = _b64.b64decode(b64_data)
+            logger.info(f"Decoded {len(raw)} bytes from {filename}")
+        except Exception as e:
+            logger.error(f"Base64 decode failed for {filename}: {e}")
+            return None
+
+        try:
+            text = _extract_text_from_bytes(raw, filename)
+        except HTTPException as e:
+            logger.error(f"Extraction failed for {filename}: {e.detail}")
+            return None
+        except Exception as e:
+            logger.error(f"Extraction failed for {filename}: {e}")
+            return None
+
+        text = (text or "").strip()[:20000]
+        if not text:
+            logger.warning(f"No text extracted from {filename} (raw={len(raw)} bytes).")
+            return None
+        logger.info(f"Parsed inline attachment {filename} ({len(text)} chars)")
+        return {"filename": filename, "text": text}
+
+    logger.warning(f"Unknown attachment format: {type(att)}")
+    return None
+
+# ---- Chat ----
+class ChatRequest(BaseModel):
+    message: str
+    user_id: Optional[str] = Field(None, alias="userId")
+    conversation_id: Optional[str] = None
+    preferred_model: Optional[str] = Field(None, alias="preferredModel")
+    user_tier: str = Field("free", alias="userTier")
+    attachments: Optional[List[Union[str, Dict[str, Any]]]] = None
+    model_config = {"populate_by_name": True}
+
+def _save_to_conversation(conv_id: str, user_msg: str, ai_msg: str, ai_meta: Optional[dict] = None):
+    if not conv_id or conv_id not in CONVERSATIONS: return
+    conv = CONVERSATIONS[conv_id]
+    now = datetime.utcnow().isoformat()
+    conv["messages"].append({"id": f"msg_{uuid.uuid4().hex[:8]}", "role": "user",
+                             "content": user_msg, "createdAt": now})
+    conv["messages"].append({"id": f"msg_{uuid.uuid4().hex[:8]}", "role": "assistant",
+                             "content": ai_msg, "createdAt": now,
+                             "meta": ai_meta or {}})
+    conv["updatedAt"] = now
+    logger.info(f"Saved 2 messages to {conv_id} (total: {len(conv['messages'])})")
+
+@app.post("/api/chat")
+async def chat_endpoint(request: ChatRequest):
+    try:
+        # --- Image generation short-circuit ---
+        image_prompt = detect_image_gen(request.message)
+        if image_prompt:
+            logger.info(f"Image gen request: {image_prompt}")
+            img = await generate_image_pollinations(image_prompt)
+            response_text = f"**Vatsa AI Image**\n\n![image]({img['image_url']})"
+            _save_to_conversation(
+                request.conversation_id, request.message, response_text,
+                {"type": "image_generation", "model": img["model"]}
+            )
+            return {
+                "status": "success",
+                "query": request.message,
+                "response": response_text,
+                "selected_model": f"image:{img['model']}",
+                "provider": "pollinations",
+                "image_url": img["image_url"],
+                "sources": [], "followups": [], "cost": 0.0,
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                "metadata": {"type": "image_generation"},
+                "latency_seconds": 0,
+                "intent_confidence": 1.0,
+                "primary_intent": "image_generation",
+                "vis": 100,
+            }
+
+        # --- Attachments ---
+        parsed_attachments: List[Dict[str, Any]] = []
+        if request.attachments:
+            logger.info(f"Received {len(request.attachments)} attachment(s)")
+            for att in request.attachments:
+                parsed = _parse_attachment(att)
+                if parsed and parsed.get("text"):
+                    parsed_attachments.append(parsed)
+        logger.info(f"{len(parsed_attachments)} attachment(s) ready for LLM")
+
+        # --- Route ---
+        result = await router_instance.route(
+            query=request.message,
+            user_id=request.user_id,
+            preferred_model=request.preferred_model,
+            user_tier=request.user_tier,
+            session={},
+            attachments=parsed_attachments,
+        )
+
+        _save_to_conversation(
+            request.conversation_id, request.message, result.get("response", ""),
+            {"model": result.get("selected_model"), "vis": result.get("vis"),
+             "fallback_used": result.get("metadata", {}).get("fallback_used", False)}
+        )
+        return result
+
+    except HTTPException:
+        # Route raised a real error — pass it through so the frontend sees it
+        raise
+    except Exception as e:
+        logger.exception("Error in chat endpoint")
+        raise HTTPException(500, detail={"error_code": "server_error", "message": str(e)})
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "models": len(router_instance.catalog.models),
+            "files_in_store": len(FILE_STORE), "pdf_support": PDF_SUPPORT,
+            "ocr_support": OCR_SUPPORT, "conversations": len(CONVERSATIONS)}
+
+# ---- Dummy dev auth override ----
+async def dummy_get_current_user():
+    def _create_or_get():
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == "dev@example.com")).scalar_one_or_none()
+            if not user:
+                user = User(email="dev@example.com", full_name="Dev User", is_active=True,
+                            is_verified=True, profile_completed=True, settings={},
+                            hashed_password=get_password_hash("dummy"))
+                db.add(user); db.commit(); db.refresh(user)
+            return user
+    return await asyncio.to_thread(_create_or_get)
+
+app.dependency_overrides[get_current_user] = dummy_get_current_user
+logger.info("DUMMY AUTH OVERRIDE ENABLED - dev@example.com auto-logged in")
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

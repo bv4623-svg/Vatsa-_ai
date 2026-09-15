@@ -1,0 +1,1 @@
+frontend/src/stores/index.ts (or wherever useAppStore is defined)

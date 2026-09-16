@@ -4,6 +4,11 @@ export interface ProjectFile {
   language?: string;
 }
 
+export interface UserProfile {
+  full_name?: string;
+  email?: string;
+}
+
 export type ThemeMode = "dark" | "light" | "system";
 export type AccentColor = "default" | "blue" | "purple" | "green" | "orange";
 export type PreviewMode = "preview" | "code";

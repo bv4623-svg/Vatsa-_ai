@@ -15,8 +15,8 @@ export type PreviewMode = "preview" | "code";
 export type Device = "desktop" | "tablet" | "mobile";
 
 export const MODELS = [
-  { id: "auto", label: "Auto (recommended)" },
-  { id: "gpt-4o", label: "GPT-4o" },
-  { id: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
-  { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+  { id: "auto", label: "Vatsa AI (recommended)" },
+  { id: "vatsa-pro", label: "Vatsa AI Pro" },
+  { id: "vatsa-advanced", label: "Vatsa AI Advanced" },
+  { id: "vatsa-fast", label: "Vatsa AI Fast" },
 ] as const;

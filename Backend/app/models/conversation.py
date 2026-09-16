@@ -31,7 +31,10 @@ class Conversation(Base):
             "title": self.title,
             "user_id": self.user_id,
             "workspace": self.workspace or "chat",
-            "model": self.model,
+            # Never surface a real provider/model id, even if one somehow
+            # ended up stored here (e.g. from an older row or a client-
+            # supplied value at creation time).
+            "model": "Vatsa AI" if self.model else None,
             "focus_mode": self.focus_mode,
             "web_search_enabled": self.web_search_enabled,
             "pinned": self.pinned or False,

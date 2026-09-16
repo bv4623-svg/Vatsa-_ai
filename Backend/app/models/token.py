@@ -50,6 +50,8 @@ class TokenTransaction(Base):
             'balance_after': self.balance_after,
             'reason': self.reason,
             'reference_id': self.reference_id,
-            'model': self.model,
+            # Never surface a real provider/model id, even for historical
+            # rows written before this field was sealed.
+            'model': 'Vatsa AI' if self.model else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

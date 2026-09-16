@@ -10,6 +10,8 @@ import { Tooltip } from "@/components/home/Tooltip";
 import { AttachmentChip } from "@/components/home/AttachmentChip";
 import { AttachmentMenu } from "@/components/home/AttachmentMenu";
 import { ImageLoadingGrid } from "@/components/home/ImageLoadingGrid";
+import { SourcesList } from "@/components/home/SourcesList";
+import { linkifyCitations } from "@/lib/home/citations";
 import type { Message } from "@/types";
 import type { Attachment } from "@/types/home";
 
@@ -117,12 +119,21 @@ export function ChatMessagesView({
                             <code className={className} {...props}>{children}</code>
                           );
                         },
+                        a({ href, children }) {
+                          return (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                              {children}
+                            </a>
+                          );
+                        },
                       }}
                     >
-                      {msg.content}
+                      {linkifyCitations(msg.content, msg.sources)}
                     </ReactMarkdown>
                   </div>
                 )}
+
+                <SourcesList sources={msg.sources} />
 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
                   <Tooltip text={isCopied ? "Copied!" : "Copy"}>

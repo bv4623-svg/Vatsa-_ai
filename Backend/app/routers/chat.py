@@ -15,6 +15,7 @@ from app.auth.dependencies import get_current_user
 from app.services.ai_service import AIService, detect_image_gen, generate_image
 from app.services.memory_extractor import extract_facts
 from app.services.memory_service import MemoryService
+from app.services.search_service import SearchService
 
 logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -57,6 +58,7 @@ class ChatRequest(BaseModel):
     workspace: Optional[str] = "chat"
     attachments: Optional[List[Union[str, Dict[str, Any]]]] = None
     stream: Optional[bool] = False
+    web_search: Optional[bool] = Field(False, alias="webSearch")
     model_config = {"populate_by_name": True}
 
 
@@ -86,6 +88,22 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
             elif att.get("is_base64") and str(att.get("type", "")).startswith("image/") and att.get("content"):
                 parsed.append({"filename": att.get("name", "image"), "image_data_url": att["content"]})
     return parsed
+
+
+async def _get_search_context(req: ChatRequest, user: User) -> Optional[str]:
+    """
+    Best-effort web search grounding. Never raises -- if search isn't
+    configured or the provider call fails, the chat just proceeds without
+    it rather than breaking the whole response over an optional feature.
+    """
+    if not req.web_search:
+        return None
+    try:
+        results = await SearchService.search(req.message)
+        return SearchService.format_context(results)
+    except Exception as e:
+        logger.warning(f"Web search unavailable for user {user.id}: {e}")
+        return None
 
 
 def _persist_conversation(
@@ -126,6 +144,7 @@ async def _stream_chat_response(
     chosen_model: str,
     workspace: str,
     background_tasks: BackgroundTasks,
+    search_context: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
     full_text = ""
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -138,6 +157,7 @@ async def _stream_chat_response(
             model_name=chosen_model,
             workspace=workspace,
             attachments=parsed_attachments,
+            search_context=search_context,
         ):
             if "delta" in event:
                 yield f"data: {json.dumps({'delta': event['delta']})}\n\n"
@@ -203,13 +223,14 @@ async def chat_endpoint(
     # --- 2. Load Conversation History + Attachments ---
     conv, history_messages = _load_history(req, user, db)
     parsed_attachments = _parse_attachments(req)
+    search_context = await _get_search_context(req, user)
 
     # --- 3. Streaming path ---
     if req.stream:
         return StreamingResponse(
             _stream_chat_response(
                 req, user, db, conv, history_messages, parsed_attachments,
-                chosen_model, workspace, background_tasks,
+                chosen_model, workspace, background_tasks, search_context,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -224,7 +245,8 @@ async def chat_endpoint(
             conversation_history=history_messages,
             model_name=chosen_model,
             workspace=workspace,
-            attachments=parsed_attachments
+            attachments=parsed_attachments,
+            search_context=search_context,
         )
     except ValueError as ve:
         raise HTTPException(status_code=402, detail=str(ve))

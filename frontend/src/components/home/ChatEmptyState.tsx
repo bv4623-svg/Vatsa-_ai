@@ -32,6 +32,8 @@ interface ChatEmptyStateProps {
   setShowAttachmentMenu: (v: boolean | ((p: boolean) => boolean)) => void;
   showWebSearchPopover: boolean;
   setShowWebSearchPopover: (v: boolean | ((p: boolean) => boolean)) => void;
+  webSearchEnabled: boolean;
+  onToggleWebSearch: () => void;
   showVoicePopover: boolean;
   setShowVoicePopover: (v: boolean | ((p: boolean) => boolean)) => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -43,7 +45,7 @@ export function ChatEmptyState({
   inputRef, inputValue, onInputChange, onSuggestionClick, onSend, hasReadyAttachments,
   attachments, removeAttachment,
   showAttachmentMenu, setShowAttachmentMenu,
-  showWebSearchPopover, setShowWebSearchPopover,
+  showWebSearchPopover, setShowWebSearchPopover, webSearchEnabled, onToggleWebSearch,
   showVoicePopover, setShowVoicePopover,
   fileInputRef, folderInputRef, onFileUpload,
 }: ChatEmptyStateProps) {
@@ -113,13 +115,18 @@ export function ChatEmptyState({
                   </button>
                 </Tooltip>
                 <div className="relative">
-                  <Tooltip text="Search Web">
-                    <button onClick={() => setShowWebSearchPopover((p) => !p)} className="flex items-center gap-1 rounded-full bg-accent/5 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground">
+                  <Tooltip text={webSearchEnabled ? "Web search on" : "Search Web"}>
+                    <button
+                      onClick={() => setShowWebSearchPopover((p) => !p)}
+                      className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-accent/10 hover:text-foreground ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                    >
                       <Globe className="h-4 w-4" /> Search
                     </button>
                   </Tooltip>
                   <ToolbarPopover open={showWebSearchPopover} onClose={() => setShowWebSearchPopover(false)} title="Web Search">
-                    <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent/10 rounded">Enable Search</button>
+                    <button onClick={onToggleWebSearch} className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent/10 rounded">
+                      {webSearchEnabled ? "Disable Search" : "Enable Search"}
+                    </button>
                   </ToolbarPopover>
                 </div>
                 <div className="relative">

@@ -12,6 +12,7 @@ interface UseHomeChatParams {
   user: any;
   attachments: Attachment[];
   setAttachments: (updater: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void;
+  webSearchEnabled: boolean;
   addMessageToConversation: (convId: string, msg: Message) => void;
   updateConversation: (id: string, updater: (conv: Conversation) => Conversation) => void;
   handleRenameChat: (id: string, title: string) => Promise<void>;
@@ -31,7 +32,7 @@ interface UseHomeChatParams {
 export function useHomeChat(params: UseHomeChatParams) {
   const {
     activeConversationId, conversations, messages, privateMode, user,
-    attachments, setAttachments, addMessageToConversation, updateConversation, handleRenameChat,
+    attachments, setAttachments, webSearchEnabled, addMessageToConversation, updateConversation, handleRenameChat,
     handleNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
   } = params;
 
@@ -124,6 +125,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           userTier: "free",
           attachments: payloadAttachments,
           stream: true,
+          web_search: willGenImage ? false : webSearchEnabled,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -284,8 +286,8 @@ export function useHomeChat(params: UseHomeChatParams) {
       setIsImageGenLoading(false);
     }
   }, [
-    activeConversationId, conversations, privateMode, user, attachments,
-    isLoading, addMessageToConversation, handleRenameChat, handleNewChat,
+    activeConversationId, conversations, privateMode, user, attachments, webSearchEnabled,
+    isLoading, addMessageToConversation, updateConversation, handleRenameChat, handleNewChat,
     setDraftMessage, setAttachments, setInputValue, setIsFirstMessage, setErrorState,
   ]);
 

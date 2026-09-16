@@ -235,6 +235,7 @@ class AIService:
         model_name: Optional[str] = None,
         workspace: str = "chat",
         attachments: Optional[List[Dict[str, Any]]] = None,
+        search_context: Optional[str] = None,
     ):
         """
         Streaming counterpart to generate_response with identical
@@ -256,7 +257,7 @@ class AIService:
             yield {"error": reason}
             return
 
-        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments)
+        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments, search_context)
         max_tokens = 4000 if is_code else 1500
         candidate_models = [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
 
@@ -322,6 +323,7 @@ class AIService:
         conversation_history: List[Dict[str, Any]],
         is_code: bool,
         attachments: Optional[List[Dict[str, Any]]] = None,
+        search_context: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Shared system-prompt + message-sequence builder used by both the
@@ -339,6 +341,14 @@ class AIService:
             f"- Account Tier: {user.tier or 'free'}",
             f"Always acknowledge the user's real name ({user_name}) when they ask 'Who am I?' or ask about themselves."
         ]
+
+        if search_context:
+            system_parts.append(
+                f"\n=== LIVE WEB SEARCH RESULTS ===\n{search_context}\n"
+                "The user asked for current/web information. Use these results to "
+                "answer, citing sources by URL where relevant. If the results don't "
+                "answer the question, say so rather than guessing."
+            )
 
         if user_memories:
             system_parts.append(
@@ -410,7 +420,8 @@ class AIService:
         conversation_history: List[Dict[str, Any]],
         model_name: Optional[str] = None,
         workspace: str = "chat",
-        attachments: Optional[List[Dict[str, Any]]] = None
+        attachments: Optional[List[Dict[str, Any]]] = None,
+        search_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         target_model = AIService.map_model(model_name)
         is_code = (workspace == "code")
@@ -421,7 +432,7 @@ class AIService:
         if not allowed:
             raise ValueError(reason)
 
-        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments)
+        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments, search_context)
 
         # 3. Call OpenRouter with fallback models
         max_tokens = 4000 if is_code else 1500

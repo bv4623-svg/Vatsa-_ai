@@ -35,6 +35,8 @@ interface ChatMessagesViewProps {
   hasReadyAttachments: boolean;
   showAttachmentMenu: boolean;
   setShowAttachmentMenu: (v: boolean | ((p: boolean) => boolean)) => void;
+  webSearchEnabled: boolean;
+  onToggleWebSearch: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   folderInputRef: RefObject<HTMLInputElement | null>;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -47,7 +49,8 @@ export function ChatMessagesView({
   messagesEndRef, chatContainerRef,
   attachments, removeAttachment,
   inputRef, inputValue, onInputChange, onSend, onStop, hasReadyAttachments,
-  showAttachmentMenu, setShowAttachmentMenu, fileInputRef, folderInputRef, onFileUpload,
+  showAttachmentMenu, setShowAttachmentMenu, webSearchEnabled, onToggleWebSearch,
+  fileInputRef, folderInputRef, onFileUpload,
   modKey,
 }: ChatMessagesViewProps) {
   return (
@@ -239,8 +242,13 @@ export function ChatMessagesView({
             />
 
             <div className="flex items-center gap-1">
-              <Tooltip text="Search Web">
-                <button className="rounded-full bg-accent/5 p-2 text-muted-foreground hover:bg-accent/10"><Globe className="h-4 w-4" /></button>
+              <Tooltip text={webSearchEnabled ? "Web search on" : "Search Web"}>
+                <button
+                  onClick={onToggleWebSearch}
+                  className={`rounded-full p-2 hover:bg-accent/10 ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                >
+                  <Globe className="h-4 w-4" />
+                </button>
               </Tooltip>
               <Tooltip text="Voice Chat">
                 <button className="rounded-full bg-accent/5 p-2 text-muted-foreground hover:bg-accent/10"><Mic className="h-4 w-4" /></button>

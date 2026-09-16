@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MonacoEditor } from "./MonacoEditor";
-import { ProjectFile } from "@/app/code/page";
+import type { ProjectFile } from "@/types/code";
 
 interface CodePreviewPanelProps {
   codeContent: string;

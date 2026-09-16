@@ -8,7 +8,8 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Conversation, UserProfile } from "@/app/code/page";
+import type { Conversation } from "@/services/chat";
+import type { UserProfile } from "@/types/code";
 
 interface SidebarProps {
   projects: Conversation[];
@@ -135,7 +136,7 @@ export const Sidebar = ({
                 visible.map((c) => (
                   <div
                     key={c.id}
-                    onClick={() => setActiveProject(c.id)}
+                    onClick={() => setActiveProject(String(c.id))}
                     className={cn(
                       "group relative flex cursor-pointer items-center rounded-lg px-2.5 py-[6px] text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground",
                       activeProjectId === c.id &&
@@ -151,7 +152,7 @@ export const Sidebar = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (window.confirm("Delete this project?"))
-                            onDeleteProject(c.id);
+                            onDeleteProject(String(c.id));
                         }}
                         aria-label="Delete project"
                         className="ml-auto rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-red-500"

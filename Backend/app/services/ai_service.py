@@ -43,6 +43,13 @@ FREE_FALLBACK_MODELS = [
     "deepseek/deepseek-chat",  # not free, but cheap -- last-resort paid fallback
 ]
 
+# Per-model timeout for the fallback chain. Kept short deliberately: a
+# free-tier model that's down doesn't always fail fast -- it can hang
+# with no response at all -- and with several fallbacks configured, a
+# single stuck model at 120s would tax every request that reaches it
+# by two minutes before even trying the next candidate.
+OPENROUTER_TIMEOUT_SECONDS = 30
+
 # Public name shown anywhere a real provider/model identifier would
 # otherwise leak (API responses, token-ledger entries, persisted
 # messages). Never expose MODEL_NAME_MAPPING/FREE_FALLBACK_MODELS
@@ -127,7 +134,7 @@ class AIService:
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=120
+                timeout=OPENROUTER_TIMEOUT_SECONDS
             ) as resp:
                 # Decode as UTF-8 explicitly: OpenRouter responses can contain
                 # emoji/multibyte text, and letting aiohttp guess the charset
@@ -189,7 +196,12 @@ class AIService:
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=120),
+                # sock_read (not just total) matters here: a model that
+                # hangs silently mid-stream -- connects fine, sends
+                # nothing -- needs its own gap timeout, not just an
+                # overall cap that would also cut off a legitimately
+                # long-but-continuously-streaming response.
+                timeout=aiohttp.ClientTimeout(total=90, sock_connect=10, sock_read=OPENROUTER_TIMEOUT_SECONDS),
             ) as resp:
                 if resp.status != 200:
                     raw = await resp.read()
@@ -274,7 +286,7 @@ class AIService:
                         usage_info = event["usage"]
                 break
             except Exception as e:
-                logger.warning(f"Stream model {cand} failed: {e}")
+                logger.warning(f"Stream model {cand} failed: {type(e).__name__}: {e}")
                 last_error = e
                 if started:
                     # Already streamed partial content from this model to
@@ -443,7 +455,7 @@ class AIService:
                 used_model = cand
                 break
             except Exception as e:
-                logger.warning(f"Model {cand} failed: {e}")
+                logger.warning(f"Model {cand} failed: {type(e).__name__}: {e}")
                 last_error = e
 
         if not result:

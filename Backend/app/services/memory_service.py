@@ -81,6 +81,66 @@ class MemoryService:
         return count
 
     @staticmethod
+    def upsert_memory(
+        db: Session,
+        user_id: int,
+        mem_type: str,
+        category: str,
+        content: str,
+        confidence: float = 0.8,
+        source: str = "extracted",
+        max_per_user: int = 200,
+    ) -> Memory:
+        """
+        Insert a new long-term fact, or update it in place if this user
+        already has a memory in the same category (e.g. re-stating their
+        name or favorite color overwrites the old value instead of piling
+        up duplicates). Caps total memories per user, evicting the oldest
+        first once the cap is exceeded.
+        """
+        existing = (
+            db.query(Memory)
+            .filter(Memory.user_id == user_id, Memory.category == category)
+            .first()
+        )
+        if existing:
+            existing.content = content.strip()
+            existing.type = mem_type
+            existing.confidence = confidence
+            existing.source = source
+            existing.updated_at = datetime.utcnow()
+            db.commit()
+            db.refresh(existing)
+            return existing
+
+        mem = Memory(
+            user_id=user_id,
+            content=content.strip(),
+            type=mem_type,
+            category=category,
+            source=source,
+            confidence=confidence,
+        )
+        db.add(mem)
+        db.commit()
+        db.refresh(mem)
+
+        total = db.query(Memory).filter(Memory.user_id == user_id).count()
+        if total > max_per_user:
+            oldest = (
+                db.query(Memory)
+                .filter(Memory.user_id == user_id)
+                .order_by(Memory.created_at.asc())
+                .limit(total - max_per_user)
+                .all()
+            )
+            for old in oldest:
+                db.delete(old)
+            db.commit()
+
+        return mem
+
+    @staticmethod
     def get_context_summary(db: Session, user_id: int) -> str:
         """Returns relevant user memories as concise context for the LLM prompt."""
         memories = MemoryService.get_user_memories(db, user_id, limit=20)

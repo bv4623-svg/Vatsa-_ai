@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import Magnetic from "@/components/landing/Magnetic";
 import Background from "@/components/landing/Background";
+import { useAuthStore } from "@/stores/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -154,6 +155,7 @@ export default function AuthPage() {
       if (data.access_token) {
         localStorage.setItem("access_token", data.access_token);
         if (data.full_name) localStorage.setItem("user_name", data.full_name);
+        if (data.user) useAuthStore.getState().setAuth(data.user, data.access_token);
         const done = data.user?.birth_month || data.birth_month || data.profile_completed;
         if (done) router.push("/home");
         else { setShowOnboarding(true); setStep("onboarding"); }
@@ -178,13 +180,14 @@ export default function AuthPage() {
       if (!res.ok) throw new Error(data.detail || "Registration failed");
       localStorage.setItem("access_token", data.access_token);
       if (data.full_name) localStorage.setItem("user_name", data.full_name);
+      if (data.user) useAuthStore.getState().setAuth(data.user, data.access_token);
       setShowOnboarding(true);
       setStep("onboarding");
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
   };
 
-  // ✅ FIXED LOGIN — tries /auth/login (JSON), falls back to /auth/token (form-data)
+  // ✅ LOGIN — POST only (fallback to /auth/token if placeholder)
   const handlePasswordLogin = async () => {
     if (!email || !password) { setError("Please enter both email and password."); return; }
     setLoading(true); setError("");
@@ -196,7 +199,6 @@ export default function AuthPage() {
       });
       let data = await res.json();
 
-      // If backend returns the placeholder message, try the form-data endpoint
       const isPlaceholder =
         typeof data?.message === "string" &&
         data.message.toLowerCase().includes("placeholder");
@@ -220,6 +222,7 @@ export default function AuthPage() {
       localStorage.setItem("user_tier", data.tier || "free");
       if (data.full_name) localStorage.setItem("user_name", data.full_name);
       if (rememberMe) localStorage.setItem("remember_me", "1");
+      if (data.user) useAuthStore.getState().setAuth(data.user, data.access_token);
 
       const done = data.user?.birth_month || data.birth_month || data.profile_completed;
       if (done) router.push("/home");
@@ -676,10 +679,10 @@ export default function AuthPage() {
 
               {(step === "login" || step === "signup") && (
                 <div className="flex rounded-xl bg-white/[0.04] border border-white/6 p-1 mb-5">
-                  <button onClick={() => { setActiveTab("login"); setStep("login"); setError(""); setSuccess(""); }}
+                  <button type="button" onClick={() => { setActiveTab("login"); setStep("login"); setError(""); setSuccess(""); }}
                     className={cn("flex-1 rounded-lg py-2 text-xs font-medium transition-all duration-300",
                       activeTab === "login" ? "bg-white/10 text-white shadow-sm" : "text-white/30 hover:text-white/50")}>Login</button>
-                  <button onClick={() => { setActiveTab("signup"); setStep("signup"); setError(""); setSuccess(""); }}
+                  <button type="button" onClick={() => { setActiveTab("signup"); setStep("signup"); setError(""); setSuccess(""); }}
                     className={cn("flex-1 rounded-lg py-2 text-xs font-medium transition-all duration-300",
                       activeTab === "signup" ? "bg-white/10 text-white shadow-sm" : "text-white/30 hover:text-white/50")}>Sign Up</button>
                 </div>

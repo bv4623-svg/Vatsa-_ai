@@ -33,11 +33,15 @@ MODEL_NAME_MAPPING = {
 }
 
 FREE_FALLBACK_MODELS = [
-    "deepseek/deepseek-chat",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemini-2.0-flash-exp:free",
-    "qwen/qwen-2.5-coder-32b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
+    # Verified live against OpenRouter's /api/v1/models + a real completion
+    # call on 2026-09-16 -- the previous list (llama-3.3-70b-instruct:free,
+    # gemini-2.0-flash-exp:free, qwen-2.5-coder-32b-instruct:free,
+    # mistral-7b-instruct:free) had all been deprecated/removed upstream,
+    # silently collapsing this entire fallback chain to a single model.
+    "nex-agi/nex-n2.5-mini:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "google/gemma-4-31b-it:free",
+    "deepseek/deepseek-chat",  # not free, but cheap -- last-resort paid fallback
 ]
 
 # Public name shown anywhere a real provider/model identifier would
@@ -318,7 +322,7 @@ class AIService:
         conversation_history: List[Dict[str, Any]],
         is_code: bool,
         attachments: Optional[List[Dict[str, Any]]] = None,
-    ) -> List[Dict[str, str]]:
+    ) -> List[Dict[str, Any]]:
         """
         Shared system-prompt + message-sequence builder used by both the
         buffered and streaming generation paths, so the identity seal and
@@ -371,6 +375,7 @@ class AIService:
 
         # Append current user prompt with any attachments
         user_content = query
+        image_urls: List[str] = []
         if attachments:
             att_texts = []
             for att in attachments:
@@ -378,10 +383,23 @@ class AIService:
                 ftext = att.get("text", "")
                 if ftext:
                     att_texts.append(f"--- Attachment: {fname} ---\n{ftext}")
+                img_url = att.get("image_data_url")
+                if img_url:
+                    image_urls.append(img_url)
             if att_texts:
                 user_content += "\n\n" + "\n\n".join(att_texts)
 
-        messages.append({"role": "user", "content": user_content})
+        if image_urls:
+            # OpenRouter/OpenAI-style multimodal content: a list of parts
+            # instead of a plain string. Only built when an image is
+            # actually attached so the vast majority of text-only requests
+            # are unaffected.
+            content_parts: List[Dict[str, Any]] = [{"type": "text", "text": user_content}]
+            for url in image_urls:
+                content_parts.append({"type": "image_url", "image_url": {"url": url}})
+            messages.append({"role": "user", "content": content_parts})
+        else:
+            messages.append({"role": "user", "content": user_content})
         return messages
 
     @staticmethod

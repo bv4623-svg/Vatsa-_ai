@@ -107,7 +107,7 @@ async def _get_search_context(req: ChatRequest, user: User) -> Tuple[Optional[st
         return None, []
     try:
         results = await SearchService.search(req.message)
-        return SearchService.format_context(results), results
+        return SearchService.format_context(results, req.message), results
     except Exception as e:
         logger.warning(f"Web search unavailable for user {user.id}: {e}")
         return None, []

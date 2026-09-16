@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuthStore } from "@/stores/auth";
 
-export default function AuthCallback() {
+function CallbackInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const params = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -20,13 +20,32 @@ export default function AuthCallback() {
 
   // ─── 1. On mount: handle token, fetch user, decide onboarding ───
   useEffect(() => {
+    // Support both "token" and "access_token"
+    const token = params.get("access_token") || params.get("token");
+    const email = params.get("email");
+    const fullName = params.get("full_name");
+    const tier = params.get("tier");
+    const profileCompletedParam = params.get("profile_completed");
+    const error = params.get("error");
+
+    // Handle OAuth error first
+    if (error) {
+      console.error("OAuth error:", error);
+      router.replace(`/auth/login?error=${encodeURIComponent(error)}`);
+      return;
+    }
+
     if (!token) {
-      router.push("/auth/login?error=NoToken");
+      router.replace("/auth/login?error=NoToken");
       return;
     }
 
     // Save token to both localStorage and cookie (for middleware)
     localStorage.setItem("access_token", token);
+    if (email) localStorage.setItem("user_email", email);
+    if (fullName) localStorage.setItem("user_name", fullName);
+    if (tier) localStorage.setItem("user_tier", tier);
+
     document.cookie = `access_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
     const fetchUser = async () => {
@@ -37,7 +56,7 @@ export default function AuthCallback() {
 
         if (!res.ok) {
           if (res.status === 401) {
-            router.push("/auth/login?error=SessionExpired");
+            router.replace("/auth/login?error=SessionExpired");
             return;
           }
           throw new Error("Failed to fetch user");
@@ -45,28 +64,40 @@ export default function AuthCallback() {
 
         const data = await res.json();
         setUserData(data);
+        useAuthStore.getState().setAuth(data, token);
 
         // --- Check if onboarding is done ---
         // Support both flat and nested responses
-        const profileCompleted = data.profile_completed ?? data.user?.profile_completed ?? false;
-        const birthMonthExists = data.birth_month ?? data.user?.birth_month ?? null;
+        const profileCompleted =
+          data.profile_completed ??
+          data.user?.profile_completed ??
+          (profileCompletedParam === "true") ??
+          false;
+        const birthMonthExists =
+          data.birth_month ?? data.user?.birth_month ?? null;
         const isOnboardingDone = profileCompleted || birthMonthExists !== null;
 
         if (isOnboardingDone) {
-          router.push("/home");
+          router.replace("/home");
         } else {
           setShowOnboarding(true);
         }
-      } catch (error) {
-        console.error(error);
-        router.push("/auth/login?error=AuthFailed");
+      } catch (err) {
+        console.error(err);
+        // Fallback: use URL param if API fails but profile_completed=true
+        if (profileCompletedParam === "true") {
+          router.replace("/home");
+          return;
+        }
+        router.replace("/auth/login?error=AuthFailed");
       } finally {
         setLoading(false);
       }
     };
 
     fetchUser();
-  }, [token, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   // ─── 2. Handle onboarding form submission ──────────────────────
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
@@ -74,8 +105,9 @@ export default function AuthCallback() {
     setSubmitting(true);
     setOnboardingError("");
 
-    const month = parseInt(birthMonth);
-    const year = parseInt(birthYear);
+    const month = parseInt(birthMonth, 10);
+    const year = parseInt(birthYear, 10);
+    const token = localStorage.getItem("access_token");
 
     if (isNaN(month) || month < 1 || month > 12) {
       setOnboardingError("Please enter a valid birth month (1–12).");
@@ -83,8 +115,17 @@ export default function AuthCallback() {
       return;
     }
     if (isNaN(year) || year < 1950 || year > new Date().getFullYear()) {
-      setOnboardingError(`Please enter a valid birth year (1950–${new Date().getFullYear()}).`);
+      setOnboardingError(
+        `Please enter a valid birth year (1950–${new Date().getFullYear()}).`
+      );
       setSubmitting(false);
+      return;
+    }
+
+    if (!token) {
+      setOnboardingError("Session expired. Please log in again.");
+      setSubmitting(false);
+      router.replace("/auth/login");
       return;
     }
 
@@ -98,22 +139,23 @@ export default function AuthCallback() {
         body: JSON.stringify({ birth_month: month, birth_year: year }),
       });
 
-      // --- Handle response properly ---
-      let errorDetail = "";
       if (!res.ok) {
+        let errorDetail = "";
         try {
           const errorData = await res.json();
-          errorDetail = errorData.detail || errorData.message || "Onboarding failed";
+          errorDetail =
+            errorData.detail || errorData.message || "Onboarding failed";
         } catch {
           errorDetail = `Server error (${res.status})`;
         }
         throw new Error(errorDetail);
       }
 
-      // Success – redirect to home
-      router.push("/home");
+      router.replace("/home");
     } catch (err: any) {
-      setOnboardingError(err.message || "Something went wrong. Please try again.");
+      setOnboardingError(
+        err.message || "Something went wrong. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -122,10 +164,10 @@ export default function AuthCallback() {
   // ─── Loading Screen ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Authenticating...</p>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/50 text-sm">Signing you in...</p>
         </div>
       </div>
     );
@@ -145,7 +187,10 @@ export default function AuthCallback() {
             <div className="space-y-4">
               {/* Birth Month */}
               <div>
-                <label htmlFor="birthMonth" className="block text-sm font-medium text-gray-300 mb-1">
+                <label
+                  htmlFor="birthMonth"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
                   Birth Month (1–12)
                 </label>
                 <input
@@ -163,7 +208,10 @@ export default function AuthCallback() {
 
               {/* Birth Year */}
               <div>
-                <label htmlFor="birthYear" className="block text-sm font-medium text-gray-300 mb-1">
+                <label
+                  htmlFor="birthYear"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
                   Birth Year
                 </label>
                 <input
@@ -197,6 +245,19 @@ export default function AuthCallback() {
     );
   }
 
-  // ─── Fallback ────────────────────────────────────────────────────
   return null;
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+          <div className="w-10 h-10 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <CallbackInner />
+    </Suspense>
+  );
 }

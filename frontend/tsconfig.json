@@ -37,8 +37,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "src/lib/storage.ts",
-    "src/lib/store.ts"
+    "node_modules"
   ]
 }

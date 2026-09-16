@@ -1,32 +1,70 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Backend URL – read from env or fallback
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Page routes that must NOT be proxied (frontend lives here)
+const FRONTEND_PAGE_PREFIXES = [
+  "/auth/login",
+  "/auth/signup",
+  "/auth/callback",
+  "/auth",           // fallback — /auth/page.tsx
+];
+
+// Backend-only paths (even under /auth)
+const BACKEND_AUTH_PREFIXES = [
+  "/auth/otp",
+  "/auth/register",
+  "/auth/reset-password",
+  "/auth/onboarding",
+  "/auth/token",
+  "/auth/google",
+  "/auth/github",
+  "/auth/microsoft",
+  "/auth/me",
+  "/auth/logout",
+  "/auth/refresh",
+];
+
+function isBackendAuthPath(path: string) {
+  return BACKEND_AUTH_PREFIXES.some((p) => path.startsWith(p));
+}
+
+function isFrontendPage(path: string) {
+  // exact match only (so /auth/login/foo still goes to backend if not defined)
+  return FRONTEND_PAGE_PREFIXES.some((p) => path === p);
+}
 
 export default async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const path = url.pathname;
 
-  // Only proxy API, auth, and health requests
-  if (
-    !path.startsWith("/api") &&
-    !path.startsWith("/auth") &&
-    !path.startsWith("/health")
-  ) {
+  // ── Decide whether to proxy ────────────────────────────────
+  let shouldProxy = false;
+
+  if (path.startsWith("/api") || path.startsWith("/health")) {
+    shouldProxy = true;
+  } else if (path.startsWith("/auth")) {
+    // If it's a frontend page route AND a normal browser nav (HTML) → skip
+    if (isFrontendPage(path) && !isBackendAuthPath(path)) {
+      shouldProxy = false;
+    } else {
+      shouldProxy = true;
+    }
+  }
+
+  if (!shouldProxy) {
     return NextResponse.next();
   }
 
-  // Build full backend URL
+  // ── Build backend URL ──────────────────────────────────────
   const backendUrl = `${BACKEND_URL}${path}${url.search}`;
 
-  // Prepare headers
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("origin");
 
-  // Ensure Content-Type for body requests
   if (
     !headers.has("content-type") &&
     request.method !== "GET" &&
@@ -35,21 +73,18 @@ export default async function proxy(request: NextRequest) {
     headers.set("content-type", "application/json");
   }
 
-  // Forward the request
   try {
     const response = await fetch(backendUrl, {
       method: request.method,
-      headers: headers,
+      headers,
       body:
         request.method === "GET" || request.method === "HEAD"
           ? undefined
           : await request.arrayBuffer(),
-      credentials: "include", // send cookies if any
+      redirect: "manual", // don't follow OAuth redirects inside the proxy
     });
 
-    // Build response headers
     const responseHeaders = new Headers(response.headers);
-    // CORS headers for development
     responseHeaders.set(
       "access-control-allow-origin",
       request.headers.get("origin") || "*"
@@ -64,12 +99,10 @@ export default async function proxy(request: NextRequest) {
       "Content-Type, Authorization, X-Requested-With"
     );
 
-    // Handle preflight
     if (request.method === "OPTIONS") {
       return new NextResponse(null, { status: 204, headers: responseHeaders });
     }
 
-    // Return actual response
     return new NextResponse(response.body, {
       status: response.status,
       statusText: response.statusText,

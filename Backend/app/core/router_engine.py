@@ -28,13 +28,12 @@ from pydantic import BaseModel
 import uvicorn
 
 # ---------- .env loading ----------
-env_path = Path(__file__).resolve().parent / ".env"
+# Backend/.env, i.e. three levels up from app/core/router_engine.py.
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
-    print(f"✅ Loaded .env from: {env_path}")
 else:
     load_dotenv(find_dotenv(usecwd=True))
-    print("⚠️ .env not found, using system env or fallback.")
 
 # ---------- Optional sklearn ----------
 try:

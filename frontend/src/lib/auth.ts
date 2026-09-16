@@ -1,14 +1,16 @@
-﻿export function getToken(): string | null {
+export function getToken(): string | null {
     if (typeof window !== 'undefined') {
-        return localStorage.getItem('token');
+        return localStorage.getItem('access_token');
     }
     return null;
 }
 
-export function setToken(token: string) {
-    localStorage.setItem('token', token);
+export function setToken(access_token: string) {
+    localStorage.setItem('access_token', access_token);
 }
 
 export function removeToken() {
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
 }
+
+

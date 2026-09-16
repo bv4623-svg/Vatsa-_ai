@@ -16,8 +16,10 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-// 🔧 DEV MOCK — backend ready hone par false kar dena
-const ENABLE_MOCK_LOGIN = true;
+// Mock login is disabled: it silently issued a fake session whenever the
+// backend was unreachable or returned a placeholder response, which is a
+// real authentication bypass. Do not re-enable without removing mockLogin().
+const ENABLE_MOCK_LOGIN = false;
 
 type AuthStep = "login" | "signup";
 

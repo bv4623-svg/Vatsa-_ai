@@ -98,7 +98,12 @@ class AIService:
                 json=payload,
                 timeout=120
             ) as resp:
-                body = await resp.text()
+                # Decode as UTF-8 explicitly: OpenRouter responses can contain
+                # emoji/multibyte text, and letting aiohttp guess the charset
+                # from headers has produced mojibake (each UTF-8 byte reread
+                # as a separate Latin-1 codepoint) in practice.
+                raw = await resp.read()
+                body = raw.decode("utf-8", errors="replace")
                 if resp.status != 200:
                     raise RuntimeError(f"OpenRouter [{resp.status}]: {body}")
                 data = json.loads(body)

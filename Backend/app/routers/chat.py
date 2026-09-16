@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Union
@@ -6,14 +6,44 @@ from datetime import datetime
 import logging
 import uuid
 
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
 from app.services.ai_service import AIService, detect_image_gen, generate_image
+from app.services.memory_extractor import extract_facts
+from app.services.memory_service import MemoryService
 
 logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])
+
+
+def _extract_and_save_memory(user_id: int, message_text: str) -> None:
+    """
+    Runs after the response has already been sent (via BackgroundTasks),
+    so extraction never adds latency to the chat request. Uses its own
+    DB session -- the request-scoped session from `get_db` is closed by
+    the time this runs.
+    """
+    db = SessionLocal()
+    try:
+        facts = extract_facts(message_text)
+        for fact in facts:
+            try:
+                MemoryService.upsert_memory(
+                    db,
+                    user_id=user_id,
+                    mem_type=fact["type"],
+                    category=fact["category"],
+                    content=fact["content"],
+                    confidence=fact.get("confidence", 0.8),
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save extracted memory for user {user_id}: {e}")
+    except Exception as e:
+        logger.warning(f"Memory extraction failed for user {user_id}: {e}")
+    finally:
+        db.close()
 
 class ChatRequest(BaseModel):
     message: str
@@ -30,6 +60,7 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 async def chat_endpoint(
     req: ChatRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -56,6 +87,8 @@ async def chat_endpoint(
                 conv.messages = msgs
                 conv.updated_at = datetime.utcnow()
                 db.commit()
+
+        background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
         return {
             "status": "success",
@@ -125,15 +158,18 @@ async def chat_endpoint(
         conv.updated_at = datetime.utcnow()
         db.commit()
 
+    background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
+
     return result
 
 # Non-streaming send endpoint (used by chat.ts service)
 @router.post("/chat/send")
 async def send_message_endpoint(
     req: ChatRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # Same logic as chat_endpoint but without streaming
     req.stream = False
-    return await chat_endpoint(req, user, db)
+    return await chat_endpoint(req, background_tasks, user, db)

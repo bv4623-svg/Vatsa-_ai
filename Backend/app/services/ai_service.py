@@ -186,7 +186,12 @@ class AIService:
         ]
 
         if user_memories:
-            system_parts.append(f"\nUser preferences and persistent memory:\n{user_memories}")
+            system_parts.append(
+                f"\n=== LONG-TERM MEMORY ABOUT THIS USER ===\n{user_memories}\n"
+                "These are facts the user previously told you, persisted across all "
+                "their conversations. Use them naturally; never say you \"don't have "
+                "access to previous conversations\" when the answer is right here."
+            )
 
         if is_code:
             system_parts.append(

@@ -50,9 +50,6 @@ class Project(Base):
     snapshots = relationship("Snapshot", back_populates="project",
                              cascade="all, delete-orphan", passive_deletes=True)
 
-    # ✅ New relationship with UserMemory
-    memories = relationship("UserMemory", back_populates="project", cascade="all, delete-orphan")
-
     # Optional: composite indexes for common query patterns
     __table_args__ = (
         Index("idx_project_user_status", "user_id", "status"),

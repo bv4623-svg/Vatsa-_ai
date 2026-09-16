@@ -15,8 +15,8 @@ Per the catalog's critical rules, this backend:
 | File | Purpose |
 |---|---|
 | `intents_data.py` | The 27 intents transcribed from the catalog (description, keywords, example queries, related intents, disclaimer flags). |
-| `classifier.py` | `IntentClassifier` — combines keyword matching with TF-IDF/cosine similarity against each intent's example queries to produce a 0–100 confidence score per intent. |
-| `app.py` | FastAPI service exposing the classifier over HTTP. |
+| `app/core/classifier.py` | `IntentClassifier` — combines keyword matching with TF-IDF/cosine similarity against each intent's example queries to produce a 0–100 confidence score per intent. |
+| `app/main.py` | The actual FastAPI application entry point — auth, chat, conversations, memory, payment, tokens, upload routers, plus the classifier endpoints below. |
 | `requirements.txt` | Dependencies. |
 
 ## How classification works
@@ -44,8 +44,14 @@ the response only when confidence is HIGH, per the catalog's "CRITICAL NOTE".
 
 ```bash
 pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
+
+Note: this backend has grown beyond the intent classifier described below —
+`app/main.py` is the real entry point and also wires up authentication,
+chat, conversations, memory, tokens, and payment routers. The classifier
+endpoints (`/health`, `/intents`, `/api/classify`) documented here still
+work exactly as described; they're just one part of `app/main.py` now.
 
 ## API
 

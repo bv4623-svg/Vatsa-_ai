@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
-import os, secrets, random
+import os, secrets
 import httpx
 
 from app.database import get_db
@@ -98,8 +98,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         tier="free",
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.flush()  # assigns user.id within the same transaction, without committing yet
 
     db.add(TokenAccount(user_id=user.id, balance=50000, total_purchased=0, total_used=0))
     db.add(TokenTransaction(
@@ -107,6 +106,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         balance_after=50000, reason="Welcome starter token bonus",
     ))
     db.commit()
+    db.refresh(user)
 
     token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name})
     return {
@@ -237,7 +237,7 @@ def send_otp(req: OtpSendRequest, db: Session = Depends(get_db)):
     ).update({"is_used": True}, synchronize_session=False)
     db.commit()
 
-    code = f"{random.randint(0, 999999):06d}"
+    code = f"{secrets.randbelow(1_000_000):06d}"
     otp = OTP.create_otp(email, purpose, code, expires_in_minutes=5)
     db.add(otp)
     db.commit()
@@ -385,8 +385,7 @@ def _get_or_create_oauth_user(db: Session, email: str, name: str, provider: str)
         profile_completed=False, tier="free",
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.flush()  # assigns user.id within the same transaction, without committing yet
 
     db.add(TokenAccount(user_id=user.id, balance=50000, total_purchased=0, total_used=0))
     db.add(TokenTransaction(
@@ -394,6 +393,7 @@ def _get_or_create_oauth_user(db: Session, email: str, name: str, provider: str)
         balance_after=50000, reason=f"Welcome bonus via {provider}",
     ))
     db.commit()
+    db.refresh(user)
     return user
 
 

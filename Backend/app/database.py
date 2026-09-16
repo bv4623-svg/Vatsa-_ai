@@ -31,7 +31,14 @@ def get_db() -> Generator:
         db.close()
 
 def init_db():
-    """Ensure all models are registered and create missing tables."""
+    """Ensure all models are registered and create missing tables.
+
+    Every model module must be imported here (even ones no live router
+    queries directly) so SQLAlchemy's declarative registry can resolve
+    every string-based relationship() the first time any query runs —
+    otherwise mapper configuration fails for *all* queries, not just
+    ones touching the model that was missing.
+    """
     import app.models.user
     import app.models.conversation
     import app.models.memory
@@ -40,5 +47,9 @@ def init_db():
     import app.models.project
     import app.models.file
     import app.models.usage
+    import app.models.otp
+    import app.models.chat
+    import app.models.build_log
+    import app.models.snapshot
     Base.metadata.create_all(bind=engine)
 

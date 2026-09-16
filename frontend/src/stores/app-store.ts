@@ -206,7 +206,7 @@ export const useAppStore = create<AppState>()(
       fetchAllData: async () => {
         const { user } = get(); if (!user) return; set({ isLoading: true });
         try {
-          const convs = await chat.list(user);
+          const convs = await chat.list();
           set({ conversations: convs.map((c: any) => ({ ...c, favorite: c.favorite || false, isPrivate: false, messages: c.messages || [], createdAt: c.createdAt || new Date().toISOString(), updatedAt: c.updatedAt || new Date().toISOString() })), isLoading: false });
         } catch {
           const ws = loadWorkspace();
@@ -238,7 +238,7 @@ export const useAppStore = create<AppState>()(
       createConversation: async (title) => {
         const { user } = get(); if (!user) throw new Error("Not authenticated"); set({ isLoading: true });
         try {
-          const newChat = await chat.create(title || "New Chat", user);
+          const newChat = await chat.create(title || "New Chat");
           const extended: ExtendedConversation = { ...newChat, favorite: false, isPrivate: false, messages: [], createdAt: newChat.createdAt || new Date().toISOString(), updatedAt: newChat.updatedAt || new Date().toISOString() };
           set((s) => ({ conversations: [extended, ...s.conversations], activeConversationId: String(extended.id), isLoading: false }));
           get().addToast({ message: "Conversation created", type: "success" }); return extended;
@@ -252,7 +252,7 @@ export const useAppStore = create<AppState>()(
       setActiveConversation: (id) => set({ activeConversationId: id }),
       deleteConversation: async (id) => {
         const { user, conversations } = get(); const conv = conversations.find(c => c.id === id); if (!conv) return; set({ isLoading: true });
-        try { if (!conv.isPrivate && user) await chat.delete(id, user); set((s) => ({ conversations: s.conversations.filter(c => c.id !== id), activeConversationId: s.activeConversationId === id ? null : s.activeConversationId, isLoading: false })); get().addToast({ message: "Conversation deleted", type: "info" }); }
+        try { if (!conv.isPrivate && user) await chat.delete(id); set((s) => ({ conversations: s.conversations.filter(c => c.id !== id), activeConversationId: s.activeConversationId === id ? null : s.activeConversationId, isLoading: false })); get().addToast({ message: "Conversation deleted", type: "info" }); }
         catch (e) { set({ isLoading: false }); get().addToast({ message: "Failed to delete", type: "error" }); throw e; }
       },
       clearAllConversations: () => { set({ conversations: [], activeConversationId: null }); get().addToast({ message: "All conversations cleared", type: "info" }); },
@@ -263,7 +263,7 @@ export const useAppStore = create<AppState>()(
       toggleFavorite: (id) => set((s) => ({ conversations: s.conversations.map(c => c.id === id ? { ...c, favorite: !c.favorite, updatedAt: new Date().toISOString() } : c) })),
       archiveConversation: async (id) => {
         const conv = get().conversations.find(c => c.id === id); if (!conv) return;
-        if (!conv.isPrivate && get().user) { try { await (chat as any).archive?.(id, get().user); } catch { /* ignore */ } }
+        if (!conv.isPrivate && get().user) { try { await chat.archive(id); } catch { /* ignore */ } }
         set((s) => ({ conversations: s.conversations.map(c => c.id === id ? { ...c, archived: true, updatedAt: new Date().toISOString() } : c) }));
         get().addToast({ message: "Conversation archived", type: "info" });
       },
@@ -284,7 +284,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ conversations: s.conversations.map(c => c.id === chatId ? { ...c, messages: [...c.messages, userMsg, assistantMsg], updatedAt: new Date().toISOString() } : c) }));
         set({ isProcessing: true, isStreaming: true });
         try {
-          const response = await chat.get(content, user); const reply = response.response || "";
+          const response = await chat.get(content); const reply = response.response || "";
           set((s) => ({ conversations: s.conversations.map(c => c.id === chatId ? { ...c, messages: c.messages.map(m => m.id === assistantMsg.id ? { ...m, content: reply, status: "done" } : m), updatedAt: new Date().toISOString() } : c) }));
           if (originalMsgCount === 0 && conversation.title === "New Chat") await get().renameConversation(chatId!, titleFromText(content));
           set({ isProcessing: false, isStreaming: false }); get().addToast({ message: "Message sent", type: "success", duration: 2000 });

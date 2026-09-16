@@ -6,14 +6,14 @@ import { useChat } from "@/hooks/useChat";
 
 export default function WelcomeScreen() {
   const [prompt, setPrompt] = useState("");
-  const { sendMessage, isLoading } = useChat();
+  const { sendMessage, loading: isLoading } = useChat();
   const { setMode } = useWorkspaceStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
     setMode("building");
-    await sendMessage(null, prompt);
+    await sendMessage(prompt);
     // After response, mode will be set to 'editor' via WebSocket or API callback.
   };
 

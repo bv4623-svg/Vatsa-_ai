@@ -96,20 +96,21 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     return parsed
 
 
-async def _get_search_context(req: ChatRequest, user: User) -> Optional[str]:
+async def _get_search_context(req: ChatRequest, user: User) -> Tuple[Optional[str], List[Dict[str, Any]]]:
     """
-    Best-effort web search grounding. Never raises -- if search isn't
-    configured or the provider call fails, the chat just proceeds without
-    it rather than breaking the whole response over an optional feature.
+    Best-effort multi-source web search grounding. Never raises -- if no
+    provider is configured/reachable, the chat just proceeds without it
+    rather than breaking the whole response over an optional feature.
+    Returns (formatted_context_for_the_prompt, raw_results_for_the_client).
     """
     if not req.web_search:
-        return None
+        return None, []
     try:
         results = await SearchService.search(req.message)
-        return SearchService.format_context(results)
+        return SearchService.format_context(results), results
     except Exception as e:
         logger.warning(f"Web search unavailable for user {user.id}: {e}")
-        return None
+        return None, []
 
 
 def _persist_conversation(
@@ -119,6 +120,7 @@ def _persist_conversation(
     assistant_text: str,
     model_name: str = "Vatsa AI",
     image_url: Optional[str] = None,
+    sources: Optional[List[Dict[str, Any]]] = None,
 ) -> None:
     if not conv:
         return
@@ -134,6 +136,8 @@ def _persist_conversation(
     }
     if image_url:
         assistant_msg["imageUrl"] = image_url
+    if sources:
+        assistant_msg["sources"] = sources
     msgs.append(assistant_msg)
     conv.messages = msgs
     conv.updated_at = datetime.utcnow()
@@ -151,6 +155,7 @@ async def _stream_chat_response(
     workspace: str,
     background_tasks: BackgroundTasks,
     search_context: Optional[str] = None,
+    sources: Optional[List[Dict[str, Any]]] = None,
 ) -> AsyncGenerator[str, None]:
     full_text = ""
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -182,10 +187,13 @@ async def _stream_chat_response(
         return
 
     if full_text:
-        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI")
+        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
-    yield f"data: {json.dumps({'done': True, 'usage': usage, 'conversation_id': req.conversation_id})}\n\n"
+    done_event: Dict[str, Any] = {"done": True, "usage": usage, "conversation_id": req.conversation_id}
+    if sources:
+        done_event["sources"] = sources
+    yield f"data: {json.dumps(done_event)}\n\n"
 
 
 @router.post("/chat")
@@ -236,20 +244,20 @@ async def chat_endpoint(
     # --- 2. Load Conversation History + Attachments ---
     conv, history_messages = _load_history(req, user, db)
     parsed_attachments = _parse_attachments(req)
-    search_context = await _get_search_context(req, user)
+    search_context, sources = await _get_search_context(req, user)
 
     # --- 3. Streaming path ---
     if req.stream:
         return StreamingResponse(
             _stream_chat_response(
                 req, user, db, conv, history_messages, parsed_attachments,
-                chosen_model, workspace, background_tasks, search_context,
+                chosen_model, workspace, background_tasks, search_context, sources,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    # --- 4. Non-streaming path (unchanged behavior) ---
+    # --- 4. Non-streaming path (unchanged behavior, plus sources when present) ---
     try:
         result = await AIService.generate_response(
             db=db,
@@ -270,7 +278,9 @@ async def chat_endpoint(
         logger.error(f"AI service error for user {user.id}: {e}")
         raise HTTPException(status_code=502, detail="AI service is temporarily unavailable. Please try again.")
 
-    _persist_conversation(conv, db, req.message, result["response"], result["selected_model"])
+    if sources:
+        result["sources"] = sources
+    _persist_conversation(conv, db, req.message, result["response"], result["selected_model"], sources=sources)
     background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
     return result

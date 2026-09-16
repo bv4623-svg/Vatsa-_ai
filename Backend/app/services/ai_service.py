@@ -2,7 +2,6 @@ import os
 import re
 import json
 import logging
-import urllib.parse
 import aiohttp
 from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy.orm import Session
@@ -91,11 +90,6 @@ def detect_image_gen(query: str) -> Optional[str]:
             cleaned = re.sub(r"^(image|picture|photo|illustration|drawing|art)\s+(of\s+)?", "", cleaned, flags=re.I)
             return cleaned.strip() or "beautiful realistic artwork"
     return None
-
-async def generate_image(prompt: str) -> Dict[str, Any]:
-    encoded = urllib.parse.quote(prompt)
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&model=flux&nologo=true"
-    return {"image_url": url, "prompt": prompt, "model": "flux"}
 
 class AIService:
     @staticmethod

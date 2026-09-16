@@ -51,5 +51,6 @@ def init_db():
     import app.models.chat
     import app.models.build_log
     import app.models.snapshot
+    import app.models.generated_image
     Base.metadata.create_all(bind=engine)
 

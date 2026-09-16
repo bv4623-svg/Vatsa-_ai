@@ -44,3 +44,15 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         return None
+
+
+def create_media_token(user_id: int) -> str:
+    """
+    A token for <img src="..."> URLs, where no Authorization header can
+    be attached. Scoped to "media" so it's useless against any other
+    endpoint (only app.auth.dependencies.get_user_for_media checks for
+    this scope) even if it leaks via browser history or referrer headers.
+    Matches the main session token's lifetime so images stay viewable
+    for as long as a normal session would.
+    """
+    return create_access_token({"sub": str(user_id), "scope": "media"})

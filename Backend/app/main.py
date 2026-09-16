@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from app.routers import chat, profile, conversations, auth as auth_router
-from app.routers import memory, payment, tokens, upload
+from app.routers import memory, payment, tokens, upload, files
 from app.core.classifier import IntentClassifier
 from intents_data import INTENTS
 from app.database import init_db
@@ -57,6 +57,7 @@ app.include_router(memory.router)
 app.include_router(payment.router)
 app.include_router(tokens.router)
 app.include_router(upload.router)
+app.include_router(files.router)
 
 
 # Intent classification endpoints

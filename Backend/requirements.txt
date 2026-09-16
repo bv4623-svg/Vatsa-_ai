@@ -17,3 +17,4 @@ tiktoken>=0.7
 pdfplumber>=0.11
 python-docx>=1.2
 openpyxl>=3.1
+Pillow>=11.0

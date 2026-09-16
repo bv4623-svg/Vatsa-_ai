@@ -22,6 +22,12 @@ export interface Source {
   confidence: number;
   freshness?: string;
   visited?: boolean;
+  // Web-search-grounded chat citations (see SourcesList) additionally
+  // carry these; optional so the existing right-panel Source usage is
+  // untouched.
+  index?: number;
+  quality?: "high" | "medium" | "low";
+  published_date?: string;
 }
 
 export interface Citation {

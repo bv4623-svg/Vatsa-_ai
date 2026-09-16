@@ -147,6 +147,7 @@ export function useHomeChat(params: UseHomeChatParams) {
         let buffer = "";
         let streamedText = "";
         let sseError: string | null = null;
+        let sources: any[] | undefined;
 
         const assistantId = (Date.now() + 1).toString();
         streamAssistantId = assistantId;
@@ -185,6 +186,7 @@ export function useHomeChat(params: UseHomeChatParams) {
               const evt = JSON.parse(payload);
               if (evt.error) sseError = evt.error;
               else if (evt.delta) streamedText += evt.delta;
+              else if (evt.done && evt.sources) sources = evt.sources;
               flush();
             } catch {
               streamedText += payload;
@@ -218,6 +220,7 @@ export function useHomeChat(params: UseHomeChatParams) {
                   ...m2,
                   content: textContent || (imageUrl ? "" : "No response from AI"),
                   isStreaming: false,
+                  sources,
                   // @ts-ignore
                   imageUrl,
                 }
@@ -230,6 +233,7 @@ export function useHomeChat(params: UseHomeChatParams) {
         imageUrl = data.image_url;
         textContent = data.response || "No response from AI";
         selectedModel = data.selected_model || "Vatsa AI";
+        const sources = data.sources;
 
         if (!imageUrl && textContent) {
           const m = textContent.match(/!\[[^\]]*\]\((data:image\/[^)\s]+|https?:\/\/[^)\s]+)\)/);
@@ -249,6 +253,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           content: textContent || (imageUrl ? "" : "No response from AI"),
           createdAt: new Date().toISOString(),
           model: selectedModel,
+          sources,
           // @ts-ignore
           imageUrl,
         };

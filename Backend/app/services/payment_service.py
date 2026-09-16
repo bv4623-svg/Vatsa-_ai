@@ -151,15 +151,17 @@ class PaymentService:
                 "plan": sub.plan
             }
 
-        # Verify signature
-        is_valid = False
-        if key_secret and not key_secret.startswith("your_"):
-            message = f"{order_id}|{payment_id}".encode("utf-8")
-            expected_sig = hmac.new(key_secret.encode("utf-8"), message, hashlib.sha256).hexdigest()
-            is_valid = hmac.compare_digest(expected_sig, signature)
-        else:
-            # In local dev / test mode with placeholder keys, allow verified test token
-            is_valid = bool(payment_id and order_id)
+        # Verify signature. If Razorpay isn't configured, refuse rather than
+        # accept arbitrary caller-supplied ids as a "verified" payment --
+        # tokens/tier upgrades must never be grantable without a real,
+        # cryptographically verified payment.
+        if not key_secret or key_secret.startswith("your_"):
+            logger.error("Payment verification attempted but RAZORPAY_KEY_SECRET is not configured.")
+            return {"success": False, "message": "Payment verification is not configured on this server."}
+
+        message = f"{order_id}|{payment_id}".encode("utf-8")
+        expected_sig = hmac.new(key_secret.encode("utf-8"), message, hashlib.sha256).hexdigest()
+        is_valid = hmac.compare_digest(expected_sig, signature)
 
         if not is_valid:
             return {"success": False, "message": "Invalid payment signature"}

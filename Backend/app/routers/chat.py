@@ -8,19 +8,19 @@ import uuid
 from app.database import get_db
 from app.models.user import User
 from app.models.conversation import Conversation
-from app.auth.dependencies import get_current_user, get_current_user_optional
+from app.auth.dependencies import get_current_user
 from app.services.ai_service import AIService, detect_image_gen, generate_image
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
 class ChatRequest(BaseModel):
     message: str
-    user_id: Optional[str] = Field(None, alias="userId")
+    # Ownership always comes from the authenticated session (see get_current_user
+    # below) -- a client-supplied user_id/userId is never trusted for identity.
     conversation_id: Optional[str] = None
     model: Optional[str] = None
     preferred_model: Optional[str] = Field(None, alias="preferredModel")
     workspace: Optional[str] = "chat"
-    user_tier: Optional[str] = Field("free", alias="userTier")
     attachments: Optional[List[Union[str, Dict[str, Any]]]] = None
     stream: Optional[bool] = False
     model_config = {"populate_by_name": True}
@@ -28,34 +28,11 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 async def chat_endpoint(
     req: ChatRequest,
-    current_user_opt: Optional[User] = Depends(get_current_user_optional),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
-
-    # Resolve authenticated user or fallback
-    user = current_user_opt
-    if not user and req.user_id:
-        user = db.query(User).filter(
-            (User.email == req.user_id) | (User.id == req.user_id)
-        ).first()
-
-    if not user:
-        # Fallback to dev/guest user
-        user = db.query(User).first()
-        if not user:
-            user = User(
-                email="guest@vatsa.ai",
-                full_name="Guest User",
-                is_active=True,
-                is_verified=True,
-                profile_completed=True,
-                tier="free"
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
 
     chosen_model = req.model or req.preferred_model or "auto"
     workspace = req.workspace or "chat"
@@ -148,9 +125,9 @@ async def chat_endpoint(
 @router.post("/chat/send")
 async def send_message_endpoint(
     req: ChatRequest,
-    current_user_opt: Optional[User] = Depends(get_current_user_optional),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # Same logic as chat_endpoint but without streaming
     req.stream = False
-    return await chat_endpoint(req, current_user_opt, db)
+    return await chat_endpoint(req, user, db)

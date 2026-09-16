@@ -146,6 +146,7 @@ export function useCodeChat(params: UseCodeChatParams) {
           const decoder = new TextDecoder();
           let buffer = "";
           let streamedText = "";
+          let sseError: string | null = null;
 
           // Insert a placeholder assistant message
           const assistantId = uid("assistant");
@@ -195,6 +196,8 @@ export function useCodeChat(params: UseCodeChatParams) {
               try {
                 const evt = JSON.parse(payload);
                 if (typeof evt === "string") streamedText += evt;
+                else if (evt.error) sseError = evt.error;
+                else if (evt.done) { /* usage/conversation_id available, no-op here */ }
                 else if (evt.delta) streamedText += evt.delta;
                 else if (evt.token) streamedText += evt.token;
                 else if (evt.content) streamedText += evt.content;
@@ -204,8 +207,12 @@ export function useCodeChat(params: UseCodeChatParams) {
                 streamedText += payload;
                 flush();
               }
+              if (sseError) break;
             }
+            if (sseError) break;
           }
+
+          if (sseError) throw new Error(sseError);
 
           text = streamedText;
           const finalNorm = normalizeResponse({ response: text });

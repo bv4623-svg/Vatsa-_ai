@@ -13,6 +13,7 @@ interface UseHomeChatParams {
   attachments: Attachment[];
   setAttachments: (updater: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void;
   addMessageToConversation: (convId: string, msg: Message) => void;
+  updateConversation: (id: string, updater: (conv: Conversation) => Conversation) => void;
   handleRenameChat: (id: string, title: string) => Promise<void>;
   handleNewChat: (onCreated?: () => void) => Promise<string | null>;
   setDraftMessage: (v: string) => void;
@@ -30,7 +31,7 @@ interface UseHomeChatParams {
 export function useHomeChat(params: UseHomeChatParams) {
   const {
     activeConversationId, conversations, messages, privateMode, user,
-    attachments, setAttachments, addMessageToConversation, handleRenameChat,
+    attachments, setAttachments, addMessageToConversation, updateConversation, handleRenameChat,
     handleNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
   } = params;
 
@@ -105,12 +106,15 @@ export function useHomeChat(params: UseHomeChatParams) {
 
     const token = localStorage.getItem("access_token");
     const userId = user?.email || `user_${Date.now()}`;
+    let streamAssistantId: string | null = null;
+    let lastStreamedText = "";
 
     try {
       const response = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "text/event-stream, application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
@@ -119,6 +123,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           conversation_id: convId,
           userTier: "free",
           attachments: payloadAttachments,
+          stream: true,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -128,13 +133,71 @@ export function useHomeChat(params: UseHomeChatParams) {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      let textContent = "";
+      let imageUrl: string | undefined;
+      let selectedModel = "Vatsa AI";
 
-      // Extract image separately -- ReactMarkdown blocks `data:` URLs
-      let imageUrl: string | undefined = data.image_url;
-      let textContent: string = data.response || "No response from AI";
+      if (contentType.includes("text/event-stream") && response.body) {
+        /* ── Streaming path ── */
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamedText = "";
+        let sseError: string | null = null;
 
-      if (!imageUrl && textContent) {
+        const assistantId = (Date.now() + 1).toString();
+        streamAssistantId = assistantId;
+        addMessageToConversation(convId, {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          createdAt: new Date().toISOString(),
+          model: "Vatsa AI",
+          isStreaming: true,
+        });
+
+        const flush = () => {
+          lastStreamedText = streamedText;
+          updateConversation(convId, (conv) => ({
+            ...conv,
+            messages: (conv.messages || []).map((m) =>
+              m.id === assistantId ? { ...m, content: streamedText } : m
+            ),
+          }));
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const raw of lines) {
+            const line = raw.trim();
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (!payload || payload === "[DONE]") continue;
+            try {
+              const evt = JSON.parse(payload);
+              if (evt.error) sseError = evt.error;
+              else if (evt.delta) streamedText += evt.delta;
+              flush();
+            } catch {
+              streamedText += payload;
+              flush();
+            }
+            if (sseError) break;
+          }
+          if (sseError) break;
+        }
+
+        if (sseError) throw new Error(sseError);
+
+        textContent = streamedText;
+
+        // Extract an embedded image separately -- ReactMarkdown blocks `data:` URLs
         const m = textContent.match(/!\[[^\]]*\]\((data:image\/[^)\s]+|https?:\/\/[^)\s]+)\)/);
         if (m) {
           imageUrl = m[1];
@@ -144,34 +207,78 @@ export function useHomeChat(params: UseHomeChatParams) {
             .replace(/\*\*Generated Image\*\*/g, "")
             .trim();
         }
+
+        updateConversation(convId, (conv) => ({
+          ...conv,
+          messages: (conv.messages || []).map((m2) =>
+            m2.id === assistantId
+              ? {
+                  ...m2,
+                  content: textContent || (imageUrl ? "" : "No response from AI"),
+                  isStreaming: false,
+                  // @ts-ignore
+                  imageUrl,
+                }
+              : m2
+          ),
+        }));
+      } else {
+        /* ── Non-streaming (JSON) path -- e.g. image generation ── */
+        const data = await response.json();
+        imageUrl = data.image_url;
+        textContent = data.response || "No response from AI";
+        selectedModel = data.selected_model || "Vatsa AI";
+
+        if (!imageUrl && textContent) {
+          const m = textContent.match(/!\[[^\]]*\]\((data:image\/[^)\s]+|https?:\/\/[^)\s]+)\)/);
+          if (m) {
+            imageUrl = m[1];
+            textContent = textContent
+              .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+              .replace(/\*\*Vatsa AI Image\*\*/g, "")
+              .replace(/\*\*Generated Image\*\*/g, "")
+              .trim();
+          }
+        }
+
+        const assistantMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: textContent || (imageUrl ? "" : "No response from AI"),
+          createdAt: new Date().toISOString(),
+          model: selectedModel,
+          // @ts-ignore
+          imageUrl,
+        };
+        addMessageToConversation(convId, assistantMsg);
       }
 
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: textContent || (imageUrl ? "" : "No response from AI"),
-        createdAt: new Date().toISOString(),
-        model: data.selected_model || "Vatsa AI",
-        // @ts-ignore
-        imageUrl,
-      };
-      addMessageToConversation(convId, assistantMsg);
       setErrorState(null);
     } catch (error: any) {
-      if (error.name === "AbortError") {
-        addMessageToConversation(convId, {
-          id: Date.now().toString(), role: "assistant",
-          content: "⏹️ Generation stopped.", createdAt: new Date().toISOString(),
-        });
-        setErrorState(null);
+      const isAbort = error.name === "AbortError";
+      const fallbackContent = isAbort
+        ? (lastStreamedText || "⏹️ Generation stopped.")
+        : `⚠️ Failed: ${error.message || "Unknown error"}`;
+
+      if (streamAssistantId) {
+        // A streaming placeholder is already in the conversation -- finish
+        // it in place instead of leaving a stuck "isStreaming" bubble and
+        // appending a second, disconnected message.
+        updateConversation(convId, (conv) => ({
+          ...conv,
+          messages: (conv.messages || []).map((m) =>
+            m.id === streamAssistantId
+              ? { ...m, content: fallbackContent, isStreaming: false }
+              : m
+          ),
+        }));
       } else {
         addMessageToConversation(convId, {
           id: (Date.now() + 1).toString(), role: "assistant",
-          content: `⚠️ Failed: ${error.message || "Unknown error"}`,
-          createdAt: new Date().toISOString(),
+          content: fallbackContent, createdAt: new Date().toISOString(),
         });
-        setErrorState({ message: error.message || "Unknown error", stack: error.stack });
       }
+      setErrorState(isAbort ? null : { message: error.message || "Unknown error", stack: error.stack });
     } finally {
       setIsLoading(false);
       setIsImageGenLoading(false);

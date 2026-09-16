@@ -88,7 +88,7 @@ export default function HomePage() {
     sendMessage, handleRetry, handleRegenerate, handleCopy, handleFeedback, handleShare,
   } = useHomeChat({
     activeConversationId, conversations, messages, privateMode, user,
-    attachments, setAttachments, addMessageToConversation, handleRenameChat,
+    attachments, setAttachments, addMessageToConversation, updateConversation, handleRenameChat,
     handleNewChat: onNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
   });
 

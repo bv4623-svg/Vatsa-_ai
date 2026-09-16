@@ -1,8 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, AsyncGenerator, Tuple
 from datetime import datetime
+import json
 import logging
 import uuid
 
@@ -57,6 +59,98 @@ class ChatRequest(BaseModel):
     stream: Optional[bool] = False
     model_config = {"populate_by_name": True}
 
+
+def _load_history(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[Conversation], List[Dict[str, Any]]]:
+    if not req.conversation_id:
+        return None, []
+    conv = db.query(Conversation).filter_by(id=req.conversation_id, user_id=user.id).first()
+    history = list(conv.messages) if conv and conv.messages else []
+    return conv, history
+
+
+def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
+    parsed = []
+    if req.attachments:
+        for att in req.attachments:
+            if isinstance(att, dict) and att.get("text"):
+                parsed.append({"filename": att.get("name", "file"), "text": att["text"]})
+    return parsed
+
+
+def _persist_conversation(
+    conv: Optional[Conversation],
+    db: Session,
+    user_message: str,
+    assistant_text: str,
+    model_name: str = "Vatsa AI",
+    image_url: Optional[str] = None,
+) -> None:
+    if not conv:
+        return
+    msgs = list(conv.messages or [])
+    now = datetime.utcnow().isoformat()
+    msgs.append({"id": f"msg_{uuid.uuid4().hex[:8]}", "role": "user", "content": user_message, "createdAt": now})
+    assistant_msg = {
+        "id": f"msg_{uuid.uuid4().hex[:8]}",
+        "role": "assistant",
+        "content": assistant_text,
+        "model": model_name,
+        "createdAt": now,
+    }
+    if image_url:
+        assistant_msg["imageUrl"] = image_url
+    msgs.append(assistant_msg)
+    conv.messages = msgs
+    conv.updated_at = datetime.utcnow()
+    db.commit()
+
+
+async def _stream_chat_response(
+    req: ChatRequest,
+    user: User,
+    db: Session,
+    conv: Optional[Conversation],
+    history_messages: List[Dict[str, Any]],
+    parsed_attachments: List[Dict[str, Any]],
+    chosen_model: str,
+    workspace: str,
+    background_tasks: BackgroundTasks,
+) -> AsyncGenerator[str, None]:
+    full_text = ""
+    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    try:
+        async for event in AIService.stream_response(
+            db=db,
+            user=user,
+            query=req.message,
+            conversation_history=history_messages,
+            model_name=chosen_model,
+            workspace=workspace,
+            attachments=parsed_attachments,
+        ):
+            if "delta" in event:
+                yield f"data: {json.dumps({'delta': event['delta']})}\n\n"
+            elif "error" in event:
+                logger.warning(f"Stream error for user {user.id}: {event['error']}")
+                yield f"data: {json.dumps({'error': event['error']})}\n\n"
+                return
+            elif event.get("done"):
+                full_text = event["content"]
+                usage = event["usage"]
+    except Exception as e:
+        # Never forward exception text to the client -- may name a
+        # provider/model (see ai_service.py). Log server-side only.
+        logger.error(f"Stream error for user {user.id}: {e}")
+        yield f"data: {json.dumps({'error': 'AI service is temporarily unavailable. Please try again.'})}\n\n"
+        return
+
+    if full_text:
+        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI")
+        background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
+
+    yield f"data: {json.dumps({'done': True, 'usage': usage, 'conversation_id': req.conversation_id})}\n\n"
+
+
 @router.post("/chat")
 async def chat_endpoint(
     req: ChatRequest,
@@ -70,24 +164,17 @@ async def chat_endpoint(
     chosen_model = req.model or req.preferred_model or "auto"
     workspace = req.workspace or "chat"
 
-    # --- 1. Image Generation Check ---
+    # --- 1. Image Generation Check (instant, single-shot -- never streamed;
+    # the streaming frontend clients already fall back to plain JSON when
+    # the response isn't text/event-stream, so this stays consistent even
+    # when the caller asked for stream=true). ---
     img_prompt = detect_image_gen(req.message)
     if img_prompt:
         img_data = await generate_image(img_prompt)
         response_text = f"**Vatsa AI Image**\n\n![image]({img_data['image_url']})"
 
-        # Save to conversation if provided
-        if req.conversation_id:
-            conv = db.query(Conversation).filter_by(id=req.conversation_id, user_id=user.id).first()
-            if conv:
-                msgs = list(conv.messages or [])
-                now = datetime.utcnow().isoformat()
-                msgs.append({"id": f"msg_{uuid.uuid4().hex[:8]}", "role": "user", "content": req.message, "createdAt": now})
-                msgs.append({"id": f"msg_{uuid.uuid4().hex[:8]}", "role": "assistant", "content": response_text, "createdAt": now, "imageUrl": img_data["image_url"]})
-                conv.messages = msgs
-                conv.updated_at = datetime.utcnow()
-                db.commit()
-
+        conv, _ = _load_history(req, user, db)
+        _persist_conversation(conv, db, req.message, response_text, image_url=img_data["image_url"])
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
         return {
@@ -102,22 +189,22 @@ async def chat_endpoint(
             "primary_intent": "image_generation"
         }
 
-    # --- 2. Load Conversation History ---
-    history_messages = []
-    conv = None
-    if req.conversation_id:
-        conv = db.query(Conversation).filter_by(id=req.conversation_id, user_id=user.id).first()
-        if conv and conv.messages:
-            history_messages = list(conv.messages)
+    # --- 2. Load Conversation History + Attachments ---
+    conv, history_messages = _load_history(req, user, db)
+    parsed_attachments = _parse_attachments(req)
 
-    # --- 3. Parse Attachments ---
-    parsed_attachments = []
-    if req.attachments:
-        for att in req.attachments:
-            if isinstance(att, dict) and att.get("text"):
-                parsed_attachments.append({"filename": att.get("name", "file"), "text": att["text"]})
+    # --- 3. Streaming path ---
+    if req.stream:
+        return StreamingResponse(
+            _stream_chat_response(
+                req, user, db, conv, history_messages, parsed_attachments,
+                chosen_model, workspace, background_tasks,
+            ),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
-    # --- 4. Call AI Service ---
+    # --- 4. Non-streaming path (unchanged behavior) ---
     try:
         result = await AIService.generate_response(
             db=db,
@@ -137,30 +224,23 @@ async def chat_endpoint(
         logger.error(f"AI service error for user {user.id}: {e}")
         raise HTTPException(status_code=502, detail="AI service is temporarily unavailable. Please try again.")
 
-    # --- 5. Persist to Conversation ---
-    if conv:
-        msgs = list(conv.messages or [])
-        now = datetime.utcnow().isoformat()
-        msgs.append({
-            "id": f"msg_{uuid.uuid4().hex[:8]}",
-            "role": "user",
-            "content": req.message,
-            "createdAt": now
-        })
-        msgs.append({
-            "id": f"msg_{uuid.uuid4().hex[:8]}",
-            "role": "assistant",
-            "content": result["response"],
-            "model": result["selected_model"],
-            "createdAt": now
-        })
-        conv.messages = msgs
-        conv.updated_at = datetime.utcnow()
-        db.commit()
-
+    _persist_conversation(conv, db, req.message, result["response"], result["selected_model"])
     background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
     return result
+
+
+@router.post("/chat/stream")
+async def chat_stream_endpoint(
+    req: ChatRequest,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Dedicated always-streaming route. Same logic as /api/chat with stream=true."""
+    req.stream = True
+    return await chat_endpoint(req, background_tasks, user, db)
+
 
 # Non-streaming send endpoint (used by chat.ts service)
 @router.post("/chat/send")

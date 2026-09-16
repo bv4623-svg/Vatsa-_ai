@@ -154,25 +154,176 @@ class AIService:
                 }
 
     @staticmethod
-    async def generate_response(
+    async def stream_openrouter(
+        messages: List[Dict[str, str]],
+        model: str,
+        max_tokens: int = 1500,
+        temperature: float = 0.7
+    ):
+        """
+        Async generator over one OpenRouter streaming call. Yields
+        {"type": "delta", "content": str} per text chunk and, if the
+        upstream sends it, one {"type": "usage", "usage": {...}}. Raises
+        on any transport/HTTP failure -- same error contract as
+        call_openrouter -- so the caller can fall back to the next model.
+        """
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY is not set in environment.")
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://vatsa-ai.local",
+            "X-Title": "Vatsa AI"
+        }
+        payload = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": True,
+            "stream_options": {"include_usage": True},
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=120),
+            ) as resp:
+                if resp.status != 200:
+                    raw = await resp.read()
+                    raise RuntimeError(f"OpenRouter [{resp.status}]: {raw.decode('utf-8', errors='replace')}")
+
+                buffer = b""
+                async for chunk in resp.content.iter_any():
+                    buffer += chunk
+                    while b"\n" in buffer:
+                        line, buffer = buffer.split(b"\n", 1)
+                        line = line.decode("utf-8", errors="replace").strip()
+                        if not line or not line.startswith("data:"):
+                            continue
+                        data_str = line[5:].strip()
+                        if data_str == "[DONE]":
+                            return
+                        try:
+                            evt = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        choices = evt.get("choices") or []
+                        if choices:
+                            delta = choices[0].get("delta", {}) or {}
+                            content = delta.get("content")
+                            if content:
+                                yield {"type": "delta", "content": content}
+                        usage = evt.get("usage")
+                        if usage:
+                            yield {"type": "usage", "usage": usage}
+
+    @staticmethod
+    async def stream_response(
         db: Session,
         user: User,
         query: str,
         conversation_history: List[Dict[str, Any]],
         model_name: Optional[str] = None,
         workspace: str = "chat",
-        attachments: Optional[List[Dict[str, Any]]] = None
-    ) -> Dict[str, Any]:
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ):
+        """
+        Streaming counterpart to generate_response with identical
+        guarantees (allowance check, system prompt / identity seal via
+        _build_messages, fallback-model chain, token deduction) but
+        yields incremental text instead of returning one final dict.
+
+        Yields:
+          {"delta": str}                                  -- one text chunk
+          {"error": str}                                  -- terminal
+          {"done": True, "content": str, "usage": {...}}  -- terminal
+        """
         target_model = AIService.map_model(model_name)
         is_code = (workspace == "code")
 
-        # Estimate tokens and check allowance
         estimated_tokens = 3000 if is_code else 800
         allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=target_model)
         if not allowed:
-            raise ValueError(reason)
+            yield {"error": reason}
+            return
 
-        # 1. Build System Prompt with Real User Identity & Memory
+        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments)
+        max_tokens = 4000 if is_code else 1500
+        candidate_models = [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
+
+        full_text = ""
+        usage_info: Optional[Dict[str, Any]] = None
+        last_error = None
+        started = False
+
+        for cand in candidate_models:
+            full_text = ""
+            usage_info = None
+            try:
+                logger.info(f"Streaming model {cand} for user {user.email} (workspace={workspace})")
+                async for event in AIService.stream_openrouter(messages, cand, max_tokens=max_tokens):
+                    if event["type"] == "delta":
+                        started = True
+                        full_text += event["content"]
+                        yield {"delta": event["content"]}
+                    elif event["type"] == "usage":
+                        usage_info = event["usage"]
+                break
+            except Exception as e:
+                logger.warning(f"Stream model {cand} failed: {e}")
+                last_error = e
+                if started:
+                    # Already streamed partial content from this model to
+                    # the client -- switching models now would silently
+                    # duplicate or contradict what they've already seen.
+                    break
+                continue
+
+        if not started:
+            yield {"error": f"All AI models failed. Last error: {last_error}"}
+            return
+
+        prompt_tokens = (usage_info or {}).get("prompt_tokens") or len(query) // 4
+        completion_tokens = (usage_info or {}).get("completion_tokens") or len(full_text) // 4
+        total_tokens = prompt_tokens + completion_tokens
+
+        TokenService.deduct_tokens(
+            db=db,
+            user_id=user.id,
+            tokens=total_tokens,
+            reason="AI response",
+            model=PUBLIC_MODEL_NAME
+        )
+
+        yield {
+            "done": True,
+            "content": full_text,
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+            },
+        }
+
+    @staticmethod
+    def _build_messages(
+        user: User,
+        db: Session,
+        query: str,
+        conversation_history: List[Dict[str, Any]],
+        is_code: bool,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, str]]:
+        """
+        Shared system-prompt + message-sequence builder used by both the
+        buffered and streaming generation paths, so the identity seal and
+        memory injection can never drift between the two.
+        """
         user_name = user.full_name or user.email.split("@")[0]
         user_memories = MemoryService.get_context_summary(db, user.id)
 
@@ -208,7 +359,6 @@ class AIService:
 
         system_prompt = "\n".join(system_parts)
 
-        # 2. Assemble Message Sequence
         messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
 
         # Include up to last 10 conversation turns for context
@@ -232,6 +382,28 @@ class AIService:
                 user_content += "\n\n" + "\n\n".join(att_texts)
 
         messages.append({"role": "user", "content": user_content})
+        return messages
+
+    @staticmethod
+    async def generate_response(
+        db: Session,
+        user: User,
+        query: str,
+        conversation_history: List[Dict[str, Any]],
+        model_name: Optional[str] = None,
+        workspace: str = "chat",
+        attachments: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        target_model = AIService.map_model(model_name)
+        is_code = (workspace == "code")
+
+        # Estimate tokens and check allowance
+        estimated_tokens = 3000 if is_code else 800
+        allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=target_model)
+        if not allowed:
+            raise ValueError(reason)
+
+        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments)
 
         # 3. Call OpenRouter with fallback models
         max_tokens = 4000 if is_code else 1500

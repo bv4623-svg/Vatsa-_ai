@@ -69,11 +69,22 @@ def _load_history(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[C
 
 
 def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
+    """
+    Normalizes the client's attachment shape into what AIService._build_messages
+    expects: {"filename", "text"} for documents (already extracted client-side
+    via /api/upload or read as plain text) and {"filename", "image_data_url"}
+    for images, so the model can actually see them instead of the attachment
+    being a UI-only decoration.
+    """
     parsed = []
     if req.attachments:
         for att in req.attachments:
-            if isinstance(att, dict) and att.get("text"):
+            if not isinstance(att, dict):
+                continue
+            if att.get("text"):
                 parsed.append({"filename": att.get("name", "file"), "text": att["text"]})
+            elif att.get("is_base64") and str(att.get("type", "")).startswith("image/") and att.get("content"):
+                parsed.append({"filename": att.get("name", "image"), "image_data_url": att["content"]})
     return parsed
 
 

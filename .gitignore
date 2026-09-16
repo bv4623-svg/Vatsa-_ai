@@ -12,3 +12,4 @@ vatsa-ai-debug.zip
 tsconfig.tsbuildinfo
 .DS_Store
 .aider*
+Backend/generated_images/

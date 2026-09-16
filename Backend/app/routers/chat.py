@@ -8,14 +8,20 @@ import json
 import logging
 import uuid
 
+import os
+
 from app.database import get_db, SessionLocal
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
-from app.services.ai_service import AIService, detect_image_gen, generate_image
+from app.auth.jwt import create_media_token
+from app.services.ai_service import AIService, detect_image_gen
+from app.services.image_service import generate_and_store_image
 from app.services.memory_extractor import extract_facts
 from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
+
+BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://127.0.0.1:8000")
 
 logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -201,11 +207,18 @@ async def chat_endpoint(
     # when the caller asked for stream=true). ---
     img_prompt = detect_image_gen(req.message)
     if img_prompt:
-        img_data = await generate_image(img_prompt)
-        response_text = f"**Vatsa AI Image**\n\n![image]({img_data['image_url']})"
+        try:
+            img_data = await generate_and_store_image(db, user.id, img_prompt)
+        except Exception as e:
+            logger.error(f"Image generation failed for user {user.id}: {e}")
+            raise HTTPException(status_code=502, detail="Image generation is temporarily unavailable. Please try again.")
+
+        media_token = create_media_token(user.id)
+        image_url = f"{BACKEND_PUBLIC_URL}/api/files/{img_data['image_id']}/preview?token={media_token}"
+        response_text = f"**Vatsa AI Image**\n\n![image]({image_url})"
 
         conv, _ = _load_history(req, user, db)
-        _persist_conversation(conv, db, req.message, response_text, image_url=img_data["image_url"])
+        _persist_conversation(conv, db, req.message, response_text, image_url=image_url)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
         return {
@@ -214,7 +227,7 @@ async def chat_endpoint(
             "response": response_text,
             "selected_model": "Vatsa AI",
             "provider": "Vatsa AI",
-            "image_url": img_data["image_url"],
+            "image_url": image_url,
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
             "vis": 100,
             "primary_intent": "image_generation"

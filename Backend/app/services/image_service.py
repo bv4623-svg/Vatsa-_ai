@@ -17,9 +17,9 @@ import io
 import uuid
 import logging
 import urllib.parse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import aiohttp
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm import Session
 
 from app.models.generated_image import GeneratedImage
@@ -35,6 +35,18 @@ STORAGE_ROOT = os.path.join(BACKEND_DIR, "generated_images")
 # removes it while keeping the image square and the subject centered.
 WATERMARK_TRIM_FRACTION = 0.12
 
+BRAND_TEXT = "Vatsa AI"
+BRAND_FONT_CANDIDATES = [
+    # Windows
+    r"C:\Windows\Fonts\arialbd.ttf",
+    r"C:\Windows\Fonts\segoeuib.ttf",
+    # Linux (common distro paths)
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    # macOS
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+]
+
 
 async def _fetch_raw_image(prompt: str) -> bytes:
     encoded = urllib.parse.quote(prompt)
@@ -46,15 +58,53 @@ async def _fetch_raw_image(prompt: str) -> bytes:
             return await resp.read()
 
 
-def _strip_watermark(raw: bytes) -> bytes:
+def _load_brand_font(size: int) -> ImageFont.FreeTypeFont:
+    for path in BRAND_FONT_CANDIDATES:
+        if os.path.isfile(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    return ImageFont.load_default()
+
+
+def _add_branding(img: Image.Image) -> Image.Image:
+    """
+    Small semi-transparent "Vatsa AI" mark, bottom-right corner, sized
+    relative to the image so it looks right at any resolution. White
+    fill + black stroke so it stays legible over any background.
+    """
+    w, h = img.size
+    font_size = max(14, int(h * 0.035))
+    font = _load_brand_font(font_size)
+    margin = int(min(w, h) * 0.02)
+
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    bbox = draw.textbbox((0, 0), BRAND_TEXT, font=font, stroke_width=max(1, font_size // 12))
+    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    x = w - margin - text_w
+    y = h - margin - text_h
+
+    draw.text(
+        (x, y), BRAND_TEXT, font=font,
+        fill=(255, 255, 255, 170),
+        stroke_width=max(1, font_size // 12),
+        stroke_fill=(0, 0, 0, 140),
+    )
+    return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+
+
+def _process_image(raw: bytes) -> bytes:
     img = Image.open(io.BytesIO(raw)).convert("RGB")
     w, h = img.size
     trim_x = int(w * WATERMARK_TRIM_FRACTION)
     trim_y = int(h * WATERMARK_TRIM_FRACTION)
     cropped = img.crop((trim_x, trim_y, w - trim_x, h - trim_y))
     resized = cropped.resize((w, h), Image.LANCZOS)
+    branded = _add_branding(resized)
     out = io.BytesIO()
-    resized.save(out, format="PNG")
+    branded.save(out, format="PNG")
     return out.getvalue()
 
 
@@ -66,7 +116,7 @@ async def generate_and_store_image(db: Session, user_id: int, prompt: str) -> Di
     never from a provider URL.
     """
     raw = await _fetch_raw_image(prompt)
-    processed = _strip_watermark(raw)
+    processed = _process_image(raw)
 
     image_id = uuid.uuid4().hex
     user_dir = os.path.join(STORAGE_ROOT, str(user_id))

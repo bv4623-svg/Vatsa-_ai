@@ -33,7 +33,7 @@ export const createSettingsSlice: StateCreator<SettingsSlice, [], [], SettingsSl
         : theme;
       document.documentElement.classList.toggle("dark", resolved === "dark");
       if (accentColor) document.documentElement.style.setProperty("--accent-color", accentColor);
-      const sizeMap = { small: "14px", medium: "16px", large: "18px", xlarge: "20px" };
+      const sizeMap: Record<string, string> = { small: "14px", medium: "16px", large: "18px", xlarge: "20px" };
       document.documentElement.style.fontSize =
         typeof fontSize === "number" ? `${fontSize}px` : sizeMap[fontSize as string] || "16px";
     }

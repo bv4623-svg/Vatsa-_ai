@@ -71,8 +71,7 @@ function CallbackInner() {
         const profileCompleted =
           data.profile_completed ??
           data.user?.profile_completed ??
-          (profileCompletedParam === "true") ??
-          false;
+          (profileCompletedParam === "true");
         const birthMonthExists =
           data.birth_month ?? data.user?.birth_month ?? null;
         const isOnboardingDone = profileCompleted || birthMonthExists !== null;

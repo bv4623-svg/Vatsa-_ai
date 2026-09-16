@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/axios";
+import apiClient from "@/lib/axios";
 import type { Memory, MemoryQuery } from "../types/memory";
 
 export const memoryService = {

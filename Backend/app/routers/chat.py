@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
+import logging
 import uuid
 
 from app.database import get_db
@@ -11,6 +12,7 @@ from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
 from app.services.ai_service import AIService, detect_image_gen, generate_image
 
+logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])
 
 class ChatRequest(BaseModel):
@@ -59,8 +61,8 @@ async def chat_endpoint(
             "status": "success",
             "query": req.message,
             "response": response_text,
-            "selected_model": f"image:{img_data['model']}",
-            "provider": "pollinations",
+            "selected_model": "Vatsa AI",
+            "provider": "Vatsa AI",
             "image_url": img_data["image_url"],
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
             "vis": 100,
@@ -96,7 +98,11 @@ async def chat_endpoint(
     except ValueError as ve:
         raise HTTPException(status_code=402, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
+        # Log the real error (may name a provider/model) server-side only;
+        # never forward exception text to the client -- it can contain
+        # upstream provider/model identifiers (see ai_service.py).
+        logger.error(f"AI service error for user {user.id}: {e}")
+        raise HTTPException(status_code=502, detail="AI service is temporarily unavailable. Please try again.")
 
     # --- 5. Persist to Conversation ---
     if conv:

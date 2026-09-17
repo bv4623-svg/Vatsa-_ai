@@ -20,6 +20,7 @@ from app.services.image_service import generate_and_store_image
 from app.services.memory_extractor import extract_facts
 from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
+from app.services.feature_access import check_daily_limit, increment_usage
 
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://127.0.0.1:8000")
 
@@ -97,17 +98,45 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     return parsed
 
 
-async def _get_search_context(req: ChatRequest, user: User) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
+    """
+    Raises 429 (with the shape the frontend's upgrade UI expects) once a
+    user's free/pro/ultra daily cap for `feature` is hit, else records
+    this call against today's count. Chat and Code share one endpoint
+    (distinguished only by req.workspace in the body), so this can't be
+    a route-level dependency the way vision's require_feature() is --
+    it has to run after the request body is parsed.
+    """
+    allowed, used, limit = check_daily_limit(db, user, feature)
+    if not allowed:
+        raise HTTPException(status_code=429, detail={
+            "error": "daily_limit_reached",
+            "feature": feature,
+            "used": used,
+            "limit": limit,
+            "resets_at": "midnight UTC",
+            "upgrade_url": "/pricing",
+        })
+    increment_usage(db, user, feature)
+
+
+async def _get_search_context(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[str], List[Dict[str, Any]]]:
     """
     Best-effort multi-source web search grounding. Never raises -- if no
-    provider is configured/reachable, the chat just proceeds without it
-    rather than breaking the whole response over an optional feature.
+    provider is configured/reachable, or the user's daily search quota
+    is used up, the chat just proceeds without it rather than breaking
+    the whole response over an optional feature.
     Returns (formatted_context_for_the_prompt, raw_results_for_the_client).
     """
     if not req.web_search:
         return None, []
+    allowed, used, limit = check_daily_limit(db, user, "web_search")
+    if not allowed:
+        logger.info(f"Web search daily limit reached for user {user.id} ({used}/{limit})")
+        return None, []
     try:
         results = await SearchService.search(req.message)
+        increment_usage(db, user, "web_search")
         return SearchService.format_context(results, req.message), results
     except Exception as e:
         logger.warning(f"Web search unavailable for user {user.id}: {e}")
@@ -227,6 +256,7 @@ async def chat_endpoint(
     # when the caller asked for stream=true). ---
     img_prompt = detect_image_gen(req.message)
     if img_prompt:
+        _enforce_daily_limit(db, user, "image_gen")
         try:
             img_data = await generate_and_store_image(db, user.id, img_prompt)
         except Exception as e:
@@ -253,10 +283,13 @@ async def chat_endpoint(
             "primary_intent": "image_generation"
         }
 
-    # --- 2. Load Conversation History + Attachments ---
+    # --- 2. Daily message-limit check (per workspace) ---
+    _enforce_daily_limit(db, user, "code_messages" if workspace == "code" else "chat_messages")
+
+    # --- 3. Load Conversation History + Attachments ---
     conv, history_messages = _load_history(req, user, db)
     parsed_attachments = _parse_attachments(req)
-    search_context, sources = await _get_search_context(req, user)
+    search_context, sources = await _get_search_context(req, user, db)
 
     # --- 3. Streaming path ---
     if req.stream:

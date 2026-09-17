@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.auth.dependencies import get_current_user
 from app.services.token_service import TokenService
 from app.services.ai_service import AIService, PUBLIC_MODEL_NAME
+from app.services.feature_access import require_feature
 
 logger = logging.getLogger("VisionRouter")
 router = APIRouter(prefix="/api/vision", tags=["vision"])
@@ -57,7 +57,7 @@ def _parse_vision_response(raw: str) -> dict:
 async def analyze_image(
     file: UploadFile = File(...),
     prompt: Optional[str] = Form(None),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_feature("vision")),
     db: Session = Depends(get_db),
 ):
     """

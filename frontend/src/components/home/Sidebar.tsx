@@ -13,6 +13,7 @@ import { IconBtn } from "@/components/home/IconBtn";
 import { DeleteConfirmModal } from "@/components/home/DeleteConfirmModal";
 import { RenameModal } from "@/components/home/RenameModal";
 import { SidebarUpgradeCard } from "@/components/billing/SidebarUpgradeCard";
+import { SidebarWorkspaceLinks } from "@/components/sidebar/SidebarWorkspaceLinks";
 
 export const Sidebar = memo(({
   onNewChat, onOpenSettings, conversations, collapsed, toggleSidebar, width, onCloseMobile,
@@ -230,6 +231,8 @@ export const Sidebar = memo(({
               </div>
             )}
           </div>
+
+          <SidebarWorkspaceLinks collapsed={isCollapsed} />
 
           {isFree && (
             <div className={cn("pb-2", isCollapsed ? "px-2" : "px-1")}>

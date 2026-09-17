@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm import Session
 
 from app.models.generated_image import GeneratedImage
+from app.services.library import register_item
 
 logger = logging.getLogger("ImageService")
 
@@ -129,6 +130,16 @@ async def generate_and_store_image(db: Session, user_id: int, prompt: str) -> Di
     record = GeneratedImage(id=image_id, user_id=user_id, file_path=relative_path, prompt=prompt)
     db.add(record)
     db.commit()
+
+    register_item(
+        db, user_id, "generated",
+        name=(prompt or "Generated image")[:120],
+        size_bytes=len(processed),
+        mime="image/png",
+        source_table="generated_images",
+        source_id=image_id,
+        storage_path=relative_path,
+    )
 
     return {"image_id": image_id}
 

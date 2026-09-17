@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
+from app.services.library import delete_conversation_item
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 
@@ -115,6 +116,7 @@ def delete_conversation(
 
     db.delete(conv)
     db.commit()
+    delete_conversation_item(db, current_user.id, conv_id)
     return {"success": True, "id": conv_id}
 
 @router.delete("/conversations")
@@ -126,8 +128,11 @@ def delete_all_conversations(
     q = db.query(Conversation).filter(Conversation.user_id == current_user.id)
     if workspace:
         q = q.filter(Conversation.workspace == workspace)
+    conv_ids = [c.id for c in q.all()]
     count = q.delete()
     db.commit()
+    for conv_id in conv_ids:
+        delete_conversation_item(db, current_user.id, conv_id)
     return {"success": True, "deleted": count}
 
 @router.post("/conversations/{conv_id}/pin")

@@ -1,13 +1,12 @@
 "use client";
 
-import { Clock, FolderOpen } from "lucide-react";
+import { Clock, FolderKanban, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarNavLink } from "./SidebarNavLink";
 
 /** Cross-cutting sections (not chat- or code-specific) shown identically
  * in both the chat and code sidebars, between the recent-items list and
- * the account footer, in this fixed order: Scheduled, Library, Projects.
- * Projects joins this list once its route is real. */
+ * the account footer, in this fixed order: Scheduled, Library, Projects. */
 export function SidebarWorkspaceLinks({ collapsed }: { collapsed: boolean }) {
   const iconSize = collapsed ? "h-4 w-4" : "h-4 w-4";
   return (
@@ -17,6 +16,7 @@ export function SidebarWorkspaceLinks({ collapsed }: { collapsed: boolean }) {
     >
       <SidebarNavLink href="/scheduled" label="Scheduled" icon={<Clock className={iconSize} aria-hidden="true" />} collapsed={collapsed} />
       <SidebarNavLink href="/library" label="Library" icon={<FolderOpen className={iconSize} aria-hidden="true" />} collapsed={collapsed} />
+      <SidebarNavLink href="/projects" label="Projects" icon={<FolderKanban className={iconSize} aria-hidden="true" />} collapsed={collapsed} />
     </nav>
   );
 }

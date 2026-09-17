@@ -26,6 +26,7 @@ from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, tokens, upload, files, vision
 from app.routers import library as library_router
 from app.routers import scheduled_tasks as scheduled_tasks_router
+from app.routers import chat_projects as chat_projects_router
 from app.core.classifier import IntentClassifier
 from intents_data import INTENTS
 from app.database import init_db
@@ -66,6 +67,7 @@ app.include_router(files.router)
 app.include_router(vision.router)
 app.include_router(library_router.router)
 app.include_router(scheduled_tasks_router.router)
+app.include_router(chat_projects_router.router)
 
 
 # Intent classification endpoints

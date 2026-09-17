@@ -40,6 +40,11 @@ class LibraryItem(Base):
 
     share_token = Column(String(43), nullable=True, unique=True, index=True)
 
+    # A file can be attached to at most one project, independent of its
+    # normal folder placement (parent_id above) -- SET NULL so deleting a
+    # project detaches its files instead of deleting them.
+    project_id = Column(String(36), ForeignKey("chat_projects.id", ondelete="SET NULL"), nullable=True, index=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -58,6 +63,7 @@ class LibraryItem(Base):
             "sourceId": self.source_id,
             "hasFile": bool(self.storage_path),
             "shared": bool(self.share_token),
+            "projectId": self.project_id,
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }

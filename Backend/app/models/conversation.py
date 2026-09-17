@@ -18,6 +18,9 @@ class Conversation(Base):
     favorite = Column(Boolean, default=False)
     workspace = Column(String, default="chat", index=True)
     messages = Column(JSON, default=[])
+    # Nullable: most chats belong to no project. SET NULL (not CASCADE) so
+    # deleting a project detaches its chats instead of deleting them.
+    project_id = Column(String(36), ForeignKey("chat_projects.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -40,6 +43,8 @@ class Conversation(Base):
             "pinned": self.pinned or False,
             "archived": self.archived or False,
             "favorite": self.favorite or False,
+            "project_id": self.project_id,
+            "projectId": self.project_id,
             "messages": self.messages or [],
             "created_at": created,
             "updated_at": updated,

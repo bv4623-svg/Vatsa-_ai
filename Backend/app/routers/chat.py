@@ -19,6 +19,7 @@ from app.services.ai_service import AIService, detect_image_gen
 from app.services.image_service import generate_and_store_image
 from app.services.memory_extractor import extract_facts
 from app.services.library import sync_conversation_item, check_quota
+from app.services.chat_projects import get_project_instructions_for_conversation
 from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
 from app.services.feature_access import check_daily_limit, increment_usage
@@ -220,6 +221,7 @@ async def _stream_chat_response(
     search_context: Optional[str] = None,
     sources: Optional[List[Dict[str, Any]]] = None,
     reasoning: bool = False,
+    project_instructions: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
     full_text = ""
     reasoning_text = ""
@@ -235,6 +237,7 @@ async def _stream_chat_response(
             attachments=parsed_attachments,
             search_context=search_context,
             reasoning=reasoning,
+            project_instructions=project_instructions,
         ):
             if "thinking" in event:
                 yield f"data: {json.dumps({'thinking': event['thinking']})}\n\n"
@@ -324,6 +327,10 @@ async def chat_endpoint(
     conv, history_messages = _load_history(req, user, db)
     parsed_attachments = _parse_attachments(req)
     search_context, sources = await _get_search_context(req, user, db)
+    # A chat that belongs to a Project gets that project's systemPrompt +
+    # instructions applied to every message, not just the ones sent while
+    # viewing the project UI.
+    project_instructions = get_project_instructions_for_conversation(db, conv)
 
     # --- 3. Streaming path ---
     if req.stream:
@@ -331,7 +338,7 @@ async def chat_endpoint(
             _stream_chat_response(
                 req, user, db, conv, history_messages, parsed_attachments,
                 chosen_model, workspace, background_tasks, search_context, sources,
-                req.reasoning,
+                req.reasoning, project_instructions,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -349,6 +356,7 @@ async def chat_endpoint(
             attachments=parsed_attachments,
             search_context=search_context,
             reasoning=req.reasoning,
+            project_instructions=project_instructions,
         )
     except ValueError as ve:
         raise HTTPException(status_code=402, detail=str(ve))

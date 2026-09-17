@@ -3,7 +3,7 @@
 import { type RefObject } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import { Paperclip, Globe, Mic, Send, Square, Copy, RefreshCw, ThumbsUp, ThumbsDown, Share2, Check } from "lucide-react";
+import { Paperclip, Globe, Mic, Send, Square, Copy, RefreshCw, ThumbsUp, ThumbsDown, Share2, Check, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Magnetic from "@/components/landing/Magnetic";
 import { Tooltip } from "@/components/home/Tooltip";
@@ -11,6 +11,7 @@ import { AttachmentChip } from "@/components/home/AttachmentChip";
 import { AttachmentMenu } from "@/components/home/AttachmentMenu";
 import { ImageLoadingGrid } from "@/components/home/ImageLoadingGrid";
 import { SourcesList } from "@/components/home/SourcesList";
+import { ThinkingBox } from "@/components/home/ThinkingBox";
 import { linkifyCitations } from "@/lib/home/citations";
 import type { Message } from "@/types";
 import type { Attachment } from "@/types/home";
@@ -39,6 +40,8 @@ interface ChatMessagesViewProps {
   setShowAttachmentMenu: (v: boolean | ((p: boolean) => boolean)) => void;
   webSearchEnabled: boolean;
   onToggleWebSearch: () => void;
+  reasoningEnabled: boolean;
+  onToggleReasoning: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   folderInputRef: RefObject<HTMLInputElement | null>;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -52,6 +55,7 @@ export function ChatMessagesView({
   attachments, removeAttachment,
   inputRef, inputValue, onInputChange, onSend, onStop, hasReadyAttachments,
   showAttachmentMenu, setShowAttachmentMenu, webSearchEnabled, onToggleWebSearch,
+  reasoningEnabled, onToggleReasoning,
   fileInputRef, folderInputRef, onFileUpload,
   modKey,
 }: ChatMessagesViewProps) {
@@ -95,6 +99,8 @@ export function ChatMessagesView({
                     loading="lazy"
                   />
                 )}
+
+                <ThinkingBox thinking={msg.thinking} isStreaming={msg.isStreaming} />
 
                 {msg.content && (
                   <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed">
@@ -259,6 +265,14 @@ export function ChatMessagesView({
                   className={`rounded-full p-2 hover:bg-accent/10 ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
                 >
                   <Globe className="h-4 w-4" />
+                </button>
+              </Tooltip>
+              <Tooltip text={reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
+                <button
+                  onClick={onToggleReasoning}
+                  className={`rounded-full p-2 hover:bg-accent/10 ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                >
+                  <Brain className="h-4 w-4" />
                 </button>
               </Tooltip>
               <Tooltip text="Voice Chat">

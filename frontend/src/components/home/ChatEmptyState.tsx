@@ -2,7 +2,7 @@
 
 import { type RefObject } from "react";
 import { motion } from "framer-motion";
-import { Paperclip, Globe, Mic, Send, Code, Terminal, Image as ImageIcon, Bug, BookOpen, Search } from "lucide-react";
+import { Paperclip, Globe, Mic, Send, Code, Terminal, Image as ImageIcon, Bug, BookOpen, Search, Brain } from "lucide-react";
 import Magnetic from "@/components/landing/Magnetic";
 import { Tooltip } from "@/components/home/Tooltip";
 import { AttachmentChip } from "@/components/home/AttachmentChip";
@@ -34,6 +34,8 @@ interface ChatEmptyStateProps {
   setShowWebSearchPopover: (v: boolean | ((p: boolean) => boolean)) => void;
   webSearchEnabled: boolean;
   onToggleWebSearch: () => void;
+  reasoningEnabled: boolean;
+  onToggleReasoning: () => void;
   showVoicePopover: boolean;
   setShowVoicePopover: (v: boolean | ((p: boolean) => boolean)) => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -46,6 +48,7 @@ export function ChatEmptyState({
   attachments, removeAttachment,
   showAttachmentMenu, setShowAttachmentMenu,
   showWebSearchPopover, setShowWebSearchPopover, webSearchEnabled, onToggleWebSearch,
+  reasoningEnabled, onToggleReasoning,
   showVoicePopover, setShowVoicePopover,
   fileInputRef, folderInputRef, onFileUpload,
 }: ChatEmptyStateProps) {
@@ -129,6 +132,14 @@ export function ChatEmptyState({
                     </button>
                   </ToolbarPopover>
                 </div>
+                <Tooltip text={reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
+                  <button
+                    onClick={onToggleReasoning}
+                    className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-accent/10 hover:text-foreground ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                  >
+                    <Brain className="h-4 w-4" /> Think
+                  </button>
+                </Tooltip>
                 <div className="relative">
                   <Tooltip text="Voice Chat">
                     <button onClick={() => setShowVoicePopover((p) => !p)} className="flex items-center gap-1 rounded-full bg-accent/5 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground">

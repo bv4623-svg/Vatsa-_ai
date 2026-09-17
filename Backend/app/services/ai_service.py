@@ -43,6 +43,14 @@ FREE_FALLBACK_MODELS = [
     "deepseek/deepseek-chat",  # not free, but cheap -- last-resort paid fallback
 ]
 
+# Reasoning-mode model: emits its chain-of-thought as a separate
+# "reasoning" field (both buffered and streamed) distinct from the
+# final answer in "content" -- verified live against OpenRouter on
+# 2026-09-16. No silent fallback to a non-reasoning model on failure:
+# that would silently give the user a response without the reasoning
+# they explicitly asked for.
+REASONING_MODEL = os.getenv("REASONING_MODEL", "deepseek/deepseek-r1")
+
 # Per-model timeout for the fallback chain. Kept short deliberately: a
 # free-tier model that's down doesn't always fail fast -- it can hang
 # with no response at all -- and with several fallbacks configured, a
@@ -148,10 +156,12 @@ class AIService:
                 choices = data.get("choices", [])
                 if not choices:
                     raise RuntimeError("No choices returned from OpenRouter")
-                content = choices[0].get("message", {}).get("content", "")
+                message = choices[0].get("message", {})
+                content = message.get("content", "")
                 usage = data.get("usage", {})
                 return {
                     "content": content,
+                    "reasoning": message.get("reasoning") or "",
                     "model": data.get("model", model),
                     "prompt_tokens": usage.get("prompt_tokens", 0),
                     "completion_tokens": usage.get("completion_tokens", 0),
@@ -225,6 +235,9 @@ class AIService:
                         choices = evt.get("choices") or []
                         if choices:
                             delta = choices[0].get("delta", {}) or {}
+                            reasoning = delta.get("reasoning")
+                            if reasoning:
+                                yield {"type": "thinking", "content": reasoning}
                             content = delta.get("content")
                             if content:
                                 yield {"type": "delta", "content": content}
@@ -242,6 +255,7 @@ class AIService:
         workspace: str = "chat",
         attachments: Optional[List[Dict[str, Any]]] = None,
         search_context: Optional[str] = None,
+        reasoning: bool = False,
     ):
         """
         Streaming counterpart to generate_response with identical
@@ -250,35 +264,53 @@ class AIService:
         yields incremental text instead of returning one final dict.
 
         Yields:
-          {"delta": str}                                  -- one text chunk
-          {"error": str}                                  -- terminal
-          {"done": True, "content": str, "usage": {...}}  -- terminal
+          {"thinking": str}                                          -- one reasoning chunk (reasoning=True only)
+          {"delta": str}                                              -- one answer text chunk
+          {"error": str}                                              -- terminal
+          {"done": True, "content": str, "reasoning": str, "usage": {...}}  -- terminal
         """
-        target_model = AIService.map_model(model_name)
         is_code = (workspace == "code")
 
         estimated_tokens = 3000 if is_code else 800
+        target_model = REASONING_MODEL if reasoning else AIService.map_model(model_name)
         allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=target_model)
         if not allowed:
             yield {"error": reason}
             return
 
         messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments, search_context)
-        max_tokens = 4000 if is_code else 1500
-        candidate_models = [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
+        # Reasoning models spend a large share of their token budget on
+        # the "thinking" phase before ever emitting the answer -- a
+        # normal chat max_tokens would frequently cut them off mid-thought.
+        max_tokens = 4000 if (is_code or reasoning) else 1500
+        # No fallback chain in reasoning mode: silently downgrading to a
+        # non-reasoning model would give the user a plain answer while
+        # looking like they got the reasoning they explicitly asked for.
+        candidate_models = [target_model] if reasoning else [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
 
         full_text = ""
+        thinking_text = ""
         usage_info: Optional[Dict[str, Any]] = None
         last_error = None
         started = False
 
         for cand in candidate_models:
             full_text = ""
+            thinking_text = ""
             usage_info = None
             try:
-                logger.info(f"Streaming model {cand} for user {user.email} (workspace={workspace})")
+                logger.info(f"Streaming model {cand} for user {user.email} (workspace={workspace}, reasoning={reasoning})")
                 async for event in AIService.stream_openrouter(messages, cand, max_tokens=max_tokens):
-                    if event["type"] == "delta":
+                    if event["type"] == "thinking":
+                        # Some non-reasoning models incidentally emit a
+                        # "reasoning" field on every response -- only
+                        # surface it when the user actually asked for
+                        # reasoning mode, so the toggle is a real on/off.
+                        if reasoning:
+                            started = True
+                            thinking_text += event["content"]
+                            yield {"thinking": event["content"]}
+                    elif event["type"] == "delta":
                         started = True
                         full_text += event["content"]
                         yield {"delta": event["content"]}
@@ -300,7 +332,7 @@ class AIService:
             return
 
         prompt_tokens = (usage_info or {}).get("prompt_tokens") or len(query) // 4
-        completion_tokens = (usage_info or {}).get("completion_tokens") or len(full_text) // 4
+        completion_tokens = (usage_info or {}).get("completion_tokens") or len(full_text + thinking_text) // 4
         total_tokens = prompt_tokens + completion_tokens
 
         TokenService.deduct_tokens(
@@ -314,6 +346,7 @@ class AIService:
         yield {
             "done": True,
             "content": full_text,
+            "reasoning": thinking_text,
             "usage": {
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
@@ -428,9 +461,10 @@ class AIService:
         workspace: str = "chat",
         attachments: Optional[List[Dict[str, Any]]] = None,
         search_context: Optional[str] = None,
+        reasoning: bool = False,
     ) -> Dict[str, Any]:
-        target_model = AIService.map_model(model_name)
         is_code = (workspace == "code")
+        target_model = REASONING_MODEL if reasoning else AIService.map_model(model_name)
 
         # Estimate tokens and check allowance
         estimated_tokens = 3000 if is_code else 800
@@ -440,9 +474,10 @@ class AIService:
 
         messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments, search_context)
 
-        # 3. Call OpenRouter with fallback models
-        max_tokens = 4000 if is_code else 1500
-        candidate_models = [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
+        # 3. Call OpenRouter with fallback models (none in reasoning mode --
+        # see stream_response for why silently downgrading is worse than failing).
+        max_tokens = 4000 if (is_code or reasoning) else 1500
+        candidate_models = [target_model] if reasoning else [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
 
         last_error = None
         result = None
@@ -450,7 +485,7 @@ class AIService:
 
         for cand in candidate_models:
             try:
-                logger.info(f"Calling model {cand} for user {user.email} (workspace={workspace})")
+                logger.info(f"Calling model {cand} for user {user.email} (workspace={workspace}, reasoning={reasoning})")
                 result = await AIService.call_openrouter(messages, cand, max_tokens=max_tokens)
                 used_model = cand
                 break
@@ -478,6 +513,10 @@ class AIService:
             "status": "success",
             "query": query,
             "response": result["content"],
+            # Only surface reasoning when the user actually requested it --
+            # some non-reasoning models incidentally emit a "reasoning"
+            # field on every response, and the toggle should be a real on/off.
+            "reasoning": result.get("reasoning", "") if reasoning else "",
             "selected_model": PUBLIC_MODEL_NAME,
             "usage": {
                 "prompt_tokens": prompt_tokens,

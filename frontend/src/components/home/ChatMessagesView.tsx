@@ -48,6 +48,7 @@ interface ChatMessagesViewProps {
   folderInputRef: RefObject<HTMLInputElement | null>;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   modKey: string;
+  banner?: React.ReactNode;
 }
 
 export function ChatMessagesView({
@@ -58,6 +59,7 @@ export function ChatMessagesView({
   inputRef, inputValue, onInputChange, onSend, onStop, hasReadyAttachments,
   showAttachmentMenu, setShowAttachmentMenu, webSearchEnabled, onToggleWebSearch,
   reasoningEnabled, onToggleReasoning,
+  banner,
   fileInputRef, folderInputRef, onFileUpload,
   modKey,
 }: ChatMessagesViewProps) {
@@ -219,6 +221,7 @@ export function ChatMessagesView({
       </div>
 
       <div className="border-t border-border/40 bg-background/60 px-4 py-3 backdrop-blur-sm">
+        {banner}
         <div className="mx-auto max-w-[760px]">
           {attachments.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2">

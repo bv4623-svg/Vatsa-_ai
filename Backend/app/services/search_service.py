@@ -203,14 +203,20 @@ class SearchService:
         instance = os.getenv("SEARXNG_URL")
         if not instance:
             return []
+        api_key = os.getenv("SEARXNG_API_KEY")
+        headers = dict(_VATSA_UA)
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
         try:
             async with session.get(
                 f"{instance.rstrip('/')}/search",
                 params={"q": query, "format": "json", "safesearch": 1},
-                headers=_VATSA_UA,
+                headers=headers,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as resp:
                 if resp.status != 200:
+                    body = (await resp.text())[:200]
+                    logger.warning(f"SearxNG returned {resp.status} from {instance}: {body}")
                     return []
                 data = json.loads(await resp.text())
                 return [

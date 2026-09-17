@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Download, Link2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { LibraryItem } from "@/types/library";
 
@@ -12,13 +13,14 @@ export interface LibraryItemActions {
 }
 
 export function LibraryItemMenu({ item, actions }: { item: LibraryItem; actions: LibraryItemActions }) {
+  const t = useTranslations("library.itemMenu");
   const [open, setOpen] = useState(false);
 
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label={`More actions for ${item.name}`}
+        aria-label={t("moreActions", { name: item.name })}
         aria-haspopup="menu"
         aria-expanded={open}
         className="rounded-md p-1 text-muted-foreground hover:bg-accent/20 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -31,21 +33,21 @@ export function LibraryItemMenu({ item, actions }: { item: LibraryItem; actions:
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border border-border bg-background p-1 shadow-lg">
             <button role="menuitem" onClick={() => { setOpen(false); actions.onRename(item); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent/10">
-              <Pencil className="h-3.5 w-3.5" /> Rename
+              <Pencil className="h-3.5 w-3.5" /> {t("rename")}
             </button>
             {!item.isFolder && (
               <>
                 <button role="menuitem" onClick={() => { setOpen(false); actions.onDownload(item); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent/10">
-                  <Download className="h-3.5 w-3.5" /> Download
+                  <Download className="h-3.5 w-3.5" /> {t("download")}
                 </button>
                 <button role="menuitem" onClick={() => { setOpen(false); actions.onShare(item); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent/10">
-                  <Link2 className="h-3.5 w-3.5" /> {item.shared ? "Manage share link" : "Share"}
+                  <Link2 className="h-3.5 w-3.5" /> {item.shared ? t("manageShareLink") : t("share")}
                 </button>
               </>
             )}
             <hr className="my-1 border-border" />
             <button role="menuitem" onClick={() => { setOpen(false); actions.onDelete(item); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-red-500 hover:bg-red-500/10">
-              <Trash2 className="h-3.5 w-3.5" /> Delete
+              <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
             </button>
           </div>
         </>

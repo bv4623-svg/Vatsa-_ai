@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { getItemPreview, type ItemPreview } from "@/lib/library-client";
 import { formatBytes } from "@/lib/format-bytes";
@@ -16,6 +17,7 @@ interface LibraryPreviewPanelProps {
 /** Real content, fetched from GET /api/library/items/{id}/preview -- never
  * a placeholder "preview not available" for something that has content. */
 export function LibraryPreviewPanel({ item, onClose }: LibraryPreviewPanelProps) {
+  const t = useTranslations("library.previewPanel");
   const store = useMemo(() => createAsyncQueryStore<ItemPreview | null>(), []);
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, getInitialQueryState<ItemPreview | null>);
 
@@ -30,10 +32,10 @@ export function LibraryPreviewPanel({ item, onClose }: LibraryPreviewPanelProps)
   if (!item || item.isFolder) return null;
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-border bg-background sm:w-80" aria-label="Item preview">
+    <aside className="flex h-full w-full flex-col border-l border-border bg-background sm:w-80" aria-label={t("label")}>
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="truncate text-sm font-medium text-foreground" title={item.name}>{item.name}</h2>
-        <button onClick={onClose} aria-label="Close preview" className="rounded-md p-1 text-muted-foreground hover:bg-accent/10 hover:text-foreground">
+        <button onClick={onClose} aria-label={t("close")} className="rounded-md p-1 text-muted-foreground hover:bg-accent/10 hover:text-foreground">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -45,7 +47,7 @@ export function LibraryPreviewPanel({ item, onClose }: LibraryPreviewPanelProps)
       </div>
 
       <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-        {formatBytes(item.sizeBytes)} · Updated {new Date(item.updatedAt).toLocaleString()}
+        {formatBytes(item.sizeBytes)} · {t("updated", { date: new Date(item.updatedAt).toLocaleString() })}
       </div>
     </aside>
   );

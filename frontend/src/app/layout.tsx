@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import { RootShell } from "@/components/layout/RootShell";
+import { LocaleProvider } from "@/providers/LocaleProvider";
+import { localeDir } from "@/i18n/locales";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -16,9 +19,16 @@ export const metadata: Metadata = {
     "Your intelligent AI workspace for coding, research, writing, and business.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Resolved by i18n/request.ts: cookie -> Accept-Language -> "en". A
+  // signed-in user's profile language then takes over client-side once
+  // auth hydrates (see useSyncProfileLocale), and Settings' picker can
+  // switch it instantly afterwards without a reload (LocaleProvider).
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={localeDir(locale)} suppressHydrationWarning>
       <head>
         {/* Runs before first paint so the page never flashes the wrong theme. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
@@ -30,7 +40,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased font-sans">
-        <RootShell>{children}</RootShell>
+        <LocaleProvider initialLocale={locale} initialMessages={messages}>
+          <RootShell>{children}</RootShell>
+        </LocaleProvider>
       </body>
     </html>
   );

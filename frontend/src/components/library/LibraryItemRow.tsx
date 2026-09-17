@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/format-bytes";
 import { LibraryItemIcon } from "./LibraryItemIcon";
@@ -15,6 +16,7 @@ interface LibraryItemRowProps {
 }
 
 export function LibraryItemRow({ item, selected, onToggleSelect, onOpen, actions }: LibraryItemRowProps) {
+  const t = useTranslations("library");
   return (
     <div
       role="button"
@@ -32,7 +34,7 @@ export function LibraryItemRow({ item, selected, onToggleSelect, onOpen, actions
         checked={selected}
         onClick={(e) => e.stopPropagation()}
         onChange={() => onToggleSelect(item.id)}
-        aria-label={`Select ${item.name}`}
+        aria-label={t("selectItem", { name: item.name })}
         className="h-4 w-4 shrink-0 rounded border-border accent-accent"
       />
       <LibraryItemIcon type={item.type} isFolder={item.isFolder} className="h-4 w-4 shrink-0 text-muted-foreground" />

@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "edit": "Edit",
+    "create": "Buat",
+    "close": "Tutup",
+    "loading": "Memuat...",
+    "confirm": "Konfirmasi"
+  },
+  "nav": {
+    "scheduled": "Terjadwal",
+    "library": "Pustaka",
+    "projects": "Proyek",
+    "settings": "Pengaturan",
+    "signOut": "Keluar",
+    "newChat": "Obrolan Baru",
+    "searchChats": "Cari obrolan...",
+    "backToChat": "Kembali ke obrolan"
+  },
+  "settings": {
+    "language": {
+      "label": "Bahasa",
+      "description": "Bahasa yang digunakan untuk menampilkan antarmuka Vatsa AI.",
+      "searchPlaceholder": "Cari bahasa...",
+      "noResults": "Tidak ada bahasa yang cocok dengan pencarian Anda."
+    }
+  },
+  "library": {
+    "header": "Pustaka",
+    "tabs": {
+      "all": "Semua",
+      "chats": "Obrolan",
+      "documents": "Dokumen",
+      "code": "Kode",
+      "artifacts": "Artefak",
+      "uploads": "Unggahan",
+      "generated": "Dihasilkan",
+      "filtersLabel": "Filter pustaka"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Cari di pustaka...",
+      "searchLabel": "Cari di pustaka",
+      "sortLabel": "Urutkan item pustaka",
+      "sort": {
+        "dateDesc": "Terbaru dulu",
+        "dateAsc": "Terlama dulu",
+        "nameAsc": "Nama (A-Z)",
+        "nameDesc": "Nama (Z-A)",
+        "sizeDesc": "Terbesar dulu",
+        "sizeAsc": "Terkecil dulu"
+      },
+      "gridView": "Tampilan grid",
+      "listView": "Tampilan daftar",
+      "newFolder": "Folder baru",
+      "viewModeLabel": "Mode tampilan"
+    },
+    "breadcrumb": {
+      "root": "Pustaka",
+      "label": "Jalur folder"
+    },
+    "emptyState": {
+      "noResultsTitle": "Tidak ada item yang cocok dengan pencarian Anda",
+      "noResultsBody": "Coba kata kunci pencarian lain atau hapus filter.",
+      "emptyTitle": "Belum ada apa pun di sini",
+      "emptyBody": "Obrolan, proyek kode, unggahan, dan gambar yang dihasilkan akan otomatis muncul di sini."
+    },
+    "storage": {
+      "usedOf": "{used} dari {limit} terpakai",
+      "typeLabels": {
+        "chat": "Obrolan",
+        "document": "Dokumen",
+        "code": "Kode",
+        "artifact": "Artefak",
+        "upload": "Unggahan",
+        "generated": "Dihasilkan"
+      },
+      "atLimit": "Penyimpanan Anda sudah penuh. Unggahan dan pembuatan gambar akan diblokir sampai Anda mengosongkan ruang atau upgrade.",
+      "atWarning": "Anda mendekati batas penyimpanan.",
+      "upgrade": "Upgrade",
+      "upgradeReason": "Anda menggunakan {used} dari {limit}. Upgrade untuk mendapatkan ruang penyimpanan lebih besar."
+    },
+    "bulkBar": {
+      "selected": "{count} dipilih",
+      "download": "Unduh",
+      "delete": "Hapus",
+      "clearSelection": "Batalkan pilihan"
+    },
+    "loadMore": {
+      "loading": "Memuat...",
+      "loadMore": "Muat lebih banyak"
+    },
+    "itemMenu": {
+      "moreActions": "Tindakan lain untuk {name}",
+      "rename": "Ganti nama",
+      "download": "Unduh",
+      "share": "Bagikan",
+      "manageShareLink": "Kelola tautan berbagi",
+      "delete": "Hapus"
+    },
+    "folderModal": {
+      "title": "Folder baru",
+      "nameLabel": "Nama folder",
+      "namePlaceholder": "Nama folder",
+      "creating": "Membuat...",
+      "create": "Buat"
+    },
+    "renameModal": {
+      "title": "Ganti nama",
+      "nameLabel": "Nama",
+      "saving": "Menyimpan...",
+      "save": "Simpan"
+    },
+    "deleteConfirm": {
+      "titleOne": "Hapus \"{name}\"?",
+      "titleMany": "Hapus {count} item?",
+      "body": "Tindakan ini tidak dapat dibatalkan.",
+      "folderWarning": " Menghapus folder juga akan menghapus semua isinya.",
+      "chatWarning": " Obrolan dan proyek kode akan dihapus permanen, bukan hanya disembunyikan."
+    },
+    "shareModal": {
+      "title": "Bagikan \"{name}\"",
+      "body": "Siapa pun dengan tautan ini dapat melihat item ini. Tidak perlu akun.",
+      "createLink": "Buat tautan berbagi",
+      "creatingLink": "Membuat tautan...",
+      "copyLink": "Salin tautan",
+      "revokeLink": "Cabut tautan"
+    },
+    "previewPanel": {
+      "label": "Pratinjau item",
+      "close": "Tutup pratinjau",
+      "updated": "Diperbarui pada {date}",
+      "noMessages": "Belum ada pesan.",
+      "noTextPreview": "Jenis file ini tidak memiliki pratinjau teks. Unduh untuk melihat isinya.",
+      "noPreview": "Tidak ada pratinjau yang tersedia untuk item ini."
+    },
+    "selectItem": "Pilih {name}",
+    "folder": "Folder"
+  }
+}

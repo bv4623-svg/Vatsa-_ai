@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/format-bytes";
 import { LibraryItemIcon } from "./LibraryItemIcon";
@@ -15,6 +16,7 @@ interface LibraryItemCardProps {
 }
 
 export function LibraryItemCard({ item, selected, onToggleSelect, onOpen, actions }: LibraryItemCardProps) {
+  const t = useTranslations("library");
   return (
     <div
       role="button"
@@ -33,7 +35,7 @@ export function LibraryItemCard({ item, selected, onToggleSelect, onOpen, action
           checked={selected}
           onClick={(e) => e.stopPropagation()}
           onChange={() => onToggleSelect(item.id)}
-          aria-label={`Select ${item.name}`}
+          aria-label={t("selectItem", { name: item.name })}
           className="h-4 w-4 rounded border-border accent-accent"
         />
         <LibraryItemMenu item={item} actions={actions} />
@@ -44,7 +46,7 @@ export function LibraryItemCard({ item, selected, onToggleSelect, onOpen, action
       </div>
 
       <p className="mt-2 truncate text-sm font-medium text-foreground" title={item.name}>{item.name}</p>
-      <p className="text-xs text-muted-foreground">{item.isFolder ? "Folder" : formatBytes(item.sizeBytes)}</p>
+      <p className="text-xs text-muted-foreground">{item.isFolder ? t("folder") : formatBytes(item.sizeBytes)}</p>
     </div>
   );
 }

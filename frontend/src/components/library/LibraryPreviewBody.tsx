@@ -1,11 +1,13 @@
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import type { ItemPreview } from "@/lib/library-client";
 
 export function LibraryPreviewBody({ preview }: { preview: ItemPreview }) {
+  const t = useTranslations("library.previewPanel");
   if (preview.kind === "messages") {
     return (
       <div className="space-y-3">
-        {preview.messages.length === 0 && <p className="text-sm text-muted-foreground">No messages yet.</p>}
+        {preview.messages.length === 0 && <p className="text-sm text-muted-foreground">{t("noMessages")}</p>}
         {preview.messages.map((m, i) => (
           <div key={i} className="rounded-lg border border-border/60 p-2.5 text-xs">
             <p className="mb-1 font-medium capitalize text-muted-foreground">{m.role}</p>
@@ -33,9 +35,9 @@ export function LibraryPreviewBody({ preview }: { preview: ItemPreview }) {
     return preview.text ? (
       <pre className="whitespace-pre-wrap break-words text-xs text-foreground/90">{preview.text}</pre>
     ) : (
-      <p className="text-sm text-muted-foreground">This file type has no text preview. Download it to view the contents.</p>
+      <p className="text-sm text-muted-foreground">{t("noTextPreview")}</p>
     );
   }
 
-  return <p className="text-sm text-muted-foreground">No preview available for this item.</p>;
+  return <p className="text-sm text-muted-foreground">{t("noPreview")}</p>;
 }

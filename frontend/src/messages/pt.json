@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "create": "Criar",
+    "close": "Fechar",
+    "loading": "Carregando...",
+    "confirm": "Confirmar"
+  },
+  "nav": {
+    "scheduled": "Agendadas",
+    "library": "Biblioteca",
+    "projects": "Projetos",
+    "settings": "Configurações",
+    "signOut": "Sair",
+    "newChat": "Nova conversa",
+    "searchChats": "Buscar conversas...",
+    "backToChat": "Voltar para a conversa"
+  },
+  "settings": {
+    "language": {
+      "label": "Idioma",
+      "description": "O idioma em que a interface do Vatsa AI é exibida.",
+      "searchPlaceholder": "Buscar idiomas...",
+      "noResults": "Nenhum idioma corresponde à sua busca."
+    }
+  },
+  "library": {
+    "header": "Biblioteca",
+    "tabs": {
+      "all": "Tudo",
+      "chats": "Conversas",
+      "documents": "Documentos",
+      "code": "Código",
+      "artifacts": "Artefatos",
+      "uploads": "Envios",
+      "generated": "Gerados",
+      "filtersLabel": "Filtros da biblioteca"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Buscar na biblioteca...",
+      "searchLabel": "Buscar na biblioteca",
+      "sortLabel": "Ordenar itens da biblioteca",
+      "sort": {
+        "dateDesc": "Mais recentes primeiro",
+        "dateAsc": "Mais antigos primeiro",
+        "nameAsc": "Nome (A-Z)",
+        "nameDesc": "Nome (Z-A)",
+        "sizeDesc": "Maiores primeiro",
+        "sizeAsc": "Menores primeiro"
+      },
+      "gridView": "Visualização em grade",
+      "listView": "Visualização em lista",
+      "newFolder": "Nova pasta",
+      "viewModeLabel": "Modo de exibição"
+    },
+    "breadcrumb": {
+      "root": "Biblioteca",
+      "label": "Caminho da pasta"
+    },
+    "emptyState": {
+      "noResultsTitle": "Nenhum item corresponde à sua busca",
+      "noResultsBody": "Tente outro termo de busca ou limpe o filtro.",
+      "emptyTitle": "Ainda não há nada aqui",
+      "emptyBody": "Conversas, projetos de código, envios e imagens geradas que você criar aparecerão aqui automaticamente."
+    },
+    "storage": {
+      "usedOf": "{used} de {limit} usados",
+      "typeLabels": {
+        "chat": "Conversas",
+        "document": "Documentos",
+        "code": "Código",
+        "artifact": "Artefatos",
+        "upload": "Envios",
+        "generated": "Gerados"
+      },
+      "atLimit": "Seu armazenamento acabou. Envios e imagens geradas ficam bloqueados até você liberar espaço ou fazer upgrade.",
+      "atWarning": "Você está perto do seu limite de armazenamento.",
+      "upgrade": "Fazer upgrade",
+      "upgradeReason": "Você está usando {used} de {limit}. Faça upgrade para mais armazenamento."
+    },
+    "bulkBar": {
+      "selected": "{count} selecionado(s)",
+      "download": "Baixar",
+      "delete": "Excluir",
+      "clearSelection": "Limpar seleção"
+    },
+    "loadMore": {
+      "loading": "Carregando...",
+      "loadMore": "Carregar mais"
+    },
+    "itemMenu": {
+      "moreActions": "Mais ações para {name}",
+      "rename": "Renomear",
+      "download": "Baixar",
+      "share": "Compartilhar",
+      "manageShareLink": "Gerenciar link de compartilhamento",
+      "delete": "Excluir"
+    },
+    "folderModal": {
+      "title": "Nova pasta",
+      "nameLabel": "Nome da pasta",
+      "namePlaceholder": "Nome da pasta",
+      "creating": "Criando...",
+      "create": "Criar"
+    },
+    "renameModal": {
+      "title": "Renomear",
+      "nameLabel": "Nome",
+      "saving": "Salvando...",
+      "save": "Salvar"
+    },
+    "deleteConfirm": {
+      "titleOne": "Excluir \"{name}\"?",
+      "titleMany": "Excluir {count} itens?",
+      "body": "Essa ação não pode ser desfeita.",
+      "folderWarning": " Excluir uma pasta também exclui tudo dentro dela.",
+      "chatWarning": " Conversas e projetos de código são removidos permanentemente, não apenas ocultados."
+    },
+    "shareModal": {
+      "title": "Compartilhar \"{name}\"",
+      "body": "Qualquer pessoa com este link pode ver este item. Nenhuma conta é necessária.",
+      "createLink": "Criar link de compartilhamento",
+      "creatingLink": "Criando link...",
+      "copyLink": "Copiar link",
+      "revokeLink": "Revogar link"
+    },
+    "previewPanel": {
+      "label": "Pré-visualização do item",
+      "close": "Fechar pré-visualização",
+      "updated": "Atualizado em {date}",
+      "noMessages": "Ainda não há mensagens.",
+      "noTextPreview": "Este tipo de arquivo não tem pré-visualização de texto. Baixe-o para ver o conteúdo.",
+      "noPreview": "Nenhuma pré-visualização disponível para este item."
+    },
+    "selectItem": "Selecionar {name}",
+    "folder": "Pasta"
+  }
+}

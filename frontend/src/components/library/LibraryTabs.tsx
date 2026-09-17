@@ -1,15 +1,16 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
-const TABS: { value: string | null; label: string }[] = [
-  { value: null, label: "All" },
-  { value: "chat", label: "Chats" },
-  { value: "document", label: "Documents" },
-  { value: "code", label: "Code" },
-  { value: "artifact", label: "Artifacts" },
-  { value: "upload", label: "Uploads" },
-  { value: "generated", label: "Generated" },
+const TABS: { value: string | null; key: string }[] = [
+  { value: null, key: "all" },
+  { value: "chat", key: "chats" },
+  { value: "document", key: "documents" },
+  { value: "code", key: "code" },
+  { value: "artifact", key: "artifacts" },
+  { value: "upload", key: "uploads" },
+  { value: "generated", key: "generated" },
 ];
 
 interface LibraryTabsProps {
@@ -18,8 +19,9 @@ interface LibraryTabsProps {
 }
 
 export function LibraryTabs({ active, onChange }: LibraryTabsProps) {
+  const t = useTranslations("library.tabs");
   return (
-    <div role="tablist" aria-label="Library filters" className="flex flex-wrap gap-1">
+    <div role="tablist" aria-label={t("filtersLabel")} className="flex flex-wrap gap-1">
       {TABS.map((tab) => (
         <button
           key={tab.value ?? "all"}
@@ -34,7 +36,7 @@ export function LibraryTabs({ active, onChange }: LibraryTabsProps) {
               : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
           )}
         >
-          {tab.label}
+          {t(tab.key)}
         </button>
       ))}
     </div>

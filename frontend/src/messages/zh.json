@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "close": "关闭",
+    "loading": "加载中...",
+    "confirm": "确认"
+  },
+  "nav": {
+    "scheduled": "定时任务",
+    "library": "资料库",
+    "projects": "项目",
+    "settings": "设置",
+    "signOut": "退出登录",
+    "newChat": "新建对话",
+    "searchChats": "搜索对话...",
+    "backToChat": "返回对话"
+  },
+  "settings": {
+    "language": {
+      "label": "语言",
+      "description": "Vatsa AI 界面显示所使用的语言。",
+      "searchPlaceholder": "搜索语言...",
+      "noResults": "没有与搜索匹配的语言。"
+    }
+  },
+  "library": {
+    "header": "资料库",
+    "tabs": {
+      "all": "全部",
+      "chats": "对话",
+      "documents": "文档",
+      "code": "代码",
+      "artifacts": "生成文件",
+      "uploads": "上传文件",
+      "generated": "生成图片",
+      "filtersLabel": "资料库筛选器"
+    },
+    "toolbar": {
+      "searchPlaceholder": "搜索资料库...",
+      "searchLabel": "搜索资料库",
+      "sortLabel": "对资料库项目排序",
+      "sort": {
+        "dateDesc": "最新优先",
+        "dateAsc": "最早优先",
+        "nameAsc": "名称 (A-Z)",
+        "nameDesc": "名称 (Z-A)",
+        "sizeDesc": "最大优先",
+        "sizeAsc": "最小优先"
+      },
+      "gridView": "网格视图",
+      "listView": "列表视图",
+      "newFolder": "新建文件夹",
+      "viewModeLabel": "视图模式"
+    },
+    "breadcrumb": {
+      "root": "资料库",
+      "label": "文件夹路径"
+    },
+    "emptyState": {
+      "noResultsTitle": "没有与搜索匹配的项目",
+      "noResultsBody": "请尝试其他搜索词，或清除筛选条件。",
+      "emptyTitle": "这里还没有任何内容",
+      "emptyBody": "你创建的对话、代码项目、上传文件和生成的图片会自动显示在这里。"
+    },
+    "storage": {
+      "usedOf": "已使用 {used}，共 {limit}",
+      "typeLabels": {
+        "chat": "对话",
+        "document": "文档",
+        "code": "代码",
+        "artifact": "生成文件",
+        "upload": "上传文件",
+        "generated": "生成图片"
+      },
+      "atLimit": "存储空间已用完。在你释放空间或升级之前，上传和图片生成功能将被阻止。",
+      "atWarning": "你的存储空间即将用完。",
+      "upgrade": "升级",
+      "upgradeReason": "你已使用 {used}，共 {limit}。升级以获得更多存储空间。"
+    },
+    "bulkBar": {
+      "selected": "已选择 {count} 项",
+      "download": "下载",
+      "delete": "删除",
+      "clearSelection": "取消选择"
+    },
+    "loadMore": {
+      "loading": "加载中...",
+      "loadMore": "加载更多"
+    },
+    "itemMenu": {
+      "moreActions": "{name} 的更多操作",
+      "rename": "重命名",
+      "download": "下载",
+      "share": "分享",
+      "manageShareLink": "管理分享链接",
+      "delete": "删除"
+    },
+    "folderModal": {
+      "title": "新建文件夹",
+      "nameLabel": "文件夹名称",
+      "namePlaceholder": "文件夹名称",
+      "creating": "创建中...",
+      "create": "创建"
+    },
+    "renameModal": {
+      "title": "重命名",
+      "nameLabel": "名称",
+      "saving": "保存中...",
+      "save": "保存"
+    },
+    "deleteConfirm": {
+      "titleOne": "删除“{name}”？",
+      "titleMany": "删除 {count} 个项目？",
+      "body": "此操作无法撤销。",
+      "folderWarning": " 删除文件夹将同时删除其中的所有内容。",
+      "chatWarning": " 对话和代码项目将被永久删除，而不仅仅是隐藏。"
+    },
+    "shareModal": {
+      "title": "分享“{name}”",
+      "body": "任何拥有此链接的人都可以查看此项目，无需账号。",
+      "createLink": "创建分享链接",
+      "creatingLink": "正在创建链接...",
+      "copyLink": "复制分享链接",
+      "revokeLink": "撤销链接"
+    },
+    "previewPanel": {
+      "label": "项目预览",
+      "close": "关闭预览",
+      "updated": "更新于 {date}",
+      "noMessages": "暂无消息。",
+      "noTextPreview": "此文件类型没有文本预览。请下载以查看内容。",
+      "noPreview": "此项目没有可用的预览。"
+    },
+    "selectItem": "选择 {name}",
+    "folder": "文件夹"
+  }
+}

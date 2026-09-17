@@ -1,19 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/format-bytes";
 import { useUpgrade } from "@/components/billing/UpgradeProvider";
 import type { StorageUsage } from "@/types/library";
-
-const TYPE_LABELS: Record<string, string> = {
-  chat: "Chats",
-  document: "Documents",
-  code: "Code",
-  artifact: "Artifacts",
-  upload: "Uploads",
-  generated: "Generated",
-};
 
 interface LibraryStorageBarProps {
   usage: StorageUsage | null;
@@ -23,6 +15,7 @@ interface LibraryStorageBarProps {
 /** Every number here is read straight from GET /api/library/storage --
  * a real SUM(size_bytes) query, never a hardcoded placeholder. */
 export function LibraryStorageBar({ usage, loading }: LibraryStorageBarProps) {
+  const t = useTranslations("library.storage");
   const { openUpgrade } = useUpgrade();
 
   if (loading || !usage) {
@@ -30,13 +23,13 @@ export function LibraryStorageBar({ usage, loading }: LibraryStorageBarProps) {
   }
 
   const barColor = usage.at_limit ? "bg-red-500" : usage.at_warning ? "bg-amber-500" : "bg-accent";
+  const usedStr = formatBytes(usage.used_bytes);
+  const limitStr = formatBytes(usage.limit_bytes);
 
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 p-4">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-foreground">
-          {formatBytes(usage.used_bytes)} of {formatBytes(usage.limit_bytes)} used
-        </span>
+        <span className="font-medium text-foreground">{t("usedOf", { used: usedStr, limit: limitStr })}</span>
         <span className="text-muted-foreground">{usage.percent}%</span>
       </div>
 
@@ -49,7 +42,7 @@ export function LibraryStorageBar({ usage, loading }: LibraryStorageBarProps) {
           .filter(([, bytes]) => bytes > 0)
           .map(([type, bytes]) => (
             <span key={type}>
-              {TYPE_LABELS[type] ?? type}: {formatBytes(bytes)}
+              {t(`typeLabels.${type}`)}: {formatBytes(bytes)}
             </span>
           ))}
       </div>
@@ -62,11 +55,7 @@ export function LibraryStorageBar({ usage, loading }: LibraryStorageBarProps) {
           )}
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="flex-1">
-            {usage.at_limit
-              ? "You're out of storage. Uploads and generated images are blocked until you free up space or upgrade."
-              : "You're close to your storage limit."}
-          </span>
+          <span className="flex-1">{usage.at_limit ? t("atLimit") : t("atWarning")}</span>
           <button
             onClick={() =>
               openUpgrade({
@@ -74,12 +63,12 @@ export function LibraryStorageBar({ usage, loading }: LibraryStorageBarProps) {
                 // limitInfo renders as "used X of Y today", built for daily
                 // message counts -- storage is GB, not a daily count, so
                 // that context goes in the reason text instead.
-                reason: `You're using ${formatBytes(usage.used_bytes)} of ${formatBytes(usage.limit_bytes)}. Upgrade for more storage.`,
+                reason: t("upgradeReason", { used: usedStr, limit: limitStr }),
               })
             }
             className="shrink-0 font-medium underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            Upgrade
+            {t("upgrade")}
           </button>
         </div>
       )}

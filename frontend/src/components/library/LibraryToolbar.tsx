@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { FolderPlus, LayoutGrid, List as ListIcon, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LibrarySortKey, LibraryViewMode, SortOrder } from "@/types/library";
@@ -15,16 +16,17 @@ interface LibraryToolbarProps {
   onCreateFolder: () => void;
 }
 
-const SORT_OPTIONS: { value: `${LibrarySortKey}-${SortOrder}`; label: string }[] = [
-  { value: "date-desc", label: "Newest first" },
-  { value: "date-asc", label: "Oldest first" },
-  { value: "name-asc", label: "Name (A-Z)" },
-  { value: "name-desc", label: "Name (Z-A)" },
-  { value: "size-desc", label: "Largest first" },
-  { value: "size-asc", label: "Smallest first" },
+const SORT_OPTIONS: { value: `${LibrarySortKey}-${SortOrder}`; key: string }[] = [
+  { value: "date-desc", key: "dateDesc" },
+  { value: "date-asc", key: "dateAsc" },
+  { value: "name-asc", key: "nameAsc" },
+  { value: "name-desc", key: "nameDesc" },
+  { value: "size-desc", key: "sizeDesc" },
+  { value: "size-asc", key: "sizeAsc" },
 ];
 
 export function LibraryToolbar({ search, onSearchChange, sort, order, onSortChange, view, onViewChange, onCreateFolder }: LibraryToolbarProps) {
+  const t = useTranslations("library.toolbar");
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-0 flex-1 sm:max-w-xs">
@@ -32,8 +34,8 @@ export function LibraryToolbar({ search, onSearchChange, sort, order, onSortChan
         <input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search library..."
-          aria-label="Search library"
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchLabel")}
           className="w-full rounded-lg border border-border bg-input/10 py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent/50 focus:outline-none"
         />
       </div>
@@ -44,19 +46,19 @@ export function LibraryToolbar({ search, onSearchChange, sort, order, onSortChan
           const [nextSort, nextOrder] = e.target.value.split("-") as [LibrarySortKey, SortOrder];
           onSortChange(nextSort, nextOrder);
         }}
-        aria-label="Sort library items"
+        aria-label={t("sortLabel")}
         className="rounded-lg border border-border bg-input/10 px-3 py-2 text-sm text-foreground focus:border-accent/50 focus:outline-none"
       >
         {SORT_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <option key={opt.value} value={opt.value}>{t(`sort.${opt.key}`)}</option>
         ))}
       </select>
 
-      <div role="group" aria-label="View mode" className="flex rounded-lg border border-border p-0.5">
+      <div role="group" aria-label={t("viewModeLabel")} className="flex rounded-lg border border-border p-0.5">
         <button
           onClick={() => onViewChange("grid")}
           aria-pressed={view === "grid"}
-          aria-label="Grid view"
+          aria-label={t("gridView")}
           className={cn("rounded-md p-1.5", view === "grid" ? "bg-accent/20 text-foreground" : "text-muted-foreground hover:text-foreground")}
         >
           <LayoutGrid className="h-4 w-4" />
@@ -64,7 +66,7 @@ export function LibraryToolbar({ search, onSearchChange, sort, order, onSortChan
         <button
           onClick={() => onViewChange("list")}
           aria-pressed={view === "list"}
-          aria-label="List view"
+          aria-label={t("listView")}
           className={cn("rounded-md p-1.5", view === "list" ? "bg-accent/20 text-foreground" : "text-muted-foreground hover:text-foreground")}
         >
           <ListIcon className="h-4 w-4" />
@@ -75,7 +77,7 @@ export function LibraryToolbar({ search, onSearchChange, sort, order, onSortChan
         onClick={onCreateFolder}
         className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        <FolderPlus className="h-4 w-4" aria-hidden="true" /> New folder
+        <FolderPlus className="h-4 w-4" aria-hidden="true" /> {t("newFolder")}
       </button>
     </div>
   );

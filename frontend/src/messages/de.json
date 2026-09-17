@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "close": "Schließen",
+    "loading": "Wird geladen...",
+    "confirm": "Bestätigen"
+  },
+  "nav": {
+    "scheduled": "Geplant",
+    "library": "Bibliothek",
+    "projects": "Projekte",
+    "settings": "Einstellungen",
+    "signOut": "Abmelden",
+    "newChat": "Neuer Chat",
+    "searchChats": "Chats durchsuchen...",
+    "backToChat": "Zurück zum Chat"
+  },
+  "settings": {
+    "language": {
+      "label": "Sprache",
+      "description": "Die Sprache, in der die Oberfläche von Vatsa AI angezeigt wird.",
+      "searchPlaceholder": "Sprachen suchen...",
+      "noResults": "Keine Sprache entspricht deiner Suche."
+    }
+  },
+  "library": {
+    "header": "Bibliothek",
+    "tabs": {
+      "all": "Alle",
+      "chats": "Chats",
+      "documents": "Dokumente",
+      "code": "Code",
+      "artifacts": "Artefakte",
+      "uploads": "Uploads",
+      "generated": "Generiert",
+      "filtersLabel": "Bibliotheksfilter"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Bibliothek durchsuchen...",
+      "searchLabel": "Bibliothek durchsuchen",
+      "sortLabel": "Bibliothekselemente sortieren",
+      "sort": {
+        "dateDesc": "Neueste zuerst",
+        "dateAsc": "Älteste zuerst",
+        "nameAsc": "Name (A-Z)",
+        "nameDesc": "Name (Z-A)",
+        "sizeDesc": "Größte zuerst",
+        "sizeAsc": "Kleinste zuerst"
+      },
+      "gridView": "Rasteransicht",
+      "listView": "Listenansicht",
+      "newFolder": "Neuer Ordner",
+      "viewModeLabel": "Ansichtsmodus"
+    },
+    "breadcrumb": {
+      "root": "Bibliothek",
+      "label": "Ordnerpfad"
+    },
+    "emptyState": {
+      "noResultsTitle": "Keine Elemente entsprechen deiner Suche",
+      "noResultsBody": "Versuche einen anderen Suchbegriff oder entferne den Filter.",
+      "emptyTitle": "Hier ist noch nichts",
+      "emptyBody": "Chats, Code-Projekte, Uploads und generierte Bilder, die du erstellst, erscheinen hier automatisch."
+    },
+    "storage": {
+      "usedOf": "{used} von {limit} verwendet",
+      "typeLabels": {
+        "chat": "Chats",
+        "document": "Dokumente",
+        "code": "Code",
+        "artifact": "Artefakte",
+        "upload": "Uploads",
+        "generated": "Generiert"
+      },
+      "atLimit": "Dein Speicherplatz ist voll. Uploads und generierte Bilder sind blockiert, bis du Platz freigibst oder upgradest.",
+      "atWarning": "Du näherst dich deinem Speicherlimit.",
+      "upgrade": "Upgraden",
+      "upgradeReason": "Du nutzt {used} von {limit}. Upgrade für mehr Speicherplatz."
+    },
+    "bulkBar": {
+      "selected": "{count} ausgewählt",
+      "download": "Herunterladen",
+      "delete": "Löschen",
+      "clearSelection": "Auswahl aufheben"
+    },
+    "loadMore": {
+      "loading": "Wird geladen...",
+      "loadMore": "Mehr laden"
+    },
+    "itemMenu": {
+      "moreActions": "Weitere Aktionen für {name}",
+      "rename": "Umbenennen",
+      "download": "Herunterladen",
+      "share": "Teilen",
+      "manageShareLink": "Freigabelink verwalten",
+      "delete": "Löschen"
+    },
+    "folderModal": {
+      "title": "Neuer Ordner",
+      "nameLabel": "Ordnername",
+      "namePlaceholder": "Ordnername",
+      "creating": "Wird erstellt...",
+      "create": "Erstellen"
+    },
+    "renameModal": {
+      "title": "Umbenennen",
+      "nameLabel": "Name",
+      "saving": "Wird gespeichert...",
+      "save": "Speichern"
+    },
+    "deleteConfirm": {
+      "titleOne": "\"{name}\" löschen?",
+      "titleMany": "{count} Elemente löschen?",
+      "body": "Dies kann nicht rückgängig gemacht werden.",
+      "folderWarning": " Beim Löschen eines Ordners wird auch dessen gesamter Inhalt gelöscht.",
+      "chatWarning": " Chats und Code-Projekte werden dauerhaft entfernt, nicht nur ausgeblendet."
+    },
+    "shareModal": {
+      "title": "\"{name}\" teilen",
+      "body": "Jeder mit diesem Link kann dieses Element ansehen. Kein Konto erforderlich.",
+      "createLink": "Freigabelink erstellen",
+      "creatingLink": "Link wird erstellt...",
+      "copyLink": "Freigabelink kopieren",
+      "revokeLink": "Link widerrufen"
+    },
+    "previewPanel": {
+      "label": "Elementvorschau",
+      "close": "Vorschau schließen",
+      "updated": "Aktualisiert am {date}",
+      "noMessages": "Noch keine Nachrichten.",
+      "noTextPreview": "Für diesen Dateityp gibt es keine Textvorschau. Lade sie herunter, um den Inhalt zu sehen.",
+      "noPreview": "Für dieses Element ist keine Vorschau verfügbar."
+    },
+    "selectItem": "{name} auswählen",
+    "folder": "Ordner"
+  }
+}

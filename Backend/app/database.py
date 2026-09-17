@@ -30,6 +30,23 @@ def get_db() -> Generator:
     finally:
         db.close()
 
+def _ensure_column(table: str, column: str, ddl_type: str) -> None:
+    """Best-effort ALTER TABLE ADD COLUMN for SQLite.
+
+    This project has no migration framework -- Base.metadata.create_all()
+    only creates TABLES that don't exist yet; it never adds a new column
+    to a table that's already there. A brand-new model/table needs
+    nothing here (create_all() builds it with every column already), but
+    adding a column to an existing table (e.g. Conversation.project_id
+    for the Projects feature) does, so it's handled defensively here on
+    every startup rather than requiring a one-off manual migration.
+    """
+    with engine.connect() as conn:
+        existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+        if column not in existing:
+            conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}")
+            conn.commit()
+
 def init_db():
     """Ensure all models are registered and create missing tables.
 
@@ -55,5 +72,8 @@ def init_db():
     import app.models.usage_daily
     import app.models.library_item
     import app.models.scheduled_task
+    import app.models.chat_project
     Base.metadata.create_all(bind=engine)
+    _ensure_column("conversations", "project_id", "VARCHAR(36)")
+    _ensure_column("library_items", "project_id", "VARCHAR(36)")
 

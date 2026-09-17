@@ -256,6 +256,7 @@ class AIService:
         attachments: Optional[List[Dict[str, Any]]] = None,
         search_context: Optional[str] = None,
         reasoning: bool = False,
+        project_instructions: Optional[str] = None,
     ):
         """
         Streaming counterpart to generate_response with identical
@@ -278,7 +279,9 @@ class AIService:
             yield {"error": reason}
             return
 
-        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments, search_context)
+        messages = AIService._build_messages(
+            user, db, query, conversation_history, is_code, attachments, search_context, project_instructions
+        )
         # Reasoning models spend a large share of their token budget on
         # the "thinking" phase before ever emitting the answer -- a
         # normal chat max_tokens would frequently cut them off mid-thought.
@@ -363,6 +366,7 @@ class AIService:
         is_code: bool,
         attachments: Optional[List[Dict[str, Any]]] = None,
         search_context: Optional[str] = None,
+        project_instructions: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Shared system-prompt + message-sequence builder used by both the
@@ -395,6 +399,13 @@ class AIService:
                 "These are facts the user previously told you, persisted across all "
                 "their conversations. Use them naturally; never say you \"don't have "
                 "access to previous conversations\" when the answer is right here."
+            )
+
+        if project_instructions:
+            system_parts.append(
+                f"\n=== PROJECT INSTRUCTIONS ===\n{project_instructions}\n"
+                "These are standing instructions for the project this chat belongs "
+                "to. Apply them to every reply in this conversation."
             )
 
         if is_code:
@@ -462,6 +473,7 @@ class AIService:
         attachments: Optional[List[Dict[str, Any]]] = None,
         search_context: Optional[str] = None,
         reasoning: bool = False,
+        project_instructions: Optional[str] = None,
     ) -> Dict[str, Any]:
         is_code = (workspace == "code")
         target_model = REASONING_MODEL if reasoning else AIService.map_model(model_name)
@@ -472,7 +484,9 @@ class AIService:
         if not allowed:
             raise ValueError(reason)
 
-        messages = AIService._build_messages(user, db, query, conversation_history, is_code, attachments, search_context)
+        messages = AIService._build_messages(
+            user, db, query, conversation_history, is_code, attachments, search_context, project_instructions
+        )
 
         # 3. Call OpenRouter with fallback models (none in reasoning mode --
         # see stream_response for why silently downgrading is worse than failing).

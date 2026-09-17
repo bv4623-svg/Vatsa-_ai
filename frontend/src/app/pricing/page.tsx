@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Check, X, ChevronDown, ChevronUp, Shield, Sparkles, Lock, Mail, Menu, Command, Star, Info } from "lucide-react";
 import { useAppStore, PRICING_PLANS } from "@/stores/app-store";
 import { motion, useMotionValue, useSpring } from "framer-motion";
+import { PaymentCelebration } from "@/components/billing/PaymentCelebration";
 
 // ─── Global Razorpay Declaration ─────────────────────────────
 declare global {
@@ -288,10 +289,12 @@ export default function PricingPage() {
   const userTier = useAppStore((state) => state.userTier);
   const addToast = useAppStore((state) => state.addToast);
   const setUserTier = useAppStore((state) => state.setUserTier);
+  const setUser = useAppStore((state) => state.setUser);
 
   const [isAnnual, setIsAnnual] = useState(false);
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [celebration, setCelebration] = useState<{ open: boolean; tier: "pro" | "ultra" }>({ open: false, tier: "pro" });
 
   // ─── Custom plans with feature objects ──────────────────────
   const plans = [
@@ -413,9 +416,16 @@ export default function PricingPage() {
     });
   };
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
   const handleRazorpayPayment = async (planId: string, amount: number) => {
-    // 🔥 TEST: Hardcode ₹24 (2400 paise) for testing
     const amountInPaise = Math.round(amount * 100);
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      addToast({ message: "Please sign in first to subscribe.", type: "error" });
+      router.push("/auth/login");
+      return;
+    }
 
     try {
       const scriptLoaded = await loadRazorpayScript();
@@ -425,15 +435,21 @@ export default function PricingPage() {
       }
 
       // 1. Create order from backend
-      const response = await fetch("http://localhost:8000/payment/create-order", {
+      const response = await fetch(`${API_BASE}/payment/create-order`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
+          plan_id: `${planId}_${isAnnual ? "annual" : "monthly"}`,
           amount: amountInPaise,
-          currency: "INR",
-          receipt: `receipt_${planId}`
         })
       });
+      if (!response.ok) {
+        addToast({ message: "Could not start checkout. Please try again.", type: "error" });
+        return;
+      }
       const orderData = await response.json();
 
       // 2. Open Razorpay checkout
@@ -453,9 +469,12 @@ export default function PricingPage() {
         handler: async (response: any) => {
           // 3. Verify payment
           try {
-            const verifyRes = await fetch("http://localhost:8000/payment/verify", {
+            const verifyRes = await fetch(`${API_BASE}/payment/verify`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
               body: JSON.stringify({
                 razorpay_order_id: orderData.order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -463,12 +482,16 @@ export default function PricingPage() {
               })
             });
             const result = await verifyRes.json();
-            if (result.status === "success") {
-              setUserTier("pro");
-              addToast({ message: "🎉 Payment successful! Welcome to Pro.", type: "success" });
-              router.push("/home");
+            if (verifyRes.ok && result.success) {
+              const newTier: "pro" | "ultra" = result.tier === "ultra" ? "ultra" : "pro";
+              // Instant, no-reload tier update -- patches the same store
+              // the chat/code pages read for gating, so badges/limits flip
+              // immediately without a full page refresh.
+              setUserTier(newTier);
+              if (user) setUser({ ...user, tier: newTier } as typeof user);
+              setCelebration({ open: true, tier: newTier });
             } else {
-              addToast({ message: "Payment verification failed. Please contact support.", type: "error" });
+              addToast({ message: result.message || "Payment verification failed. Please contact support.", type: "error" });
             }
           } catch (error) {
             console.error(error);
@@ -1025,6 +1048,12 @@ export default function PricingPage() {
           </div>
         </footer>
       </div>
+
+      <PaymentCelebration
+        open={celebration.open}
+        tier={celebration.tier}
+        onContinue={() => router.push("/home")}
+      />
     </main>
   );
 }

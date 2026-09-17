@@ -166,10 +166,31 @@ class PaymentService:
         if not is_valid:
             return {"success": False, "message": "Invalid payment signature"}
 
+        return PaymentService._apply_verified_payment(db, user, sub, order_id, payment_id)
+
+    @staticmethod
+    def _apply_verified_payment(
+        db: Session,
+        user: User,
+        sub: Optional[Subscription],
+        order_id: str,
+        payment_id: str,
+    ) -> Dict[str, Any]:
+        """Credits tokens and upgrades the user's tier for a payment whose
+        authenticity has already been established by the caller (either the
+        client-side signature check in verify_payment, or the webhook's own
+        signature check). Idempotent on Subscription.verified."""
+        if sub and sub.verified:
+            return {
+                "success": True,
+                "message": "Payment already verified",
+                "tier": user.tier,
+                "plan": sub.plan
+            }
+
         plan_id = sub.plan if sub else "pro_monthly"
         plan = PLANS.get(plan_id, PLANS["pro_monthly"])
 
-        # Update Subscription record
         if not sub:
             sub = Subscription(user_id=user.id, plan=plan_id, order_id=order_id)
             db.add(sub)
@@ -205,3 +226,12 @@ class PaymentService:
             "plan": plan["name"],
             "tokens_added": plan["tokens"]
         }
+
+    @staticmethod
+    def apply_webhook_payment(db: Session, user: User, order_id: str, payment_id: str) -> Dict[str, Any]:
+        """Backup path for Razorpay's server-to-server webhook (payment.captured).
+        Caller must have already verified the webhook signature."""
+        sub = db.query(Subscription).filter_by(order_id=order_id, user_id=user.id).first()
+        if not sub:
+            sub = db.query(Subscription).filter_by(user_id=user.id, status="pending").order_by(Subscription.created_at.desc()).first()
+        return PaymentService._apply_verified_payment(db, user, sub, order_id, payment_id)

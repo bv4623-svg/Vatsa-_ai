@@ -1904,9 +1904,9 @@ function Footer() {
         <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 sm:flex-row">
           <p className="font-mono text-[10.5px] text-neutral-600">© 2026 Vatsa AI, Inc. All rights reserved.</p>
           <div className="flex gap-5 font-mono text-[10.5px] text-neutral-600">
-            <a href="#" className="transition-colors hover:text-white">Privacy</a>
-            <a href="#" className="transition-colors hover:text-white">Terms</a>
-            <a href="#" className="transition-colors hover:text-white">Security</a>
+            <a href="/privacy" className="transition-colors hover:text-white">Privacy</a>
+            <a href="/terms" className="transition-colors hover:text-white">Terms</a>
+            <a href="/security" className="transition-colors hover:text-white">Security</a>
           </div>
         </div>
       </div>

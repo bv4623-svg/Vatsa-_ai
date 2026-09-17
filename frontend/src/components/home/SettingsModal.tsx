@@ -2,12 +2,13 @@
 
 import { memo, useState } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useUpgrade } from "@/components/billing/UpgradeProvider";
+import { ThemeSwitcher } from "@/components/settings/ThemeSwitcher";
 import { Settings, Palette, Languages, Info, X, ExternalLink, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const SettingsModal = memo(({ open, onClose, settings, updateSettings, onLogout, onClearAllChats, onExportChats, isFree }: any) => {
-  const router = useRouter();
+  const { openUpgrade } = useUpgrade();
   const [activeTab, setActiveTab] = useState("general");
   const [lang, setLang] = useState(settings.language || "en");
 
@@ -58,7 +59,7 @@ export const SettingsModal = memo(({ open, onClose, settings, updateSettings, on
               You&apos;re on the Free plan. Upgrade to unlock Vision, Reasoning, Agents, and higher limits.
             </p>
             <button
-              onClick={() => { onClose(); router.push("/pricing"); }}
+              onClick={() => { onClose(); openUpgrade({ source: "settings", reason: "Unlock higher daily limits and every Pro feature." }); }}
               className="flex-shrink-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-medium text-white hover:opacity-90"
             >
               Upgrade to Pro
@@ -120,19 +121,11 @@ export const SettingsModal = memo(({ open, onClose, settings, updateSettings, on
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-foreground">Theme</label>
-                  <div className="flex gap-2 mt-1">
-                    {["dark", "light", "system"].map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => updateSettings({ theme: t })}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg border text-sm transition-colors",
-                          settings.theme === t ? "border-accent bg-accent/10 text-foreground" : "border-border text-muted-foreground hover:bg-accent/5"
-                        )}
-                      >
-                        {t.charAt(0).toUpperCase() + t.slice(1)}
-                      </button>
-                    ))}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Applies instantly and follows you across devices.
+                  </p>
+                  <div className="mt-2">
+                    <ThemeSwitcher onChange={(theme) => updateSettings({ theme })} />
                   </div>
                 </div>
                 <div>

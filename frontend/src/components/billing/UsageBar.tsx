@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useUpgrade } from "./UpgradeProvider";
 
 interface UsageBarProps {
   usage?: Record<string, { used: number; limit: number }>;
@@ -9,7 +9,7 @@ interface UsageBarProps {
 /** Compact "12/25 messages · 3 images left · 2 searches left" strip
  * shown to free users only, right below the header. */
 export function UsageBar({ usage }: UsageBarProps) {
-  const router = useRouter();
+  const { openUpgrade } = useUpgrade();
   if (!usage) return null;
 
   const chat = usage.chat_messages;
@@ -28,7 +28,7 @@ export function UsageBar({ usage }: UsageBarProps) {
     <div className="flex items-center justify-between gap-3 border-b border-border/30 bg-background/30 px-4 py-1.5 text-[11px] text-muted-foreground">
       <span className={isLow ? "text-amber-500" : ""}>{parts.join(" · ")}</span>
       <button
-        onClick={() => router.push("/pricing")}
+        onClick={() => openUpgrade({ source: "quota_banner", reason: `You have used ${chat.used} of ${chat.limit} messages today.`, limitInfo: { used: chat.used, limit: chat.limit } })}
         className="flex-shrink-0 font-medium text-accent hover:underline"
       >
         Upgrade →

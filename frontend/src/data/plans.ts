@@ -13,6 +13,7 @@
 
 export * from "./plans.types";
 export * from "./plans.matrix";
+export * from "./plans.limits";
 export * from "./plans.data";
 export * from "./plans.utils";
 export * from "./plans.content";

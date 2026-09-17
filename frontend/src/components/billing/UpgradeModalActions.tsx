@@ -17,12 +17,14 @@ interface UpgradeModalActionsProps {
   period: BillingPeriod;
   onPeriodChange: (period: BillingPeriod) => void;
   onSelect: (planId: PlanId) => void;
+  /** Plan the user is already on -- that button becomes "Current plan". */
+  currentTier?: string;
 }
 
 /** Billing switch + the two upgrade buttons. Prices are read from
  * data/plans.ts, the same source the /pricing cards use. */
 export function UpgradeModalActions({
-  currency, period, onPeriodChange, onSelect,
+  currency, period, onPeriodChange, onSelect, currentTier,
 }: UpgradeModalActionsProps) {
   const annual = period === "annual";
   const pro = getPlan("pro");
@@ -66,16 +68,28 @@ export function UpgradeModalActions({
         <button
           type="button"
           onClick={() => onSelect("pro")}
-          className="flex-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-transform hover:scale-[1.02]"
+          disabled={currentTier === "pro"}
+          className={cn(
+            "flex-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-transform",
+            currentTier === "pro" ? "cursor-not-allowed opacity-60" : "hover:scale-[1.02]"
+          )}
         >
-          Upgrade to {pro?.name ?? "Pro"} — {perMonth("pro")}/mo
+          {currentTier === "pro"
+            ? "Current plan"
+            : `Upgrade to ${pro?.name ?? "Pro"} — ${perMonth("pro")}/mo`}
         </button>
         <button
           type="button"
           onClick={() => onSelect("ultra")}
-          className="flex-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
+          disabled={currentTier === "ultra"}
+          className={cn(
+            "flex-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-medium text-amber-500 transition-colors",
+            currentTier === "ultra" ? "cursor-not-allowed opacity-60" : "hover:bg-amber-500/20"
+          )}
         >
-          Go {ultra?.name ?? "Ultra"} — {perMonth("ultra")}/mo
+          {currentTier === "ultra"
+            ? "Current plan"
+            : `Go ${ultra?.name ?? "Ultra"} — ${perMonth("ultra")}/mo`}
         </button>
       </div>
       <p className="mt-3 text-center text-[11px] text-muted-foreground/60">Cancel anytime.</p>

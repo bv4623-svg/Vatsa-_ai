@@ -17,9 +17,9 @@ import { Sidebar } from "@/components/home/Sidebar";
 import { SettingsModal } from "@/components/home/SettingsModal";
 import { ChatEmptyState } from "@/components/home/ChatEmptyState";
 import { ChatMessagesView } from "@/components/home/ChatMessagesView";
-import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { UsageBar } from "@/components/billing/UsageBar";
 import { UpgradeBanner } from "@/components/billing/UpgradeBanner";
+import { useUpgrade } from "@/components/billing/UpgradeProvider";
 import { clearSession } from "@/lib/session";
 import type { UpgradeGateInfo } from "@/hooks/home/useHomeChat";
 
@@ -61,15 +61,15 @@ export default function HomePage() {
 
   const tier: "free" | "pro" | "ultra" = (user?.tier as any) || "free";
   const isFree = tier === "free";
-  const [upgradeGate, setUpgradeGate] = useState<{
-    open: boolean; reason: string; feature?: string;
-    suggestedTier?: "pro" | "ultra"; limitInfo?: { used: number; limit: number };
-  }>({ open: false, reason: "" });
+  const { openUpgrade } = useUpgrade();
   const [bannerDismissedAtCount, setBannerDismissedAtCount] = useState<number | null>(null);
 
-  const openUpgradeModal = useCallback((reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
-    setUpgradeGate({ open: true, reason, feature, suggestedTier, limitInfo });
-  }, []);
+  const openUpgradeModal = useCallback(
+    (reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
+      openUpgrade({ source: "feature_lock", reason, feature, suggestedTier, limitInfo });
+    },
+    [openUpgrade]
+  );
 
   const handleToggleReasoning = useCallback(() => {
     if (isFree) {
@@ -270,8 +270,8 @@ export default function HomePage() {
                 </div>
               ) : (
                 <button
-                  onClick={() => router.push("/pricing")}
-                  className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-[11px] font-medium text-white hover:opacity-90"
+                  onClick={() => openUpgrade({ source: "chat_header", reason: "Unlock higher daily limits and every Pro feature." })}
+                  className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-[11px] font-medium text-white hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <Sparkles className="h-3 w-3" /> Upgrade to Pro
                 </button>
@@ -418,14 +418,6 @@ export default function HomePage() {
             isFree={isFree}
           />
 
-          <UpgradeModal
-            open={upgradeGate.open}
-            onClose={() => setUpgradeGate((g) => ({ ...g, open: false }))}
-            reason={upgradeGate.reason}
-            feature={upgradeGate.feature}
-            suggestedTier={upgradeGate.suggestedTier}
-            limitInfo={upgradeGate.limitInfo}
-          />
 
           {showShortcutHelper && (
             <div className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center" onClick={() => setShowShortcutHelper(false)}>

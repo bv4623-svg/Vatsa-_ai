@@ -25,9 +25,11 @@ from typing import List, Optional
 from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, tokens, upload, files, vision
 from app.routers import library as library_router
+from app.routers import scheduled_tasks as scheduled_tasks_router
 from app.core.classifier import IntentClassifier
 from intents_data import INTENTS
 from app.database import init_db
+from app.services.scheduled_tasks import init_scheduler, shutdown_scheduler
 
 # Initialize intent classifier singleton
 intent_classifier = IntentClassifier()
@@ -36,7 +38,9 @@ intent_classifier = IntentClassifier()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_scheduler()
     yield
+    shutdown_scheduler()
 
 
 app = FastAPI(title="Vatsa AI Backend", lifespan=lifespan)
@@ -61,6 +65,7 @@ app.include_router(upload.router)
 app.include_router(files.router)
 app.include_router(vision.router)
 app.include_router(library_router.router)
+app.include_router(scheduled_tasks_router.router)
 
 
 # Intent classification endpoints

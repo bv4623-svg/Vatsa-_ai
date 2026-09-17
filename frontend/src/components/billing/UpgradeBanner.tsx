@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { X, Zap } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
+import { formatPrice, getPlan, listPrice } from "@/data/plans";
 
 interface UpgradeBannerProps {
   onDismiss: () => void;
@@ -12,6 +14,9 @@ interface UpgradeBannerProps {
  * not a one-time-forever dismiss. */
 export function UpgradeBanner({ onDismiss }: UpgradeBannerProps) {
   const router = useRouter();
+  const [currency] = useCurrency();
+  const pro = getPlan("pro");
+  const proPrice = pro ? formatPrice(listPrice(pro, currency), currency) : "";
   return (
     <div className="mx-auto mb-2 flex w-full max-w-[760px] items-center justify-between gap-3 rounded-xl border border-accent/20 bg-gradient-to-r from-accent/10 to-purple-500/10 px-4 py-2.5 text-xs">
       <div className="flex items-center gap-2">
@@ -25,7 +30,7 @@ export function UpgradeBanner({ onDismiss }: UpgradeBannerProps) {
           onClick={() => router.push("/pricing")}
           className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 font-medium text-white"
         >
-          Upgrade to Pro — ₹499
+          Upgrade to Pro — {proPrice}
         </button>
         <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground">
           <X className="h-3.5 w-3.5" />

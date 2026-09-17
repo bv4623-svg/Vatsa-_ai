@@ -7,7 +7,17 @@ import { AlertTriangle, ArrowLeft, Loader2, Lock, ShieldCheck } from "lucide-rea
 
 import { useAppStore } from "@/stores/app-store";
 import { PaymentCelebration } from "@/components/billing/PaymentCelebration";
-import { PLANS, formatUsd, gstAmount, totalWithGst } from "@/lib/pricing/plans";
+import {
+  PLANS,
+  formatPrice,
+  gstAmount,
+  periodPrice,
+  periodNoun,
+  totalWithGst,
+  type BillingPeriod,
+  type Currency,
+} from "@/data/plans";
+import { useCurrency } from "@/hooks/useCurrency";
 import { API_BASE, establishSession } from "@/lib/session";
 import { getToken } from "@/lib/auth";
 import type { RazorpayHandlerResponse } from "@/types/razorpay";
@@ -36,11 +46,16 @@ function CheckoutInner() {
   const router = useRouter();
   const params = useSearchParams();
   const planId = params.get("plan");
+  const period: BillingPeriod = params.get("billing") === "annual" ? "annual" : "monthly";
+  const currencyParam = params.get("currency");
 
   const user = useAppStore((s) => s.user);
   const setUserTier = useAppStore((s) => s.setUserTier);
 
   const plan = useMemo(() => PLANS.find((p) => p.id === planId && p.id !== "free"), [planId]);
+
+  const [detectedCurrency] = useCurrency();
+  const currency: Currency = currencyParam === "INR" || currencyParam === "USD" ? currencyParam : detectedCurrency;
 
   const [status, setStatus] = useState<Status>("loading");
   const [config, setConfig] = useState<PaymentConfig | null>(null);
@@ -87,7 +102,9 @@ function CheckoutInner() {
 
     const token = getToken();
     if (!token) {
-      router.replace(`/login?redirect=${encodeURIComponent(`/checkout?plan=${plan.id}`)}`);
+      router.replace(
+        `/login?redirect=${encodeURIComponent(`/checkout?plan=${plan.id}&billing=${period}&currency=${currency}`)}`
+      );
       return;
     }
 
@@ -103,7 +120,7 @@ function CheckoutInner() {
       const orderRes = await fetch(`${API_BASE}/payment/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan_id: plan.id }),
+        body: JSON.stringify({ plan_id: plan.id, billing_period: period, currency }),
       });
       if (!orderRes.ok) {
         const body = await orderRes.json().catch(() => null);
@@ -116,7 +133,7 @@ function CheckoutInner() {
         amount: order.amount,
         currency: order.currency,
         name: "Vatsa AI",
-        description: `${plan.name} plan`,
+        description: `${plan.name} plan — per ${periodNoun(period)}`,
         order_id: order.order_id,
         prefill: {
           name: user?.full_name || user?.name || undefined,
@@ -174,7 +191,7 @@ function CheckoutInner() {
       setStatus("ready");
       setError(String(err?.message || "Could not start checkout."));
     }
-  }, [plan, config, user, router, setUserTier]);
+  }, [plan, config, user, router, setUserTier, period, currency]);
 
   if (status === "unknown-plan") {
     return (
@@ -201,9 +218,9 @@ function CheckoutInner() {
     );
   }
 
-  const base = plan.price;
-  const gst = gstAmount(base);
-  const total = totalWithGst(base);
+  const base = periodPrice(plan, currency, period);
+  const gst = gstAmount(base, plan.gstPct);
+  const total = totalWithGst(base, plan.gstPct);
 
   return (
     <>
@@ -213,20 +230,20 @@ function CheckoutInner() {
         </Link>
 
         <h1 className="text-2xl font-semibold text-white">Checkout</h1>
-        <p className="mt-1 text-sm text-zinc-400">{plan.name} plan — billed monthly</p>
+        <p className="mt-1 text-sm text-zinc-400">{plan.name} plan — billed {period === "annual" ? "annually" : "monthly"}</p>
 
         <dl className="mt-6 space-y-2 rounded-xl border border-white/10 bg-black/30 p-4 text-sm">
           <div className="flex justify-between">
             <dt className="text-zinc-400">{plan.name}</dt>
-            <dd className="text-white">{formatUsd(base)}</dd>
+            <dd className="text-white">{formatPrice(base, currency)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-zinc-400">GST (18%)</dt>
-            <dd className="text-white">{formatUsd(gst)}</dd>
+            <dt className="text-zinc-400">GST ({plan.gstPct}%)</dt>
+            <dd className="text-white">{formatPrice(gst, currency)}</dd>
           </div>
           <div className="mt-2 flex justify-between border-t border-white/10 pt-3 text-base font-semibold">
             <dt className="text-white">Total due today</dt>
-            <dd className="text-white">{formatUsd(total)}</dd>
+            <dd className="text-white">{formatPrice(total, currency)}</dd>
           </div>
         </dl>
 
@@ -257,7 +274,7 @@ function CheckoutInner() {
               disabled
               className="mt-4 w-full cursor-not-allowed rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-zinc-400"
             >
-              Pay {formatUsd(total)} — unavailable
+              Pay {formatPrice(total, currency)} — unavailable
             </button>
             <Link href="/contact" className="mt-3 block text-center text-xs text-amber-300 hover:underline">
               Contact us to complete this purchase
@@ -278,7 +295,7 @@ function CheckoutInner() {
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {status === "paying" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-              {status === "paying" ? "Opening secure checkout…" : `Pay ${formatUsd(total)}`}
+              {status === "paying" ? "Opening secure checkout…" : `Pay ${formatPrice(total, currency)}`}
             </button>
 
             <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-zinc-500">
@@ -288,7 +305,8 @@ function CheckoutInner() {
         )}
 
         <p className="mt-6 border-t border-white/10 pt-4 text-xs leading-relaxed text-zinc-500">
-          All sales are final — Vatsa AI operates a strict no-refund policy. Read the{" "}
+          {period === "annual" ? "Annual plans have a 14-day refund window." : "Monthly plans have a 7-day refund window if unused."}{" "}
+          Read the{" "}
           <Link href="/refund" className="underline hover:text-zinc-300">Refund Policy</Link> and{" "}
           <Link href="/terms" className="underline hover:text-zinc-300">Terms</Link> before paying.
         </p>

@@ -19,6 +19,8 @@ router = APIRouter(tags=["payment"])
 
 class CreateOrderRequest(BaseModel):
     plan_id: str = "pro_monthly"
+    billing_period: str = "monthly"
+    currency: str = "USD"
     amount: Optional[int] = None  # ignored for security; server pricing is used
 
 class VerifyPaymentRequest(BaseModel):
@@ -69,7 +71,9 @@ def create_order(
     db: Session = Depends(get_db)
 ):
     try:
-        order = PaymentService.create_order(db, current_user, req.plan_id)
+        order = PaymentService.create_order(
+            db, current_user, req.plan_id, req.billing_period, req.currency
+        )
         return order
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create order: {str(e)}")

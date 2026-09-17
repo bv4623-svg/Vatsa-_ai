@@ -30,6 +30,8 @@ interface ChatMessagesViewProps {
   chatContainerRef: RefObject<HTMLDivElement | null>;
   attachments: Attachment[];
   removeAttachment: (id: string) => void;
+  onAnalyzeImage?: (file: Attachment) => void;
+  analyzingImageId?: string | null;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   inputValue: string;
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -52,7 +54,7 @@ export function ChatMessagesView({
   messages, isLoading, isImageGenLoading, copiedMsgId, feedback,
   onCopy, onRegenerate, onFeedback, onShare,
   messagesEndRef, chatContainerRef,
-  attachments, removeAttachment,
+  attachments, removeAttachment, onAnalyzeImage, analyzingImageId,
   inputRef, inputValue, onInputChange, onSend, onStop, hasReadyAttachments,
   showAttachmentMenu, setShowAttachmentMenu, webSearchEnabled, onToggleWebSearch,
   reasoningEnabled, onToggleReasoning,
@@ -220,7 +222,12 @@ export function ChatMessagesView({
         <div className="mx-auto max-w-[760px]">
           {attachments.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2">
-              {attachments.map((a) => (<AttachmentChip key={a.id} file={a} onRemove={removeAttachment} />))}
+              {attachments.map((a) => (
+                <AttachmentChip
+                  key={a.id} file={a} onRemove={removeAttachment}
+                  onAnalyze={onAnalyzeImage} analyzing={analyzingImageId === a.id}
+                />
+              ))}
             </div>
           )}
 

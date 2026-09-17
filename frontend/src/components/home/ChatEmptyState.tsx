@@ -28,6 +28,8 @@ interface ChatEmptyStateProps {
   hasReadyAttachments: boolean;
   attachments: Attachment[];
   removeAttachment: (id: string) => void;
+  onAnalyzeImage?: (file: Attachment) => void;
+  analyzingImageId?: string | null;
   showAttachmentMenu: boolean;
   setShowAttachmentMenu: (v: boolean | ((p: boolean) => boolean)) => void;
   showWebSearchPopover: boolean;
@@ -45,7 +47,7 @@ interface ChatEmptyStateProps {
 
 export function ChatEmptyState({
   inputRef, inputValue, onInputChange, onSuggestionClick, onSend, hasReadyAttachments,
-  attachments, removeAttachment,
+  attachments, removeAttachment, onAnalyzeImage, analyzingImageId,
   showAttachmentMenu, setShowAttachmentMenu,
   showWebSearchPopover, setShowWebSearchPopover, webSearchEnabled, onToggleWebSearch,
   reasoningEnabled, onToggleReasoning,
@@ -88,7 +90,12 @@ export function ChatEmptyState({
           <div className="rounded-2xl border border-border/50 bg-card/80 shadow-sm p-4 transition-all hover:border-border">
             {attachments.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
-                {attachments.map((a) => (<AttachmentChip key={a.id} file={a} onRemove={removeAttachment} />))}
+                {attachments.map((a) => (
+                  <AttachmentChip
+                    key={a.id} file={a} onRemove={removeAttachment}
+                    onAnalyze={onAnalyzeImage} analyzing={analyzingImageId === a.id}
+                  />
+                ))}
               </div>
             )}
 

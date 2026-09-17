@@ -12,6 +12,7 @@ import { useHomeTheme } from "@/hooks/home/useHomeTheme";
 import { useHomeConversations } from "@/hooks/home/useHomeConversations";
 import { useHomeChat } from "@/hooks/home/useHomeChat";
 import { useAttachments } from "@/hooks/home/useAttachments";
+import { useVisionAnalysis } from "@/hooks/home/useVisionAnalysis";
 import { Sidebar } from "@/components/home/Sidebar";
 import { SettingsModal } from "@/components/home/SettingsModal";
 import { ChatEmptyState } from "@/components/home/ChatEmptyState";
@@ -73,6 +74,10 @@ export default function HomePage() {
     attachments, setAttachments, showAttachmentMenu, setShowAttachmentMenu,
     fileInputRef, folderInputRef, handleFileUpload, removeAttachment,
   } = useAttachments();
+
+  const { analyzingId, analyzeImage } = useVisionAnalysis({
+    activeConversationId, handleNewChat, addMessageToConversation, setErrorState,
+  });
 
   const resetComposerForNewChat = useCallback(() => {
     setInputValue("");
@@ -251,6 +256,8 @@ export default function HomePage() {
                   hasReadyAttachments={hasReadyAttachments}
                   attachments={attachments}
                   removeAttachment={removeAttachment}
+                  onAnalyzeImage={analyzeImage}
+                  analyzingImageId={analyzingId}
                   showAttachmentMenu={showAttachmentMenu}
                   setShowAttachmentMenu={setShowAttachmentMenu}
                   showWebSearchPopover={showWebSearchPopover}
@@ -280,6 +287,8 @@ export default function HomePage() {
                   chatContainerRef={chatContainerRef}
                   attachments={attachments}
                   removeAttachment={removeAttachment}
+                  onAnalyzeImage={analyzeImage}
+                  analyzingImageId={analyzingId}
                   inputRef={inputRef}
                   inputValue={inputValue}
                   onInputChange={handleInputChange}

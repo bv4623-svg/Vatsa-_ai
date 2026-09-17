@@ -64,29 +64,3 @@ def _send(to_email: str, subject: str, html_body: str) -> bool:
         traceback.print_exc()
         print("", flush=True)
         return False
-
-
-def send_otp_email(to_email: str, otp: str, purpose: str = "signup") -> bool:
-    title = "Verify your email" if purpose == "signup" else "Reset your password"
-    subject = f"Vatsa AI — {title}"
-
-    html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;
-                background:#0a0a0a;color:#fff;padding:32px;border-radius:16px;">
-      <h1 style="color:#10b981;margin:0 0 8px;">Vatsa AI</h1>
-      <p style="color:#888;margin:0 0 24px;font-size:13px;">{title}</p>
-      <p style="font-size:15px;">Your one-time password is:</p>
-      <div style="background:#111;border:1px solid #222;border-radius:12px;
-                  padding:20px;text-align:center;margin:20px 0;">
-        <span style="font-size:36px;letter-spacing:12px;font-weight:bold;
-                     color:#10b981;">{otp}</span>
-      </div>
-      <p style="color:#888;font-size:13px;">
-        This code expires in <b>5 minutes</b>. Don't share it with anyone.
-      </p>
-      <p style="color:#555;font-size:11px;margin-top:32px;">
-        If you didn't request this, ignore this email.
-      </p>
-    </div>
-    """
-    return _send(to_email, subject, html)

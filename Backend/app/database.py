@@ -54,5 +54,6 @@ def init_db():
     import app.models.generated_image
     import app.models.usage_daily
     import app.models.library_item
+    import app.models.scheduled_task
     Base.metadata.create_all(bind=engine)
 

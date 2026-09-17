@@ -11,6 +11,8 @@ from app.models.token import TokenAccount, TokenTransaction
 from app.auth.jwt import get_password_hash, verify_password, create_access_token
 from app.auth.dependencies import get_current_user
 from app.routers.auth.schemas import RegisterRequest, LoginRequest, OnboardingRequest
+from sqlalchemy.orm.attributes import flag_modified
+from typing import Any, Dict
 from app.services.feature_access import user_tier, check_daily_limit
 
 router = APIRouter(tags=["authentication"])
@@ -143,7 +145,39 @@ def get_current_user_profile(user: User = Depends(get_current_user), db: Session
         "tokens": balance, "token_balance": balance,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "usage": usage,
+        "settings": user.settings or {},
     }
+
+
+@router.patch("/auth/settings")
+@router.patch("/api/auth/settings")
+def update_settings(
+    payload: Dict[str, Any],
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Merges a partial settings patch into the user's profile so
+    preferences (theme, language, timezone, notifications) follow them
+    across devices. The client validates against src/config/settings.ts;
+    unknown keys are rejected here so the column cannot be used as
+    arbitrary storage."""
+    allowed = {
+        "theme", "language", "timezone", "defaultModel", "responseStyle",
+        "autoSaveChats", "historyRetention", "notifyEmail", "notifyInApp",
+        "notifyQuotaWarnings", "notifyProductUpdates",
+    }
+    unknown = set(payload) - allowed
+    if unknown:
+        raise HTTPException(400, f"Unknown setting(s): {', '.join(sorted(unknown))}")
+
+    merged = dict(user.settings or {})
+    merged.update(payload)
+    user.settings = merged
+    # JSON columns need an explicit reassign for SQLAlchemy to see the change.
+    flag_modified(user, "settings")
+    db.commit()
+    db.refresh(user)
+    return {"settings": user.settings}
 
 
 # ═══════════════════════════════════════════════════════════

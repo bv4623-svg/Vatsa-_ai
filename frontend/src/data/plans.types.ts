@@ -21,6 +21,15 @@ export interface FeatureRow {
   values: Record<PlanId, string | boolean>;
 }
 
+/** Daily caps enforced at the API layer (Backend app/services/feature_access.py).
+ * Mirrored here so quota banners can show the real ceiling without a round trip. */
+export interface DailyLimits {
+  chat: number;
+  code: number;
+  image: number;
+  search: number;
+}
+
 export interface Plan {
   id: PlanId;
   name: string;
@@ -36,7 +45,13 @@ export interface Plan {
   features: string[];
   notIncluded: string[];
   note: string | null;
+  /** Library storage ceiling. Usage is summed from real rows, never faked. */
+  storageLimitGB: number;
+  dailyLimits: DailyLimits;
 }
+
+/** Shown as "Unlimited" rather than a number. */
+export const UNLIMITED = 999999;
 
 export interface FaqEntry {
   question: string;

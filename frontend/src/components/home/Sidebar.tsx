@@ -15,7 +15,7 @@ import { RenameModal } from "@/components/home/RenameModal";
 import { SidebarUpgradeCard } from "@/components/billing/SidebarUpgradeCard";
 
 export const Sidebar = memo(({
-  onNewChat, onOpenSettings, conversations, collapsed, toggleSidebar, width,
+  onNewChat, onOpenSettings, conversations, collapsed, toggleSidebar, width, onCloseMobile,
   privateMode, onDeleteChat, onLogout, userProfile, onRenameChat, onPinChat,
   onUnpinChat, onToggleFavorite, onDuplicateChat, onArchiveChat,
   activeConversationId, setActiveConversation, isFree,
@@ -118,7 +118,7 @@ export const Sidebar = memo(({
             <IconBtn tip={isCollapsed ? "Expand sidebar" : "Collapse sidebar"} side={isCollapsed ? "right" : "bottom"} onClick={toggleSidebar} className="hidden md:inline-flex">
               <PanelLeft className="h-[18px] w-[18px]" />
             </IconBtn>
-            <IconBtn tip="Close" onClick={() => {}} className="md:hidden"><X className="h-[18px] w-[18px]" /></IconBtn>
+            <IconBtn tip="Close" onClick={onCloseMobile} className="md:hidden"><X className="h-[18px] w-[18px]" /></IconBtn>
           </div>
 
           <div className={cn("px-3 pt-3", isCollapsed && "px-2")}>

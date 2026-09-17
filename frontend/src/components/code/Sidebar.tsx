@@ -23,6 +23,7 @@ interface SidebarProps {
   toggleSidebar: () => void;
   onDeleteProject: (id: string) => void;
   isFree?: boolean;
+  onOpenSettings?: () => void;
 }
 
 /** Declared at module scope: a component defined inside the render body is
@@ -53,6 +54,7 @@ export const Sidebar = ({
   toggleSidebar,
   onDeleteProject,
   isFree,
+  onOpenSettings,
 }: SidebarProps) => {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -216,7 +218,7 @@ export const Sidebar = ({
           ) : (
             <div className="flex flex-col items-center gap-1">
               <button
-                onClick={() => {}}
+                onClick={onOpenSettings}
                 aria-label="Settings"
                 className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-accent/10 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               >

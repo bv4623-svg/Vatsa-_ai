@@ -17,7 +17,7 @@ import { useAutoResize } from "@/hooks/useAutoResize";
 import { useCodeConversations } from "@/hooks/code/useCodeConversations";
 import { useCodeChat } from "@/hooks/code/useCodeChat";
 import { useWorkspaceTheme } from "@/hooks/code/useWorkspaceTheme";
-import { UpgradeModal } from "@/components/billing/UpgradeModal";
+import { useUpgrade } from "@/components/billing/UpgradeProvider";
 import { clearSession } from "@/lib/session";
 import type { UpgradeGateInfo } from "@/lib/billing/upgradeError";
 import type { ProjectFile, PreviewMode } from "@/types/code";
@@ -50,14 +50,14 @@ export function CodeWorkspace() {
 
   const tier: "free" | "pro" | "ultra" = (user?.tier as any) || "free";
   const isFree = tier === "free";
-  const [upgradeGate, setUpgradeGate] = useState<{
-    open: boolean; reason: string; feature?: string;
-    suggestedTier?: "pro" | "ultra"; limitInfo?: { used: number; limit: number };
-  }>({ open: false, reason: "" });
+  const { openUpgrade } = useUpgrade();
 
-  const openUpgradeModal = useCallback((reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
-    setUpgradeGate({ open: true, reason, feature, suggestedTier, limitInfo });
-  }, []);
+  const openUpgradeModal = useCallback(
+    (reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
+      openUpgrade({ source: "feature_lock", reason, feature, suggestedTier, limitInfo });
+    },
+    [openUpgrade]
+  );
 
   const handleUpgradeGate = useCallback((info: UpgradeGateInfo) => {
     const featureLabel = (info.feature || "").replace(/_/g, " ");
@@ -326,7 +326,7 @@ export function CodeWorkspace() {
             onOpenCommandPalette={() => setCommandOpen(true)}
             onToggleTheme={() => handleThemeChange(theme === "dark" ? "light" : "dark")}
             tier={tier}
-            onUpgradeClick={() => router.push("/pricing")}
+            onUpgradeClick={() => openUpgrade({ source: "code_header", reason: "Unlock higher daily limits and every Pro feature." })}
           />
 
           <div className="flex flex-1 overflow-hidden">
@@ -402,7 +402,7 @@ export function CodeWorkspace() {
                       setActiveFile={setActiveFile}
                       notify={notify}
                       isFree={isFree}
-                      onUpgradeClick={() => openUpgradeModal("Keep the live preview unlocked with Pro.", "code_preview", "pro")}
+                      onUpgradeClick={() => openUpgrade({ source: "code_preview", reason: "Keep the live preview unlocked with Pro.", feature: "code_preview", suggestedTier: "pro" })}
                     />
                   </div>
                 </div>
@@ -449,14 +449,6 @@ export function CodeWorkspace() {
           commands={paletteCommands}
         />
 
-        <UpgradeModal
-          open={upgradeGate.open}
-          onClose={() => setUpgradeGate((g) => ({ ...g, open: false }))}
-          reason={upgradeGate.reason}
-          feature={upgradeGate.feature}
-          suggestedTier={upgradeGate.suggestedTier}
-          limitInfo={upgradeGate.limitInfo}
-        />
       </main>
     </>
   );

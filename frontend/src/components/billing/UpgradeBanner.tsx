@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { X, Zap } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useUpgrade } from "./UpgradeProvider";
 import { formatPrice, getPlan, listPrice } from "@/data/plans";
 
 interface UpgradeBannerProps {
@@ -13,7 +13,7 @@ interface UpgradeBannerProps {
  * messages -- reappears later (see dismiss-count logic in the caller),
  * not a one-time-forever dismiss. */
 export function UpgradeBanner({ onDismiss }: UpgradeBannerProps) {
-  const router = useRouter();
+  const { openUpgrade } = useUpgrade();
   const [currency] = useCurrency();
   const pro = getPlan("pro");
   const proPrice = pro ? formatPrice(listPrice(pro, currency), currency) : "";
@@ -27,7 +27,7 @@ export function UpgradeBanner({ onDismiss }: UpgradeBannerProps) {
       </div>
       <div className="flex flex-shrink-0 items-center gap-2">
         <button
-          onClick={() => router.push("/pricing")}
+          onClick={() => openUpgrade({ source: "chat_footer", reason: "Unlock higher daily limits, Vision, Reasoning and Agents." })}
           className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 font-medium text-white"
         >
           Upgrade to Pro — {proPrice}

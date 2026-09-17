@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useAppStore } from "@/stores/app-store";
 import { FeatureComparisonTable } from "./FeatureComparisonTable";
 import { UpgradeModalActions } from "./UpgradeModalActions";
 import type { BillingPeriod, PlanId } from "@/data/plans";
@@ -17,21 +18,26 @@ export interface UpgradeModalProps {
   suggestedTier?: "pro" | "ultra";
   showComparison?: boolean;
   limitInfo?: { used: number; limit: number };
+  /** Analytics attribution for which surface opened this. */
+  source?: string;
 }
 
 export function UpgradeModal({
-  open, onClose, reason, feature, suggestedTier = "pro", showComparison = true, limitInfo,
+  open, onClose, reason, feature, suggestedTier = "pro", showComparison = true, limitInfo, source,
 }: UpgradeModalProps) {
   const router = useRouter();
   const [currency] = useCurrency();
+  const currentTier = useAppStore((state) => state.userTier);
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
 
   // Same destination the pricing page cards use, so a plan picked here and
   // a plan picked there land on an identically-priced checkout.
   const goToCheckout = (planId: PlanId) => {
     onClose();
-    const from = feature ? `&from=${encodeURIComponent(feature)}` : "";
-    router.push(`/checkout?plan=${planId}&billing=${period}&currency=${currency}${from}`);
+    const params = new URLSearchParams({ plan: planId, billing: period, currency });
+    if (feature) params.set("from", feature);
+    if (source) params.set("source", source);
+    router.push(`/checkout?${params.toString()}`);
   };
 
   return (
@@ -58,6 +64,7 @@ export function UpgradeModal({
         period={period}
         onPeriodChange={setPeriod}
         onSelect={goToCheckout}
+        currentTier={currentTier}
       />
     </Modal>
   );

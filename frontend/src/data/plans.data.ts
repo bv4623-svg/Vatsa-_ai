@@ -5,6 +5,7 @@ import {
   type Plan,
   type PlanId,
 } from "./plans.types";
+import { DAILY_LIMITS, STORAGE_LIMIT_GB } from "./plans.limits";
 
 function buildFeatureLists(id: PlanId): { features: string[]; notIncluded: string[] } {
   const features: string[] = [];
@@ -79,6 +80,8 @@ export const PLANS: Plan[] = PLAN_SEEDS.map((seed) => ({
   ...seed,
   gstPct: GST_PCT,
   annualDiscountPct: ANNUAL_DISCOUNT_PCT,
+  storageLimitGB: STORAGE_LIMIT_GB[seed.id],
+  dailyLimits: DAILY_LIMITS[seed.id],
   ...buildFeatureLists(seed.id),
 }));
 

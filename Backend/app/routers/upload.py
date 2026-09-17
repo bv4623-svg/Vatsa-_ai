@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user_optional
 from app.database import get_db
 from app.models.user import User
 from app.services.library import register_item, check_quota
+from app.services.account import notify_quota_warning
 
 logger = logging.getLogger("UploadRouter")
 router = APIRouter(prefix="/api", tags=["upload"])
@@ -102,12 +103,15 @@ async def upload_file(
     if current_user:
         allowed, usage = check_quota(db, current_user, len(raw))
         if not allowed:
+            notify_quota_warning(db, current_user, usage["used_bytes"], usage["limit_bytes"], at_limit=True)
             raise HTTPException(status_code=413, detail={
                 "error": "storage_limit_reached",
                 "used_bytes": usage["used_bytes"],
                 "limit_bytes": usage["limit_bytes"],
                 "upgrade_url": "/pricing",
             })
+        elif usage["at_warning"]:
+            notify_quota_warning(db, current_user, usage["used_bytes"], usage["limit_bytes"], at_limit=False)
 
     try:
         text = extract_text_from_bytes(raw, filename)

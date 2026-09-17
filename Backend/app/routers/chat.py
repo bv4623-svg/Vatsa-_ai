@@ -19,6 +19,7 @@ from app.services.ai_service import AIService, detect_image_gen
 from app.services.image_service import generate_and_store_image
 from app.services.memory_extractor import extract_facts
 from app.services.library import sync_conversation_item, check_quota
+from app.services.account import notify_quota_warning
 from app.services.chat_projects import get_project_instructions_for_conversation
 from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
@@ -70,6 +71,19 @@ class ChatRequest(BaseModel):
     web_search: Optional[bool] = Field(False, alias="webSearch")
     reasoning: Optional[bool] = False
     model_config = {"populate_by_name": True}
+
+
+def _response_style_instruction(style: Optional[str]) -> Optional[str]:
+    """Maps the Settings > responseStyle preference to a real system-prompt
+    addition -- prepended the same way project_instructions is, so the
+    stored preference actually changes model output, not just sits in
+    User.settings unused."""
+    return {
+        "concise": "Keep replies brief and to the point.",
+        "detailed": "Provide thorough, comprehensive explanations with context and examples.",
+        "friendly": "Use a warm, conversational, approachable tone.",
+        "formal": "Use precise, professional language.",
+    }.get(style)
 
 
 def _load_history(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[Conversation], List[Dict[str, Any]]]:
@@ -130,12 +144,15 @@ def _enforce_storage_quota(db: Session, user: User, estimated_bytes: int) -> Non
     try block."""
     allowed, usage = check_quota(db, user, estimated_bytes)
     if not allowed:
+        notify_quota_warning(db, user, usage["used_bytes"], usage["limit_bytes"], at_limit=True)
         raise HTTPException(status_code=413, detail={
             "error": "storage_limit_reached",
             "used_bytes": usage["used_bytes"],
             "limit_bytes": usage["limit_bytes"],
             "upgrade_url": "/pricing",
         })
+    elif usage["at_warning"]:
+        notify_quota_warning(db, user, usage["used_bytes"], usage["limit_bytes"], at_limit=False)
 
 
 async def _get_search_context(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[str], List[Dict[str, Any]]]:
@@ -170,8 +187,14 @@ def _persist_conversation(
     image_url: Optional[str] = None,
     sources: Optional[List[Dict[str, Any]]] = None,
     reasoning_text: Optional[str] = None,
+    user_settings: Optional[Dict[str, Any]] = None,
 ) -> None:
     if not conv:
+        return
+    # Real effect, not a stored-but-ignored flag: with auto-save off, the
+    # exchange is returned to the caller (already happened by this point)
+    # but never written to the conversation, so a refresh shows it gone.
+    if user_settings is not None and user_settings.get("autoSaveChats", True) is False:
         return
     msgs = list(conv.messages or [])
     now = datetime.utcnow().isoformat()
@@ -222,6 +245,7 @@ async def _stream_chat_response(
     sources: Optional[List[Dict[str, Any]]] = None,
     reasoning: bool = False,
     project_instructions: Optional[str] = None,
+    response_style_instructions: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
     full_text = ""
     reasoning_text = ""
@@ -238,6 +262,7 @@ async def _stream_chat_response(
             search_context=search_context,
             reasoning=reasoning,
             project_instructions=project_instructions,
+            response_style_instructions=response_style_instructions,
         ):
             if "thinking" in event:
                 yield f"data: {json.dumps({'thinking': event['thinking']})}\n\n"
@@ -259,7 +284,7 @@ async def _stream_chat_response(
         return
 
     if full_text:
-        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources, reasoning_text=reasoning_text)
+        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources, reasoning_text=reasoning_text, user_settings=user.settings)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
     done_event: Dict[str, Any] = {"done": True, "usage": usage, "conversation_id": req.conversation_id}
@@ -280,8 +305,10 @@ async def chat_endpoint(
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    chosen_model = req.model or req.preferred_model or "auto"
+    user_settings = user.settings or {}
+    chosen_model = req.model or req.preferred_model or user_settings.get("defaultModel") or "auto"
     workspace = req.workspace or "chat"
+    response_style_instructions = _response_style_instruction(user_settings.get("responseStyle"))
 
     # --- 1. Image Generation Check (instant, single-shot -- never streamed;
     # the streaming frontend clients already fall back to plain JSON when
@@ -305,7 +332,7 @@ async def chat_endpoint(
         response_text = f"**Vatsa AI Image**\n\n![image]({image_url})"
 
         conv, _ = _load_history(req, user, db)
-        _persist_conversation(conv, db, req.message, response_text, image_url=image_url)
+        _persist_conversation(conv, db, req.message, response_text, image_url=image_url, user_settings=user.settings)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
         return {
@@ -338,7 +365,7 @@ async def chat_endpoint(
             _stream_chat_response(
                 req, user, db, conv, history_messages, parsed_attachments,
                 chosen_model, workspace, background_tasks, search_context, sources,
-                req.reasoning, project_instructions,
+                req.reasoning, project_instructions, response_style_instructions,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -357,6 +384,7 @@ async def chat_endpoint(
             search_context=search_context,
             reasoning=req.reasoning,
             project_instructions=project_instructions,
+            response_style_instructions=response_style_instructions,
         )
     except ValueError as ve:
         raise HTTPException(status_code=402, detail=str(ve))
@@ -371,7 +399,7 @@ async def chat_endpoint(
         result["sources"] = sources
     _persist_conversation(
         conv, db, req.message, result["response"], result["selected_model"],
-        sources=sources, reasoning_text=result.get("reasoning"),
+        sources=sources, reasoning_text=result.get("reasoning"), user_settings=user.settings,
     )
     background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 

@@ -25,6 +25,51 @@
       "description": "Vatsa AI のインターフェースが表示される言語です。",
       "searchPlaceholder": "言語を検索...",
       "noResults": "検索に一致する言語がありません。"
+    },
+    "theme": {
+      "label": "テーマ",
+      "description": "Vatsa AI インターフェースの見た目です。",
+      "light": "ライト",
+      "dark": "ダーク",
+      "system": "システム"
+    },
+    "timezone": {
+      "label": "タイムゾーン",
+      "description": "スケジュールタスクの実行などの時刻をあなたのローカル時間で表示するために使用されます。"
+    },
+    "defaultModel": {
+      "label": "デフォルトモデル",
+      "description": "別のモデルを選択しない限り、新しいチャットに使用されます。",
+      "auto": "自動（推奨）",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "応答スタイル",
+      "description": "すべての返信の指示に追加されます。",
+      "default": "デフォルト",
+      "concise": "簡潔",
+      "detailed": "詳細",
+      "friendly": "フレンドリー",
+      "formal": "フォーマル"
+    },
+    "autoSave": {
+      "label": "チャットを自動保存",
+      "description": "オフにすると、新しいメッセージはチャット履歴に保存されません。"
+    },
+    "retention": {
+      "label": "履歴の保持期間",
+      "description": "これより古いチャットを自動的に削除します。",
+      "30d": "30日間",
+      "90d": "90日間",
+      "forever": "無期限"
+    },
+    "notify": {
+      "email": "メール通知",
+      "inApp": "アプリ内通知",
+      "quota": "ストレージ容量の警告",
+      "product": "製品アップデート"
     }
   },
   "library": {

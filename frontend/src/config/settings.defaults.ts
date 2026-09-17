@@ -20,10 +20,18 @@ export const RETENTION_OPTIONS = [
   { value: "forever", labelKey: "settings.retention.forever" },
 ] as const;
 
+export const DEFAULT_MODEL_OPTIONS = [
+  { value: "auto", labelKey: "settings.defaultModel.auto" },
+  { value: "vatsa-fast", labelKey: "settings.defaultModel.fast" },
+  { value: "vatsa-pro", labelKey: "settings.defaultModel.pro" },
+  { value: "vatsa-advanced", labelKey: "settings.defaultModel.advanced" },
+] as const;
+
 export const SETTING_SPECS: SettingSpec[] = [
   { key: "theme", labelKey: "settings.theme.label", descriptionKey: "settings.theme.description", kind: "select", options: THEME_OPTIONS, default: "system" },
   { key: "language", labelKey: "settings.language.label", descriptionKey: "settings.language.description", kind: "language", default: "en" },
   { key: "timezone", labelKey: "settings.timezone.label", descriptionKey: "settings.timezone.description", kind: "timezone", default: "UTC" },
+  { key: "defaultModel", labelKey: "settings.defaultModel.label", descriptionKey: "settings.defaultModel.description", kind: "select", options: DEFAULT_MODEL_OPTIONS, default: "auto" },
   { key: "responseStyle", labelKey: "settings.responseStyle.label", descriptionKey: "settings.responseStyle.description", kind: "select", options: RESPONSE_STYLE_OPTIONS, default: "default" },
   { key: "autoSaveChats", labelKey: "settings.autoSave.label", descriptionKey: "settings.autoSave.description", kind: "toggle", default: true },
   { key: "historyRetention", labelKey: "settings.retention.label", descriptionKey: "settings.retention.description", kind: "select", options: RETENTION_OPTIONS, default: "forever" },

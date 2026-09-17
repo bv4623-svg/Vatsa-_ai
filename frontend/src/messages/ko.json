@@ -25,6 +25,51 @@
       "description": "Vatsa AI 인터페이스가 표시되는 언어입니다.",
       "searchPlaceholder": "언어 검색...",
       "noResults": "검색과 일치하는 언어가 없습니다."
+    },
+    "theme": {
+      "label": "테마",
+      "description": "Vatsa AI 인터페이스의 모양입니다.",
+      "light": "라이트",
+      "dark": "다크",
+      "system": "시스템"
+    },
+    "timezone": {
+      "label": "시간대",
+      "description": "예약된 작업 실행과 같은 시간을 현지 시간으로 표시하는 데 사용됩니다."
+    },
+    "defaultModel": {
+      "label": "기본 모델",
+      "description": "다른 모델을 선택하지 않는 한 새 채팅에 사용됩니다.",
+      "auto": "자동(권장)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "응답 스타일",
+      "description": "모든 응답의 지침에 추가됩니다.",
+      "default": "기본값",
+      "concise": "간결하게",
+      "detailed": "상세하게",
+      "friendly": "친근하게",
+      "formal": "격식있게"
+    },
+    "autoSave": {
+      "label": "채팅 자동 저장",
+      "description": "꺼져 있으면 새 메시지가 채팅 기록에 저장되지 않습니다."
+    },
+    "retention": {
+      "label": "기록 보존 기간",
+      "description": "이보다 오래된 채팅을 자동으로 삭제합니다.",
+      "30d": "30일",
+      "90d": "90일",
+      "forever": "영구 보관"
+    },
+    "notify": {
+      "email": "이메일 알림",
+      "inApp": "앱 내 알림",
+      "quota": "저장 공간 경고",
+      "product": "제품 업데이트"
     }
   },
   "library": {

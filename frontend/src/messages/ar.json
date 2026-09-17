@@ -25,6 +25,51 @@
       "description": "اللغة التي تُعرض بها واجهة Vatsa AI.",
       "searchPlaceholder": "البحث عن لغة...",
       "noResults": "لا توجد لغة تطابق بحثك."
+    },
+    "theme": {
+      "label": "المظهر",
+      "description": "شكل واجهة Vatsa AI.",
+      "light": "فاتح",
+      "dark": "داكن",
+      "system": "النظام"
+    },
+    "timezone": {
+      "label": "المنطقة الزمنية",
+      "description": "تُستخدم لعرض الأوقات (مثل تشغيل المهام المجدولة) بتوقيتك المحلي."
+    },
+    "defaultModel": {
+      "label": "النموذج الافتراضي",
+      "description": "يُستخدم للمحادثات الجديدة ما لم تختر نموذجًا مختلفًا.",
+      "auto": "تلقائي (موصى به)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "أسلوب الرد",
+      "description": "يُضاف إلى تعليمات كل رد.",
+      "default": "افتراضي",
+      "concise": "موجز",
+      "detailed": "مفصّل",
+      "friendly": "ودّي",
+      "formal": "رسمي"
+    },
+    "autoSave": {
+      "label": "حفظ المحادثات تلقائيًا",
+      "description": "عند الإيقاف، لن تُحفظ الرسائل الجديدة في سجل المحادثات."
+    },
+    "retention": {
+      "label": "الاحتفاظ بالسجل",
+      "description": "حذف المحادثات الأقدم من هذه المدة تلقائيًا.",
+      "30d": "30 يومًا",
+      "90d": "90 يومًا",
+      "forever": "للأبد"
+    },
+    "notify": {
+      "email": "إشعارات البريد الإلكتروني",
+      "inApp": "الإشعارات داخل التطبيق",
+      "quota": "تنبيهات حصة التخزين",
+      "product": "تحديثات المنتج"
     }
   },
   "library": {

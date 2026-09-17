@@ -25,6 +25,51 @@
       "description": "La langue dans laquelle l'interface de Vatsa AI est affichée.",
       "searchPlaceholder": "Rechercher des langues...",
       "noResults": "Aucune langue ne correspond à votre recherche."
+    },
+    "theme": {
+      "label": "Thème",
+      "description": "L'apparence de l'interface de Vatsa AI.",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
+    },
+    "timezone": {
+      "label": "Fuseau horaire",
+      "description": "Utilisé pour afficher les heures (comme l'exécution des tâches planifiées) dans votre heure locale."
+    },
+    "defaultModel": {
+      "label": "Modèle par défaut",
+      "description": "Utilisé pour les nouvelles discussions sauf si vous choisissez un autre modèle.",
+      "auto": "Automatique (recommandé)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "Style de réponse",
+      "description": "Ajouté aux instructions de chaque réponse.",
+      "default": "Par défaut",
+      "concise": "Concis",
+      "detailed": "Détaillé",
+      "friendly": "Amical",
+      "formal": "Formel"
+    },
+    "autoSave": {
+      "label": "Enregistrement automatique des discussions",
+      "description": "Si désactivé, les nouveaux messages ne sont pas enregistrés dans l'historique."
+    },
+    "retention": {
+      "label": "Conservation de l'historique",
+      "description": "Supprime automatiquement les discussions plus anciennes que cette durée.",
+      "30d": "30 jours",
+      "90d": "90 jours",
+      "forever": "Toujours"
+    },
+    "notify": {
+      "email": "Notifications par e-mail",
+      "inApp": "Notifications dans l'application",
+      "quota": "Alertes de quota de stockage",
+      "product": "Mises à jour produit"
     }
   },
   "library": {

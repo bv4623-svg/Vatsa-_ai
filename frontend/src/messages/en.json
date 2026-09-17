@@ -25,6 +25,51 @@
       "description": "The language Vatsa AI's interface is shown in.",
       "searchPlaceholder": "Search languages...",
       "noResults": "No languages match your search."
+    },
+    "theme": {
+      "label": "Theme",
+      "description": "How Vatsa AI's interface looks.",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "timezone": {
+      "label": "Timezone",
+      "description": "Used to show times (like scheduled task runs) in your local time."
+    },
+    "defaultModel": {
+      "label": "Default model",
+      "description": "Used for new chats unless you pick a different model.",
+      "auto": "Auto (recommended)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "Response style",
+      "description": "Added to every reply's instructions.",
+      "default": "Default",
+      "concise": "Concise",
+      "detailed": "Detailed",
+      "friendly": "Friendly",
+      "formal": "Formal"
+    },
+    "autoSave": {
+      "label": "Auto-save chats",
+      "description": "When off, new messages aren't saved to your chat history."
+    },
+    "retention": {
+      "label": "History retention",
+      "description": "Automatically delete chats older than this.",
+      "30d": "30 days",
+      "90d": "90 days",
+      "forever": "Forever"
+    },
+    "notify": {
+      "email": "Email notifications",
+      "inApp": "In-app notifications",
+      "quota": "Storage quota warnings",
+      "product": "Product updates"
     }
   },
   "library": {

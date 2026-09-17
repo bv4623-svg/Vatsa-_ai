@@ -25,6 +25,51 @@
       "description": "El idioma en el que se muestra la interfaz de Vatsa AI.",
       "searchPlaceholder": "Buscar idiomas...",
       "noResults": "Ningún idioma coincide con tu búsqueda."
+    },
+    "theme": {
+      "label": "Tema",
+      "description": "El aspecto de la interfaz de Vatsa AI.",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema"
+    },
+    "timezone": {
+      "label": "Zona horaria",
+      "description": "Se usa para mostrar horas (como la ejecución de tareas programadas) en tu hora local."
+    },
+    "defaultModel": {
+      "label": "Modelo predeterminado",
+      "description": "Se usa para chats nuevos a menos que elijas otro modelo.",
+      "auto": "Automático (recomendado)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "Estilo de respuesta",
+      "description": "Se añade a las instrucciones de cada respuesta.",
+      "default": "Predeterminado",
+      "concise": "Conciso",
+      "detailed": "Detallado",
+      "friendly": "Amigable",
+      "formal": "Formal"
+    },
+    "autoSave": {
+      "label": "Guardar chats automáticamente",
+      "description": "Si está desactivado, los mensajes nuevos no se guardan en tu historial."
+    },
+    "retention": {
+      "label": "Retención del historial",
+      "description": "Elimina automáticamente los chats más antiguos que esto.",
+      "30d": "30 días",
+      "90d": "90 días",
+      "forever": "Para siempre"
+    },
+    "notify": {
+      "email": "Notificaciones por correo",
+      "inApp": "Notificaciones en la app",
+      "quota": "Avisos de límite de almacenamiento",
+      "product": "Novedades del producto"
     }
   },
   "library": {

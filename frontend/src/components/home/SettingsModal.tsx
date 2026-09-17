@@ -3,43 +3,34 @@
 import { memo, useState } from "react";
 import { motion } from "framer-motion";
 import { useUpgrade } from "@/components/billing/UpgradeProvider";
-import { ThemeSwitcher } from "@/components/settings/ThemeSwitcher";
-import { Settings, Palette, Languages, Info, X, ExternalLink, Sparkles } from "lucide-react";
+import {
+  Settings, Palette, Languages, Info, X, Sparkles,
+  SlidersHorizontal, ShieldCheck, KeyRound, Link2, CreditCard, UserCog,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  GeneralTab, AppearanceTab, LanguageTab, PreferencesTab, SecurityTab,
+  ApiKeysTab, ConnectedAccountsTab, BillingTab, AccountTab, LegalTab,
+} from "@/components/settings/tabs";
 
-export const SettingsModal = memo(({ open, onClose, settings, updateSettings, onLogout, onClearAllChats, onExportChats, isFree }: any) => {
+const TABS = [
+  { id: "general", label: "General", icon: Settings },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
+  { id: "language", label: "Language", icon: Languages },
+  { id: "security", label: "Security", icon: ShieldCheck },
+  { id: "apiKeys", label: "API Keys", icon: KeyRound },
+  { id: "connections", label: "Connected accounts", icon: Link2 },
+  { id: "billing", label: "Billing", icon: CreditCard },
+  { id: "account", label: "Account", icon: UserCog },
+  { id: "legal", label: "Legal & Info", icon: Info },
+] as const;
+
+export const SettingsModal = memo(({ open, onClose, settings, updateSettings, onClearAllChats, onExportChats, isFree }: any) => {
   const { openUpgrade } = useUpgrade();
-  const [activeTab, setActiveTab] = useState("general");
-  const [lang, setLang] = useState(settings.language || "en");
-
-  const languages = [
-    { code: "en", label: "English" }, { code: "hi", label: "Hindi" }, { code: "bn", label: "Bengali" },
-    { code: "ta", label: "Tamil" }, { code: "te", label: "Telugu" }, { code: "mr", label: "Marathi" },
-    { code: "gu", label: "Gujarati" }, { code: "kn", label: "Kannada" }, { code: "ml", label: "Malayalam" },
-    { code: "pa", label: "Punjabi" }, { code: "ur", label: "Urdu" }, { code: "es", label: "Spanish" },
-    { code: "fr", label: "French" }, { code: "de", label: "German" }, { code: "pt", label: "Portuguese" },
-    { code: "it", label: "Italian" }, { code: "nl", label: "Dutch" }, { code: "ru", label: "Russian" },
-    { code: "ar", label: "Arabic" }, { code: "zh", label: "Chinese" }, { code: "ja", label: "Japanese" },
-    { code: "ko", label: "Korean" }, { code: "id", label: "Indonesian" }, { code: "tr", label: "Turkish" },
-    { code: "vi", label: "Vietnamese" }, { code: "th", label: "Thai" },
-  ];
-
-  const legalLinks = [
-    { label: "About Vatsa AI", href: "/about" }, { label: "Contact", href: "/contact" },
-    { label: "Privacy Policy", href: "/privacy" }, { label: "Terms of Service", href: "/terms" },
-    { label: "Cookie Policy", href: "/cookies" }, { label: "Security", href: "/security" },
-    { label: "Disclaimer", href: "/disclaimer" }, { label: "Refund Policy", href: "/refund" },
-    { label: "Return Policy", href: "/return" },
-  ];
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["id"]>("general");
 
   if (!open) return null;
-
-  const tabs = [
-    { id: "general", label: "General", icon: <Settings className="w-4 h-4" /> },
-    { id: "appearance", label: "Appearance", icon: <Palette className="w-4 h-4" /> },
-    { id: "language", label: "Language", icon: <Languages className="w-4 h-4" /> },
-    { id: "legal", label: "Legal & Info", icon: <Info className="w-4 h-4" /> },
-  ];
 
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -50,7 +41,7 @@ export const SettingsModal = memo(({ open, onClose, settings, updateSettings, on
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">Settings</h2>
-          <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground hover:text-foreground" /></button>
+          <button onClick={onClose} aria-label="Close settings"><X className="w-5 h-5 text-muted-foreground hover:text-foreground" /></button>
         </div>
         {isFree && (
           <div className="flex items-center gap-3 border-b border-border bg-gradient-to-r from-accent/10 to-purple-500/10 px-6 py-2.5">
@@ -67,114 +58,32 @@ export const SettingsModal = memo(({ open, onClose, settings, updateSettings, on
           </div>
         )}
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-40 border-r border-border p-2 space-y-1 overflow-y-auto">
-            {tabs.map((tab) => (
+          <div className="w-44 border-r border-border p-2 space-y-1 overflow-y-auto">
+            {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                   activeTab === tab.id ? "bg-accent/10 text-foreground" : "text-muted-foreground hover:bg-accent/5 hover:text-foreground"
                 )}
               >
-                {tab.icon}
+                <tab.icon className="w-4 h-4 shrink-0" />
                 {tab.label}
               </button>
             ))}
           </div>
           <div className="flex-1 p-6 overflow-y-auto">
-            {activeTab === "general" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground">Font Size</label>
-                  <div className="flex gap-2 mt-1">
-                    {["small", "medium", "large"].map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => updateSettings({ fontSize: size })}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg border text-sm transition-colors",
-                          settings.fontSize === size ? "border-accent bg-accent/10 text-foreground" : "border-border text-muted-foreground hover:bg-accent/5"
-                        )}
-                      >
-                        {size.charAt(0).toUpperCase() + size.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-border">
-                  <button
-                    onClick={() => { if (window.confirm("Delete all chats permanently?")) onClearAllChats(); }}
-                    className="text-sm text-red-500 hover:underline"
-                  >
-                    Clear All Chats
-                  </button>
-                </div>
-                <div>
-                  <button onClick={onExportChats} className="text-sm text-accent hover:underline">
-                    Export Chats (JSON)
-                  </button>
-                </div>
-              </div>
-            )}
-            {activeTab === "appearance" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground">Theme</label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Applies instantly and follows you across devices.
-                  </p>
-                  <div className="mt-2">
-                    <ThemeSwitcher onChange={(theme) => updateSettings({ theme })} />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground">Accent Color</label>
-                  <div className="flex gap-2 mt-1">
-                    {["default", "blue", "purple", "green", "orange"].map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => updateSettings({ accentColor: color })}
-                        className={cn(
-                          "w-8 h-8 rounded-full border-2 transition-all",
-                          settings.accentColor === color ? "border-accent scale-110" : "border-transparent"
-                        )}
-                        style={{ background: color === "default" ? "#a855f7" : color === "blue" ? "#3b82f6" : color === "purple" ? "#a855f7" : color === "green" ? "#10b981" : "#f97316" }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            {activeTab === "language" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground">Interface Language</label>
-                  <select
-                    value={lang}
-                    onChange={(e) => { const v = e.target.value; setLang(v); updateSettings({ language: v }); }}
-                    className="mt-2 w-full rounded-xl border border-border bg-input/10 px-3 py-2 text-sm text-foreground focus:border-accent/50 focus:outline-none"
-                  >
-                    {languages.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-                  </select>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Language preference is saved for future localization.</p>
-                </div>
-              </div>
-            )}
-            {activeTab === "legal" && (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground mb-2">Legal & Information</p>
-                <div className="grid grid-cols-1 gap-1">
-                  {legalLinks.map((link) => (
-                    <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-accent/5 text-sm text-foreground/80 hover:text-foreground transition-colors">
-                      <span>{link.label}</span>
-                      <ExternalLink className="w-4 h-4 text-muted-foreground/50" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
+            {activeTab === "general" && <GeneralTab settings={settings} updateSettings={updateSettings} onClearAllChats={onClearAllChats} onExportChats={onExportChats} />}
+            {activeTab === "appearance" && <AppearanceTab settings={settings} updateSettings={updateSettings} />}
+            {activeTab === "preferences" && <PreferencesTab />}
+            {activeTab === "language" && <LanguageTab />}
+            {activeTab === "security" && <SecurityTab />}
+            {activeTab === "apiKeys" && <ApiKeysTab isFree={isFree} />}
+            {activeTab === "connections" && <ConnectedAccountsTab />}
+            {activeTab === "billing" && <BillingTab />}
+            {activeTab === "account" && <AccountTab />}
+            {activeTab === "legal" && <LegalTab />}
           </div>
         </div>
       </motion.div>

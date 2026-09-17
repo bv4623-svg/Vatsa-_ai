@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { PLANS, formatPrice } from "@/data/plans";
+
+const pro = PLANS.find((p) => p.id === "pro");
+const proPrice = pro ? formatPrice(pro.priceUSD, "USD") : "";
 
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Simple, transparent pricing for Vatsa AI. Start free with 100 AI credits a month, or upgrade to Pro at $24.00/month for unlimited credits, code execution and premium model routing.",
+    `Simple, transparent pricing for Vatsa AI. Start free, or upgrade to Pro from ${proPrice}/month. Compare the Free, Pro, Business and Ultra plans.`,
   alternates: { canonical: "/pricing" },
   openGraph: {
     title: "Pricing | Vatsa AI",

@@ -16,20 +16,67 @@ from app.services.token_service import TokenService
 logger = logging.getLogger("PaymentService")
 
 GST_RATE = 0.18
+ANNUAL_DISCOUNT = 0.20
 
-# Plan ids used by the pricing page CTAs (/checkout?plan=pro|business).
-# Amounts are the published USD list prices plus the 18% GST shown on the
-# pricing page -- Razorpay charges in the smallest currency unit, so
-# $24.00 + 18% GST = $28.32 = 2832 cents.
-def _usd_with_gst(dollars: float) -> int:
-    return int(round(dollars * (1 + GST_RATE) * 100))
+# Mirrors frontend src/data/plans.ts. Both sides must agree or the price a
+# user is shown is not the price they are charged, so the rounding here is
+# deliberately the same two-step half-up the UI uses.
+_LIST_PRICES = {
+    #          USD    INR
+    "pro":      (24.0,  499.0),
+    "business": (99.0, 1999.0),
+    "ultra":    (49.0, 1499.0),
+}
+
+_PLAN_META = {
+    "pro":      {"label": "Pro",      "tokens": 500000,  "tier": "pro"},
+    "business": {"label": "Business", "tokens": 2000000, "tier": "pro"},
+    "ultra":    {"label": "Ultra",    "tokens": 5000000, "tier": "ultra"},
+}
+
+
+def _round2(value: float) -> float:
+    return round(value + 1e-9, 2)
+
+
+def _smallest_unit_with_gst(base: float) -> int:
+    """Base price -> amount in the currency's smallest unit, GST included."""
+    gst = _round2(base * GST_RATE)
+    total = _round2(base + gst)
+    return int(round(total * 100))
+
+
+def _build_catalog() -> Dict[str, Dict[str, Any]]:
+    catalog: Dict[str, Dict[str, Any]] = {}
+    for plan_id, (usd, inr) in _LIST_PRICES.items():
+        meta = _PLAN_META[plan_id]
+        for currency, monthly in (("USD", usd), ("INR", inr)):
+            for period in ("monthly", "annual"):
+                base = monthly if period == "monthly" else _round2(monthly * 12 * (1 - ANNUAL_DISCOUNT))
+                catalog[f"{plan_id}:{period}:{currency}"] = {
+                    "id": plan_id,
+                    "name": f"{meta['label']} {period.capitalize()}",
+                    "amount_paise": _smallest_unit_with_gst(base),
+                    "currency": currency,
+                    "tokens": meta["tokens"] if period == "monthly" else meta["tokens"] * 12,
+                    "tier": meta["tier"],
+                    "duration_days": 30 if period == "monthly" else 365,
+                }
+    return catalog
+
+
+def resolve_plan(plan_id: str, billing_period: str = "monthly", currency: str = "USD") -> Optional[Dict[str, Any]]:
+    """Look up a plan by the id the pricing page / upgrade modal sends."""
+    period = "annual" if str(billing_period).lower() == "annual" else "monthly"
+    cur = "INR" if str(currency).upper() == "INR" else "USD"
+    return PLANS.get(f"{plan_id}:{period}:{cur}") or PLANS.get(plan_id)
 
 
 PLANS: Dict[str, Dict[str, Any]] = {
     "pro": {
         "id": "pro",
         "name": "Pro Monthly",
-        "amount_paise": _usd_with_gst(24.00),
+        "amount_paise": _smallest_unit_with_gst(24.0),
         "currency": "USD",
         "tokens": 500000,
         "tier": "pro",
@@ -38,10 +85,19 @@ PLANS: Dict[str, Dict[str, Any]] = {
     "business": {
         "id": "business",
         "name": "Business Monthly",
-        "amount_paise": _usd_with_gst(99.00),
+        "amount_paise": _smallest_unit_with_gst(99.0),
         "currency": "USD",
         "tokens": 2000000,
         "tier": "pro",
+        "duration_days": 30,
+    },
+    "ultra": {
+        "id": "ultra",
+        "name": "Ultra Monthly",
+        "amount_paise": _smallest_unit_with_gst(49.0),
+        "currency": "USD",
+        "tokens": 5000000,
+        "tier": "ultra",
         "duration_days": 30,
     },
     "pro_monthly": {
@@ -82,14 +138,23 @@ PLANS: Dict[str, Dict[str, Any]] = {
     }
 }
 
+PLANS.update(_build_catalog())
+
+
 class PaymentService:
     @staticmethod
     def get_plans() -> Dict[str, Dict[str, Any]]:
         return PLANS
 
     @staticmethod
-    def create_order(db: Session, user: User, plan_id: str) -> Dict[str, Any]:
-        plan = PLANS.get(plan_id)
+    def create_order(
+        db: Session,
+        user: User,
+        plan_id: str,
+        billing_period: str = "monthly",
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        plan = resolve_plan(plan_id, billing_period, currency)
         if not plan:
             # Fallback for generic 'monthly' or 'annual' IDs
             if "annual" in plan_id.lower() or "year" in plan_id.lower():
@@ -231,7 +296,7 @@ class PaymentService:
         sub.updated_at = datetime.utcnow()
 
         # Upgrade User tier if applicable
-        if plan["tier"] in ["pro", "paid", "premium"]:
+        if plan["tier"] in ["pro", "paid", "premium", "ultra"]:
             user.tier = plan["tier"]
 
         # Credit Tokens idempotently

@@ -2,10 +2,12 @@
 
 import { memo, useState } from "react";
 import { motion } from "framer-motion";
-import { Settings, Palette, Languages, Info, X, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Settings, Palette, Languages, Info, X, ExternalLink, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const SettingsModal = memo(({ open, onClose, settings, updateSettings, onLogout, onClearAllChats, onExportChats }: any) => {
+export const SettingsModal = memo(({ open, onClose, settings, updateSettings, onLogout, onClearAllChats, onExportChats, isFree }: any) => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("general");
   const [lang, setLang] = useState(settings.language || "en");
 
@@ -49,6 +51,20 @@ export const SettingsModal = memo(({ open, onClose, settings, updateSettings, on
           <h2 className="text-lg font-semibold text-foreground">Settings</h2>
           <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground hover:text-foreground" /></button>
         </div>
+        {isFree && (
+          <div className="flex items-center gap-3 border-b border-border bg-gradient-to-r from-accent/10 to-purple-500/10 px-6 py-2.5">
+            <Sparkles className="h-4 w-4 flex-shrink-0 text-accent" />
+            <p className="flex-1 text-xs text-foreground/80">
+              You&apos;re on the Free plan. Upgrade to unlock Vision, Reasoning, Agents, and higher limits.
+            </p>
+            <button
+              onClick={() => { onClose(); router.push("/pricing"); }}
+              className="flex-shrink-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-medium text-white hover:opacity-90"
+            >
+              Upgrade to Pro
+            </button>
+          </div>
+        )}
         <div className="flex flex-1 overflow-hidden">
           <div className="w-40 border-r border-border p-2 space-y-1 overflow-y-auto">
             {tabs.map((tab) => (

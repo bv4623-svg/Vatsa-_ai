@@ -3,7 +3,7 @@
 import { type RefObject } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import { Paperclip, Globe, Mic, Send, Square, Copy, RefreshCw, ThumbsUp, ThumbsDown, Share2, Check, Brain } from "lucide-react";
+import { Paperclip, Globe, Mic, Send, Square, Copy, RefreshCw, ThumbsUp, ThumbsDown, Share2, Check, Brain, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Magnetic from "@/components/landing/Magnetic";
 import { Tooltip } from "@/components/home/Tooltip";
@@ -49,6 +49,7 @@ interface ChatMessagesViewProps {
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   modKey: string;
   banner?: React.ReactNode;
+  isFree?: boolean;
 }
 
 export function ChatMessagesView({
@@ -59,7 +60,7 @@ export function ChatMessagesView({
   inputRef, inputValue, onInputChange, onSend, onStop, hasReadyAttachments,
   showAttachmentMenu, setShowAttachmentMenu, webSearchEnabled, onToggleWebSearch,
   reasoningEnabled, onToggleReasoning,
-  banner,
+  banner, isFree,
   fileInputRef, folderInputRef, onFileUpload,
   modKey,
 }: ChatMessagesViewProps) {
@@ -277,16 +278,20 @@ export function ChatMessagesView({
                   <Globe className="h-4 w-4" />
                 </button>
               </Tooltip>
-              <Tooltip text={reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
+              <Tooltip text={isFree ? "Reasoning is a Pro feature" : reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
                 <button
                   onClick={onToggleReasoning}
-                  className={`rounded-full p-2 hover:bg-accent/10 ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                  className={`relative rounded-full p-2 hover:bg-accent/10 ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
                 >
                   <Brain className="h-4 w-4" />
+                  {isFree && <Lock className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" />}
                 </button>
               </Tooltip>
-              <Tooltip text="Voice Chat">
-                <button className="rounded-full bg-accent/5 p-2 text-muted-foreground hover:bg-accent/10"><Mic className="h-4 w-4" /></button>
+              <Tooltip text={isFree ? "Voice is a Pro feature" : "Voice Chat"}>
+                <button className="relative rounded-full bg-accent/5 p-2 text-muted-foreground hover:bg-accent/10">
+                  <Mic className="h-4 w-4" />
+                  {isFree && <Lock className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" />}
+                </button>
               </Tooltip>
             </div>
 

@@ -339,6 +339,7 @@ export function CodeWorkspace() {
               collapsed={sidebarCollapsed}
               toggleSidebar={toggleSidebar}
               onDeleteProject={onDeleteProject}
+              isFree={isFree}
             />
 
             <div

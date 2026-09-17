@@ -2,7 +2,7 @@
 
 import { type RefObject } from "react";
 import { motion } from "framer-motion";
-import { Paperclip, Globe, Mic, Send, Code, Terminal, Image as ImageIcon, Bug, BookOpen, Search, Brain } from "lucide-react";
+import { Paperclip, Globe, Mic, Send, Code, Terminal, Image as ImageIcon, Bug, BookOpen, Search, Brain, Lock } from "lucide-react";
 import Magnetic from "@/components/landing/Magnetic";
 import { Tooltip } from "@/components/home/Tooltip";
 import { AttachmentChip } from "@/components/home/AttachmentChip";
@@ -43,6 +43,7 @@ interface ChatEmptyStateProps {
   fileInputRef: RefObject<HTMLInputElement | null>;
   folderInputRef: RefObject<HTMLInputElement | null>;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isFree?: boolean;
 }
 
 export function ChatEmptyState({
@@ -52,7 +53,7 @@ export function ChatEmptyState({
   showWebSearchPopover, setShowWebSearchPopover, webSearchEnabled, onToggleWebSearch,
   reasoningEnabled, onToggleReasoning,
   showVoicePopover, setShowVoicePopover,
-  fileInputRef, folderInputRef, onFileUpload,
+  fileInputRef, folderInputRef, onFileUpload, isFree,
 }: ChatEmptyStateProps) {
   return (
     <div className="flex min-h-full flex-col items-center justify-center px-4 py-12">
@@ -139,18 +140,20 @@ export function ChatEmptyState({
                     </button>
                   </ToolbarPopover>
                 </div>
-                <Tooltip text={reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
+                <Tooltip text={isFree ? "Reasoning is a Pro feature" : reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
                   <button
                     onClick={onToggleReasoning}
-                    className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-accent/10 hover:text-foreground ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                    className={`relative flex items-center gap-1 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-accent/10 hover:text-foreground ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
                   >
                     <Brain className="h-4 w-4" /> Think
+                    {isFree && <Lock className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" />}
                   </button>
                 </Tooltip>
                 <div className="relative">
-                  <Tooltip text="Voice Chat">
-                    <button onClick={() => setShowVoicePopover((p) => !p)} className="flex items-center gap-1 rounded-full bg-accent/5 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground">
+                  <Tooltip text={isFree ? "Voice is a Pro feature" : "Voice Chat"}>
+                    <button onClick={() => setShowVoicePopover((p) => !p)} className="relative flex items-center gap-1 rounded-full bg-accent/5 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground">
                       <Mic className="h-4 w-4" /> Voice
+                      {isFree && <Lock className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" />}
                     </button>
                   </Tooltip>
                   <ToolbarPopover open={showVoicePopover} onClose={() => setShowVoicePopover(false)} title="Voice Input">

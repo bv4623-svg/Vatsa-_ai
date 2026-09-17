@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Conversation } from "@/services/chat";
 import type { UserProfile } from "@/types/code";
 import { SidebarUpgradeCard } from "@/components/billing/SidebarUpgradeCard";
+import { SidebarWorkspaceLinks } from "@/components/sidebar/SidebarWorkspaceLinks";
 
 interface SidebarProps {
   projects: Conversation[];
@@ -185,6 +186,8 @@ export const Sidebar = ({
             </div>
           </>
         )}
+
+        <SidebarWorkspaceLinks collapsed={collapsed} />
 
         {isFree && (
           <div className={cn("pb-2", collapsed ? "px-2" : "px-1")}>

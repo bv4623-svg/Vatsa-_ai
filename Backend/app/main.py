@@ -24,6 +24,7 @@ from typing import List, Optional
 
 from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, tokens, upload, files, vision
+from app.routers import library as library_router
 from app.core.classifier import IntentClassifier
 from intents_data import INTENTS
 from app.database import init_db
@@ -59,6 +60,7 @@ app.include_router(tokens.router)
 app.include_router(upload.router)
 app.include_router(files.router)
 app.include_router(vision.router)
+app.include_router(library_router.router)
 
 
 # Intent classification endpoints

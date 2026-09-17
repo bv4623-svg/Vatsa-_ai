@@ -18,6 +18,7 @@ from app.auth.jwt import create_media_token
 from app.services.ai_service import AIService, detect_image_gen
 from app.services.image_service import generate_and_store_image
 from app.services.memory_extractor import extract_facts
+from app.services.library import sync_conversation_item, check_quota
 from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
 from app.services.feature_access import check_daily_limit, increment_usage
@@ -120,6 +121,22 @@ def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
     increment_usage(db, user, feature)
 
 
+def _enforce_storage_quota(db: Session, user: User, estimated_bytes: int) -> None:
+    """Raises 413 before generating an image that would push the user over
+    their plan's storage ceiling. Checked here rather than inside
+    generate_and_store_image() because that function's caller wraps every
+    exception in a generic 502 -- this must run, and raise, before that
+    try block."""
+    allowed, usage = check_quota(db, user, estimated_bytes)
+    if not allowed:
+        raise HTTPException(status_code=413, detail={
+            "error": "storage_limit_reached",
+            "used_bytes": usage["used_bytes"],
+            "limit_bytes": usage["limit_bytes"],
+            "upgrade_url": "/pricing",
+        })
+
+
 async def _get_search_context(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[str], List[Dict[str, Any]]]:
     """
     Best-effort multi-source web search grounding. Never raises -- if no
@@ -175,6 +192,19 @@ def _persist_conversation(
     conv.messages = msgs
     conv.updated_at = datetime.utcnow()
     db.commit()
+
+    # Every chat/code conversation is a Library item, kept in sync here --
+    # the one place a finished exchange gets persisted, regardless of
+    # which of the three call sites (streaming, non-streaming, image gen)
+    # triggered it. Never blocks the response: a Library sync failure
+    # must not break the chat the user is actually waiting on.
+    try:
+        sync_conversation_item(
+            db, conv.user_id, conv.id, conv.title, conv.workspace or "chat",
+            len(json.dumps(msgs, default=str).encode("utf-8")),
+        )
+    except Exception:
+        logger.exception("Library sync failed for conversation %s", conv.id)
 
 
 async def _stream_chat_response(
@@ -257,6 +287,10 @@ async def chat_endpoint(
     img_prompt = detect_image_gen(req.message)
     if img_prompt:
         _enforce_daily_limit(db, user, "image_gen")
+        # A processed PNG from this pipeline is typically 1-3MB; 2MB is a
+        # conservative pre-check so a user right at their ceiling is
+        # blocked before spending the generation call, not after.
+        _enforce_storage_quota(db, user, 2 * 1024 * 1024)
         try:
             img_data = await generate_and_store_image(db, user.id, img_prompt)
         except Exception as e:

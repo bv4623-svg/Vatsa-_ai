@@ -31,7 +31,7 @@ const BACKEND_AUTH_PREFIXES = [
 // still the authority (the backend validates the JWT on every API call);
 // the vatsa_session cookie only lets us bounce anonymous visitors here
 // instead of flashing an empty authed shell first.
-const PROTECTED_PREFIXES = ["/home", "/code", "/workspace", "/checkout", "/billing", "/settings"];
+const PROTECTED_PREFIXES = ["/home", "/code", "/workspace", "/checkout", "/billing", "/settings", "/library"];
 
 function isBackendAuthPath(path: string) {
   return BACKEND_AUTH_PREFIXES.some((p) => path.startsWith(p));

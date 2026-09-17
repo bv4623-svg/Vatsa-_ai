@@ -53,5 +53,6 @@ def init_db():
     import app.models.snapshot
     import app.models.generated_image
     import app.models.usage_daily
+    import app.models.library_item
     Base.metadata.create_all(bind=engine)
 

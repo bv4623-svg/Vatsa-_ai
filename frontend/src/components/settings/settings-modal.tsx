@@ -538,7 +538,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             </>
           )}
 
-          {/* ─── Billing ─── (unchanged) ─── */}
+          {/* ─── Billing ─── */}
           {section === "billing" && (
             <>
               <div className="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
@@ -549,18 +549,43 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                       {isPremium ? "Unlimited chats, priority models, longer context." : "Everyday chats with standard models."}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUserTier(isPremium ? "free" : "pro");
-                      toast({ type: "info", message: isPremium ? "You are now on the Free plan." : "You are now on the Pro plan." });
-                    }}
-                    className="rounded-lg bg-primary-600 px-3.5 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-85"
-                  >
-                    {isPremium ? "Downgrade" : "Upgrade to Pro"}
-                  </button>
+                  {isPremium ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserTier("free");
+                        toast({ type: "info", message: "You are now on the Free plan." });
+                      }}
+                      className="rounded-lg bg-primary-600 px-3.5 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-85"
+                    >
+                      Downgrade
+                    </button>
+                  ) : (
+                    <Link
+                      href="/pricing"
+                      onClick={() => onClose()}
+                      className="rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-3.5 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-85"
+                    >
+                      Upgrade to Pro
+                    </Link>
+                  )}
                 </div>
               </div>
+              {!isPremium && (
+                <div className="mb-4 flex items-center gap-3 rounded-xl border border-accent/20 bg-gradient-to-r from-accent/10 to-purple-500/10 p-4">
+                  <Sparkles className="h-5 w-5 flex-shrink-0 text-accent" />
+                  <p className="flex-1 text-[12.5px] text-zinc-600 dark:text-zinc-300">
+                    Unlock Vision, Reasoning, Agents, and higher daily limits with Pro.
+                  </p>
+                  <Link
+                    href="/pricing"
+                    onClick={() => onClose()}
+                    className="flex-shrink-0 text-[12.5px] font-semibold text-accent hover:underline"
+                  >
+                    See plans →
+                  </Link>
+                </div>
+              )}
               <Row title="Payment method" desc="Connect a processor from your backend to enable checkout.">
                 <span className="text-[12.5px] text-zinc-500 dark:text-zinc-400">Not connected</span>
               </Row>

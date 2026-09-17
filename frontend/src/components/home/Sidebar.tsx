@@ -12,12 +12,13 @@ import { cn } from "@/lib/utils";
 import { IconBtn } from "@/components/home/IconBtn";
 import { DeleteConfirmModal } from "@/components/home/DeleteConfirmModal";
 import { RenameModal } from "@/components/home/RenameModal";
+import { SidebarUpgradeCard } from "@/components/billing/SidebarUpgradeCard";
 
 export const Sidebar = memo(({
   onNewChat, onOpenSettings, conversations, collapsed, toggleSidebar, width,
   privateMode, onDeleteChat, onLogout, userProfile, onRenameChat, onPinChat,
   onUnpinChat, onToggleFavorite, onDuplicateChat, onArchiveChat,
-  activeConversationId, setActiveConversation,
+  activeConversationId, setActiveConversation, isFree,
 }: any) => {
   const [query, setQuery] = useState("");
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
@@ -229,6 +230,12 @@ export const Sidebar = memo(({
               </div>
             )}
           </div>
+
+          {isFree && (
+            <div className={cn("pb-2", isCollapsed ? "px-2" : "px-1")}>
+              <SidebarUpgradeCard collapsed={isCollapsed} />
+            </div>
+          )}
 
           <div className="border-t border-border px-2 py-2">
             {!isCollapsed ? (

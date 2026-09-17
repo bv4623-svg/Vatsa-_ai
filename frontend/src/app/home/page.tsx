@@ -304,6 +304,7 @@ export default function HomePage() {
               onArchiveChat={handleArchiveChat}
               activeConversationId={activeConversationId}
               setActiveConversation={setActiveConversationId}
+              isFree={isFree}
             />
 
             <div className="flex-1 overflow-y-auto bg-background/40 backdrop-blur-sm">
@@ -327,6 +328,7 @@ export default function HomePage() {
                   onToggleWebSearch={() => { setWebSearchEnabled((v) => !v); setShowWebSearchPopover(false); }}
                   reasoningEnabled={reasoningEnabled}
                   onToggleReasoning={handleToggleReasoning}
+                  isFree={isFree}
                   showVoicePopover={showVoicePopover}
                   setShowVoicePopover={setShowVoicePopover}
                   fileInputRef={fileInputRef}
@@ -362,6 +364,7 @@ export default function HomePage() {
                   onToggleWebSearch={() => setWebSearchEnabled((v) => !v)}
                   reasoningEnabled={reasoningEnabled}
                   onToggleReasoning={handleToggleReasoning}
+                  isFree={isFree}
                   fileInputRef={fileInputRef}
                   folderInputRef={folderInputRef}
                   onFileUpload={handleFileUpload}
@@ -412,6 +415,7 @@ export default function HomePage() {
             onLogout={handleLogout}
             onClearAllChats={handleClearAllChats}
             onExportChats={handleExportChats}
+            isFree={isFree}
           />
 
           <UpgradeModal

@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/services/chat";
 import type { UserProfile } from "@/types/code";
+import { SidebarUpgradeCard } from "@/components/billing/SidebarUpgradeCard";
 
 interface SidebarProps {
   projects: Conversation[];
@@ -21,6 +22,7 @@ interface SidebarProps {
   collapsed: boolean;
   toggleSidebar: () => void;
   onDeleteProject: (id: string) => void;
+  isFree?: boolean;
 }
 
 export const Sidebar = ({
@@ -33,6 +35,7 @@ export const Sidebar = ({
   collapsed,
   toggleSidebar,
   onDeleteProject,
+  isFree,
 }: SidebarProps) => {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -175,6 +178,12 @@ export const Sidebar = ({
               )}
             </div>
           </>
+        )}
+
+        {isFree && (
+          <div className={cn("pb-2", collapsed ? "px-2" : "px-1")}>
+            <SidebarUpgradeCard collapsed={collapsed} />
+          </div>
         )}
 
         <div className="border-t border-border px-2 py-2">

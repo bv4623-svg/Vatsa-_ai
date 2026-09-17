@@ -3,6 +3,7 @@ import type { Conversation, ChatMessage } from "@/services/chat";
 import type { ProjectFile } from "@/types/code";
 import { uid, normalizeResponse } from "@/lib/code/parsing";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import { parseUpgradeGate, UpgradeRequiredError, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -18,6 +19,7 @@ interface UseCodeChatParams {
   notify: (message: string, kind?: "success" | "error" | "info") => void;
   onSendStart: () => void;
   onFilesGenerated: (files: ProjectFile[], main: ProjectFile) => void;
+  onUpgradeRequired?: (info: UpgradeGateInfo) => void;
 }
 
 /**
@@ -30,7 +32,7 @@ export function useCodeChat(params: UseCodeChatParams) {
   const {
     accessToken, model, conversationsRef, activeProjectIdRef,
     setActiveProjectId, createProject, updateConversationMessages,
-    setConversations, notify, onSendStart, onFilesGenerated,
+    setConversations, notify, onSendStart, onFilesGenerated, onUpgradeRequired,
   } = params;
 
   const [inputValue, setInputValue] = useState("");
@@ -125,6 +127,8 @@ export function useCodeChat(params: UseCodeChatParams) {
         });
 
         if (!response.ok) {
+          const upgradeError = await parseUpgradeGate(response);
+          if (upgradeError) throw upgradeError;
           let msg = "Failed to get response from AI";
           try {
             const err = await response.json();
@@ -268,6 +272,25 @@ export function useCodeChat(params: UseCodeChatParams) {
               attachments: [],
             },
           ]);
+        } else if (err instanceof UpgradeRequiredError) {
+          const fallbackContent =
+            err.info.error === "daily_limit_reached"
+              ? `You've used all ${err.info.limit} free code messages for today.`
+              : "That's a Pro feature.";
+          updateConversationMessages(convId, [
+            ...withUser,
+            {
+              id: uid("assistant"),
+              role: "assistant",
+              content: fallbackContent,
+              createdAt: new Date().toISOString(),
+              status: "done",
+              edited: false,
+              bookmarked: false,
+              attachments: [],
+            },
+          ]);
+          onUpgradeRequired?.(err.info);
         } else {
           console.error("Chat error:", err);
           notify(err.message || "Failed to get response.", "error");
@@ -294,7 +317,7 @@ export function useCodeChat(params: UseCodeChatParams) {
     [
       isLoading, model, updateConversationMessages, createProject, notify,
       accessToken, activeProjectIdRef, conversationsRef, setActiveProjectId,
-      setConversations, onSendStart, onFilesGenerated, isMountedRef,
+      setConversations, onSendStart, onFilesGenerated, onUpgradeRequired, isMountedRef,
     ]
   );
 

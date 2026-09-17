@@ -17,6 +17,8 @@ import { useAutoResize } from "@/hooks/useAutoResize";
 import { useCodeConversations } from "@/hooks/code/useCodeConversations";
 import { useCodeChat } from "@/hooks/code/useCodeChat";
 import { useWorkspaceTheme } from "@/hooks/code/useWorkspaceTheme";
+import { UpgradeModal } from "@/components/billing/UpgradeModal";
+import type { UpgradeGateInfo } from "@/lib/billing/upgradeError";
 import type { ProjectFile, PreviewMode } from "@/types/code";
 
 const isMac =
@@ -44,6 +46,31 @@ export function CodeWorkspace() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [model, setModel] = useState<string>("auto");
+
+  const tier: "free" | "pro" | "ultra" = (user?.tier as any) || "free";
+  const isFree = tier === "free";
+  const [upgradeGate, setUpgradeGate] = useState<{
+    open: boolean; reason: string; feature?: string;
+    suggestedTier?: "pro" | "ultra"; limitInfo?: { used: number; limit: number };
+  }>({ open: false, reason: "" });
+
+  const openUpgradeModal = useCallback((reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
+    setUpgradeGate({ open: true, reason, feature, suggestedTier, limitInfo });
+  }, []);
+
+  const handleUpgradeGate = useCallback((info: UpgradeGateInfo) => {
+    const featureLabel = (info.feature || "").replace(/_/g, " ");
+    if (info.error === "daily_limit_reached") {
+      openUpgradeModal(
+        `You've used all ${info.limit} free ${featureLabel} today.`,
+        info.feature,
+        "pro",
+        info.used != null && info.limit != null ? { used: info.used, limit: info.limit } : undefined,
+      );
+    } else {
+      openUpgradeModal(`${featureLabel || "This feature"} is a Pro feature.`, info.feature, info.suggestedTier || "pro");
+    }
+  }, [openUpgradeModal]);
 
   /* Workspace/preview panel state */
   const [codeContent, setCodeContent] = useState("");
@@ -95,6 +122,7 @@ export function CodeWorkspace() {
       setShowCodePanel(true);
       setPreviewMode("preview");
     },
+    onUpgradeRequired: handleUpgradeGate,
   });
 
   const { theme, accentColor, setAccentColor, handleThemeChange, accentColorHex } =
@@ -296,6 +324,8 @@ export function CodeWorkspace() {
             onNavigateCode={() => router.push("/code")}
             onOpenCommandPalette={() => setCommandOpen(true)}
             onToggleTheme={() => handleThemeChange(theme === "dark" ? "light" : "dark")}
+            tier={tier}
+            onUpgradeClick={() => router.push("/pricing")}
           />
 
           <div className="flex flex-1 overflow-hidden">
@@ -369,6 +399,8 @@ export function CodeWorkspace() {
                       activeFile={activeFile}
                       setActiveFile={setActiveFile}
                       notify={notify}
+                      isFree={isFree}
+                      onUpgradeClick={() => openUpgradeModal("Keep the live preview unlocked with Pro.", "code_preview", "pro")}
                     />
                   </div>
                 </div>
@@ -413,6 +445,15 @@ export function CodeWorkspace() {
           open={commandOpen}
           onClose={() => setCommandOpen(false)}
           commands={paletteCommands}
+        />
+
+        <UpgradeModal
+          open={upgradeGate.open}
+          onClose={() => setUpgradeGate((g) => ({ ...g, open: false }))}
+          reason={upgradeGate.reason}
+          feature={upgradeGate.feature}
+          suggestedTier={upgradeGate.suggestedTier}
+          limitInfo={upgradeGate.limitInfo}
         />
       </main>
     </>

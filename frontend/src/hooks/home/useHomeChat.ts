@@ -3,23 +3,9 @@ import type { Message, Conversation } from "@/types";
 import type { Attachment } from "@/types/home";
 import { API_BASE } from "@/lib/home/constants";
 import { isImageGenQuery } from "@/lib/home/imageQuery";
+import { UpgradeRequiredError, parseUpgradeGate, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
 
-export interface UpgradeGateInfo {
-  error: "upgrade_required" | "daily_limit_reached";
-  feature: string;
-  currentTier?: string;
-  suggestedTier?: "pro" | "ultra";
-  used?: number;
-  limit?: number;
-}
-
-export class UpgradeRequiredError extends Error {
-  info: UpgradeGateInfo;
-  constructor(info: UpgradeGateInfo) {
-    super(info.error === "daily_limit_reached" ? "Daily limit reached" : "Upgrade required");
-    this.info = info;
-  }
-}
+export { UpgradeRequiredError, type UpgradeGateInfo };
 
 interface UseHomeChatParams {
   activeConversationId: string | null;
@@ -151,20 +137,8 @@ export function useHomeChat(params: UseHomeChatParams) {
       });
 
       if (!response.ok) {
-        if (response.status === 402 || response.status === 429) {
-          const body = await response.json().catch(() => null);
-          const detail = body?.detail;
-          if (detail?.error === "upgrade_required" || detail?.error === "daily_limit_reached") {
-            throw new UpgradeRequiredError({
-              error: detail.error,
-              feature: detail.feature,
-              currentTier: detail.current_tier,
-              suggestedTier: detail.suggested_tier,
-              used: detail.used,
-              limit: detail.limit,
-            });
-          }
-        }
+        const upgradeError = await parseUpgradeGate(response);
+        if (upgradeError) throw upgradeError;
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }

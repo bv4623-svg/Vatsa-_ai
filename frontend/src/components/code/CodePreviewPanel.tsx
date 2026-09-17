@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import {
   Monitor, Tablet, Smartphone, RefreshCw, ExternalLink,
-  Copy, Download, Code, FolderOpen, File as FileIcon,
+  Copy, Download, Code, FolderOpen, File as FileIcon, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MonacoEditor } from "./MonacoEditor";
 import type { ProjectFile } from "@/types/code";
+
+const FREE_PREVIEW_SECONDS = 30;
 
 interface CodePreviewPanelProps {
   codeContent: string;
@@ -23,6 +25,8 @@ interface CodePreviewPanelProps {
   activeFile: string;
   setActiveFile: (file: string) => void;
   notify: (msg: string, kind?: "info" | "success" | "error") => void;
+  isFree?: boolean;
+  onUpgradeClick?: () => void;
 }
 
 export const CodePreviewPanel = ({
@@ -36,9 +40,25 @@ export const CodePreviewPanel = ({
   activeFile,
   setActiveFile,
   notify,
+  isFree = false,
+  onUpgradeClick,
 }: CodePreviewPanelProps) => {
   const [key, setKey] = useState(0);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [previewBlurred, setPreviewBlurred] = useState(false);
+
+  // Free tier: the live preview blurs after a short window so the code
+  // panel stays useful (they can still read/edit code) but the polished
+  // rendered result nudges toward upgrading.
+  useEffect(() => {
+    if (!isFree || !codeContent) {
+      setPreviewBlurred(false);
+      return;
+    }
+    setPreviewBlurred(false);
+    const t = setTimeout(() => setPreviewBlurred(true), FREE_PREVIEW_SECONDS * 1000);
+    return () => clearTimeout(t);
+  }, [isFree, codeContent]);
 
   const handleDownloadZip = useCallback(async () => {
     try {
@@ -204,14 +224,26 @@ export const CodePreviewPanel = ({
                   preview.local
                 </span>
               </div>
-              <div className="h-[calc(100%-28px)] overflow-auto bg-white">
+              <div className="relative h-[calc(100%-28px)] overflow-auto bg-white">
                 <iframe
                   key={key}
                   srcDoc={displayContent}
                   sandbox="allow-scripts allow-modals allow-same-origin allow-forms allow-popups"
-                  className="h-full w-full border-0"
+                  className={cn("h-full w-full border-0 transition-all", previewBlurred && "blur-md")}
                   title="Live Preview"
                 />
+                {previewBlurred && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-[1px]">
+                    <Lock className="h-6 w-6 text-white/80" />
+                    <p className="text-sm font-medium text-white">Live preview paused</p>
+                    <button
+                      onClick={onUpgradeClick}
+                      className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                    >
+                      Upgrade to keep previewing
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

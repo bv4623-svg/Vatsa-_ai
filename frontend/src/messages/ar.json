@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "close": "إغلاق",
+    "loading": "جارٍ التحميل...",
+    "confirm": "تأكيد"
+  },
+  "nav": {
+    "scheduled": "المجدولة",
+    "library": "المكتبة",
+    "projects": "المشاريع",
+    "settings": "الإعدادات",
+    "signOut": "تسجيل الخروج",
+    "newChat": "محادثة جديدة",
+    "searchChats": "البحث في المحادثات...",
+    "backToChat": "العودة إلى المحادثة"
+  },
+  "settings": {
+    "language": {
+      "label": "اللغة",
+      "description": "اللغة التي تُعرض بها واجهة Vatsa AI.",
+      "searchPlaceholder": "البحث عن لغة...",
+      "noResults": "لا توجد لغة تطابق بحثك."
+    }
+  },
+  "library": {
+    "header": "المكتبة",
+    "tabs": {
+      "all": "الكل",
+      "chats": "المحادثات",
+      "documents": "المستندات",
+      "code": "الأكواد",
+      "artifacts": "الملفات الناتجة",
+      "uploads": "الملفات المرفوعة",
+      "generated": "المولّدة",
+      "filtersLabel": "عوامل تصفية المكتبة"
+    },
+    "toolbar": {
+      "searchPlaceholder": "البحث في المكتبة...",
+      "searchLabel": "البحث في المكتبة",
+      "sortLabel": "ترتيب عناصر المكتبة",
+      "sort": {
+        "dateDesc": "الأحدث أولاً",
+        "dateAsc": "الأقدم أولاً",
+        "nameAsc": "الاسم (أ-ي)",
+        "nameDesc": "الاسم (ي-أ)",
+        "sizeDesc": "الأكبر أولاً",
+        "sizeAsc": "الأصغر أولاً"
+      },
+      "gridView": "عرض شبكي",
+      "listView": "عرض قائمة",
+      "newFolder": "مجلد جديد",
+      "viewModeLabel": "وضع العرض"
+    },
+    "breadcrumb": {
+      "root": "المكتبة",
+      "label": "مسار المجلد"
+    },
+    "emptyState": {
+      "noResultsTitle": "لا توجد عناصر تطابق بحثك",
+      "noResultsBody": "جرّب كلمة بحث مختلفة أو امسح الفلتر.",
+      "emptyTitle": "لا يوجد شيء هنا بعد",
+      "emptyBody": "ستظهر هنا تلقائيًا المحادثات ومشاريع الأكواد والملفات المرفوعة والصور المولّدة التي تنشئها."
+    },
+    "storage": {
+      "usedOf": "تم استخدام {used} من {limit}",
+      "typeLabels": {
+        "chat": "المحادثات",
+        "document": "المستندات",
+        "code": "الأكواد",
+        "artifact": "الملفات الناتجة",
+        "upload": "الملفات المرفوعة",
+        "generated": "المولّدة"
+      },
+      "atLimit": "لقد نفدت مساحة التخزين لديك. سيتم حظر الرفع والصور المولّدة حتى تُخلي مساحة أو تقوم بالترقية.",
+      "atWarning": "أنت تقترب من حد التخزين الخاص بك.",
+      "upgrade": "ترقية",
+      "upgradeReason": "أنت تستخدم {used} من {limit}. قم بالترقية للحصول على مساحة تخزين أكبر."
+    },
+    "bulkBar": {
+      "selected": "تم تحديد {count}",
+      "download": "تنزيل",
+      "delete": "حذف",
+      "clearSelection": "إلغاء التحديد"
+    },
+    "loadMore": {
+      "loading": "جارٍ التحميل...",
+      "loadMore": "تحميل المزيد"
+    },
+    "itemMenu": {
+      "moreActions": "المزيد من الإجراءات لـ {name}",
+      "rename": "إعادة تسمية",
+      "download": "تنزيل",
+      "share": "مشاركة",
+      "manageShareLink": "إدارة رابط المشاركة",
+      "delete": "حذف"
+    },
+    "folderModal": {
+      "title": "مجلد جديد",
+      "nameLabel": "اسم المجلد",
+      "namePlaceholder": "اسم المجلد",
+      "creating": "جارٍ الإنشاء...",
+      "create": "إنشاء"
+    },
+    "renameModal": {
+      "title": "إعادة تسمية",
+      "nameLabel": "الاسم",
+      "saving": "جارٍ الحفظ...",
+      "save": "حفظ"
+    },
+    "deleteConfirm": {
+      "titleOne": "هل تريد حذف \"{name}\"؟",
+      "titleMany": "هل تريد حذف {count} عناصر؟",
+      "body": "لا يمكن التراجع عن هذا الإجراء.",
+      "folderWarning": " سيؤدي حذف مجلد أيضًا إلى حذف كل ما بداخله.",
+      "chatWarning": " تتم إزالة المحادثات ومشاريع الأكواد نهائيًا، وليس إخفاؤها فقط."
+    },
+    "shareModal": {
+      "title": "مشاركة \"{name}\"",
+      "body": "يمكن لأي شخص لديه هذا الرابط مشاهدة هذا العنصر. لا حاجة لحساب.",
+      "createLink": "إنشاء رابط مشاركة",
+      "creatingLink": "جارٍ إنشاء الرابط...",
+      "copyLink": "نسخ رابط المشاركة",
+      "revokeLink": "إلغاء الرابط"
+    },
+    "previewPanel": {
+      "label": "معاينة العنصر",
+      "close": "إغلاق المعاينة",
+      "updated": "تم التحديث في {date}",
+      "noMessages": "لا توجد رسائل بعد.",
+      "noTextPreview": "لا تتوفر معاينة نصية لهذا النوع من الملفات. قم بتنزيله لعرض المحتوى.",
+      "noPreview": "لا تتوفر معاينة لهذا العنصر."
+    },
+    "selectItem": "تحديد {name}",
+    "folder": "مجلد"
+  }
+}

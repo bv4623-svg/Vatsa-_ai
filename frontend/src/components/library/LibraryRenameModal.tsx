@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import type { LibraryItem } from "@/types/library";
 
@@ -11,8 +12,9 @@ interface LibraryRenameModalProps {
 }
 
 export function LibraryRenameModal({ item, onClose, onRename }: LibraryRenameModalProps) {
+  const t = useTranslations("library.renameModal");
   return (
-    <Modal open={!!item} onClose={onClose} size="sm" title="Rename">
+    <Modal open={!!item} onClose={onClose} size="sm" title={t("title")}>
       {item && <RenameForm key={item.id} item={item} onClose={onClose} onRename={onRename} />}
     </Modal>
   );
@@ -29,6 +31,8 @@ interface RenameFormProps {
  * (React's own guidance discourages useEffect for resetting state to a
  * changed prop -- a key-based remount is the recommended alternative). */
 function RenameForm({ item, onClose, onRename }: RenameFormProps) {
+  const t = useTranslations("library.renameModal");
+  const tCommon = useTranslations("common");
   const [name, setName] = useState(item.name);
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +50,7 @@ function RenameForm({ item, onClose, onRename }: RenameFormProps) {
 
   return (
     <>
-      <label htmlFor="library-rename-name" className="sr-only">Name</label>
+      <label htmlFor="library-rename-name" className="sr-only">{t("nameLabel")}</label>
       <input
         id="library-rename-name"
         autoFocus
@@ -56,9 +60,9 @@ function RenameForm({ item, onClose, onRename }: RenameFormProps) {
         className="w-full rounded-lg border border-border bg-input/10 px-3 py-2 text-sm text-foreground focus:border-accent/50 focus:outline-none"
       />
       <div className="mt-4 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent/10">Cancel</button>
+        <button onClick={onClose} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent/10">{tCommon("cancel")}</button>
         <button onClick={submit} disabled={!name.trim() || saving} className="rounded-lg bg-accent px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50">
-          {saving ? "Saving..." : "Save"}
+          {saving ? t("saving") : t("save")}
         </button>
       </div>
     </>

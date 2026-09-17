@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { LOCALE_COOKIE, isSupportedLocale } from "@/i18n/locales";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -49,6 +50,11 @@ function isProtectedPage(path: string) {
 export default async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const path = url.pathname;
+  // URL wins over every other locale source (see i18n/request.ts): a
+  // ?lang= param on any page navigation is persisted to the cookie
+  // getRequestConfig reads on the next render, without a [locale]
+  // route segment.
+  const langParam = url.searchParams.get("lang");
 
   // ── Gate private pages ─────────────────────────────────────
   if (isProtectedPage(path) && !request.cookies.get("vatsa_session")?.value) {
@@ -72,7 +78,11 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (!shouldProxy) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (isSupportedLocale(langParam)) {
+      response.cookies.set(LOCALE_COOKIE, langParam, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    }
+    return response;
   }
 
   // ── Build backend URL ──────────────────────────────────────

@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "close": "Cerrar",
+    "loading": "Cargando...",
+    "confirm": "Confirmar"
+  },
+  "nav": {
+    "scheduled": "Programadas",
+    "library": "Biblioteca",
+    "projects": "Proyectos",
+    "settings": "Ajustes",
+    "signOut": "Cerrar sesión",
+    "newChat": "Nuevo chat",
+    "searchChats": "Buscar chats...",
+    "backToChat": "Volver al chat"
+  },
+  "settings": {
+    "language": {
+      "label": "Idioma",
+      "description": "El idioma en el que se muestra la interfaz de Vatsa AI.",
+      "searchPlaceholder": "Buscar idiomas...",
+      "noResults": "Ningún idioma coincide con tu búsqueda."
+    }
+  },
+  "library": {
+    "header": "Biblioteca",
+    "tabs": {
+      "all": "Todo",
+      "chats": "Chats",
+      "documents": "Documentos",
+      "code": "Código",
+      "artifacts": "Artefactos",
+      "uploads": "Subidas",
+      "generated": "Generado",
+      "filtersLabel": "Filtros de la biblioteca"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Buscar en la biblioteca...",
+      "searchLabel": "Buscar en la biblioteca",
+      "sortLabel": "Ordenar elementos de la biblioteca",
+      "sort": {
+        "dateDesc": "Más recientes primero",
+        "dateAsc": "Más antiguos primero",
+        "nameAsc": "Nombre (A-Z)",
+        "nameDesc": "Nombre (Z-A)",
+        "sizeDesc": "Más grandes primero",
+        "sizeAsc": "Más pequeños primero"
+      },
+      "gridView": "Vista de cuadrícula",
+      "listView": "Vista de lista",
+      "newFolder": "Nueva carpeta",
+      "viewModeLabel": "Modo de vista"
+    },
+    "breadcrumb": {
+      "root": "Biblioteca",
+      "label": "Ruta de carpetas"
+    },
+    "emptyState": {
+      "noResultsTitle": "Ningún elemento coincide con tu búsqueda",
+      "noResultsBody": "Prueba con otro término de búsqueda o borra el filtro.",
+      "emptyTitle": "Todavía no hay nada aquí",
+      "emptyBody": "Los chats, proyectos de código, archivos subidos e imágenes generadas que crees aparecerán aquí automáticamente."
+    },
+    "storage": {
+      "usedOf": "{used} de {limit} usados",
+      "typeLabels": {
+        "chat": "Chats",
+        "document": "Documentos",
+        "code": "Código",
+        "artifact": "Artefactos",
+        "upload": "Subidas",
+        "generated": "Generado"
+      },
+      "atLimit": "Te has quedado sin almacenamiento. Las subidas y las imágenes generadas están bloqueadas hasta que liberes espacio o mejores tu plan.",
+      "atWarning": "Estás cerca de tu límite de almacenamiento.",
+      "upgrade": "Mejorar plan",
+      "upgradeReason": "Estás usando {used} de {limit}. Mejora tu plan para obtener más almacenamiento."
+    },
+    "bulkBar": {
+      "selected": "{count} seleccionados",
+      "download": "Descargar",
+      "delete": "Eliminar",
+      "clearSelection": "Borrar selección"
+    },
+    "loadMore": {
+      "loading": "Cargando...",
+      "loadMore": "Cargar más"
+    },
+    "itemMenu": {
+      "moreActions": "Más acciones para {name}",
+      "rename": "Renombrar",
+      "download": "Descargar",
+      "share": "Compartir",
+      "manageShareLink": "Gestionar enlace",
+      "delete": "Eliminar"
+    },
+    "folderModal": {
+      "title": "Nueva carpeta",
+      "nameLabel": "Nombre de la carpeta",
+      "namePlaceholder": "Nombre de la carpeta",
+      "creating": "Creando...",
+      "create": "Crear"
+    },
+    "renameModal": {
+      "title": "Renombrar",
+      "nameLabel": "Nombre",
+      "saving": "Guardando...",
+      "save": "Guardar"
+    },
+    "deleteConfirm": {
+      "titleOne": "¿Eliminar \"{name}\"?",
+      "titleMany": "¿Eliminar {count} elementos?",
+      "body": "Esta acción no se puede deshacer.",
+      "folderWarning": " Eliminar una carpeta también elimina todo su contenido.",
+      "chatWarning": " Los chats y proyectos de código se eliminan de forma permanente, no solo se ocultan."
+    },
+    "shareModal": {
+      "title": "Compartir \"{name}\"",
+      "body": "Cualquiera con este enlace puede ver este elemento. No se necesita cuenta.",
+      "createLink": "Crear enlace para compartir",
+      "creatingLink": "Creando enlace...",
+      "copyLink": "Copiar enlace",
+      "revokeLink": "Revocar enlace"
+    },
+    "previewPanel": {
+      "label": "Vista previa del elemento",
+      "close": "Cerrar vista previa",
+      "updated": "Actualizado el {date}",
+      "noMessages": "Aún no hay mensajes.",
+      "noTextPreview": "Este tipo de archivo no tiene vista previa de texto. Descárgalo para ver el contenido.",
+      "noPreview": "No hay vista previa disponible para este elemento."
+    },
+    "selectItem": "Seleccionar {name}",
+    "folder": "Carpeta"
+  }
+}

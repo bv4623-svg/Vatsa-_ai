@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "close": "Fermer",
+    "loading": "Chargement...",
+    "confirm": "Confirmer"
+  },
+  "nav": {
+    "scheduled": "Planifiées",
+    "library": "Bibliothèque",
+    "projects": "Projets",
+    "settings": "Paramètres",
+    "signOut": "Se déconnecter",
+    "newChat": "Nouvelle discussion",
+    "searchChats": "Rechercher des discussions...",
+    "backToChat": "Retour à la discussion"
+  },
+  "settings": {
+    "language": {
+      "label": "Langue",
+      "description": "La langue dans laquelle l'interface de Vatsa AI est affichée.",
+      "searchPlaceholder": "Rechercher des langues...",
+      "noResults": "Aucune langue ne correspond à votre recherche."
+    }
+  },
+  "library": {
+    "header": "Bibliothèque",
+    "tabs": {
+      "all": "Tout",
+      "chats": "Discussions",
+      "documents": "Documents",
+      "code": "Code",
+      "artifacts": "Artefacts",
+      "uploads": "Fichiers importés",
+      "generated": "Générés",
+      "filtersLabel": "Filtres de la bibliothèque"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Rechercher dans la bibliothèque...",
+      "searchLabel": "Rechercher dans la bibliothèque",
+      "sortLabel": "Trier les éléments de la bibliothèque",
+      "sort": {
+        "dateDesc": "Plus récents d'abord",
+        "dateAsc": "Plus anciens d'abord",
+        "nameAsc": "Nom (A-Z)",
+        "nameDesc": "Nom (Z-A)",
+        "sizeDesc": "Plus grands d'abord",
+        "sizeAsc": "Plus petits d'abord"
+      },
+      "gridView": "Vue grille",
+      "listView": "Vue liste",
+      "newFolder": "Nouveau dossier",
+      "viewModeLabel": "Mode d'affichage"
+    },
+    "breadcrumb": {
+      "root": "Bibliothèque",
+      "label": "Chemin du dossier"
+    },
+    "emptyState": {
+      "noResultsTitle": "Aucun élément ne correspond à votre recherche",
+      "noResultsBody": "Essayez un autre terme de recherche ou effacez le filtre.",
+      "emptyTitle": "Rien ici pour l'instant",
+      "emptyBody": "Les discussions, projets de code, fichiers importés et images générées que vous créez apparaissent ici automatiquement."
+    },
+    "storage": {
+      "usedOf": "{used} sur {limit} utilisés",
+      "typeLabels": {
+        "chat": "Discussions",
+        "document": "Documents",
+        "code": "Code",
+        "artifact": "Artefacts",
+        "upload": "Fichiers importés",
+        "generated": "Générés"
+      },
+      "atLimit": "Vous n'avez plus d'espace de stockage. Les imports et images générées sont bloqués jusqu'à ce que vous libériez de l'espace ou passiez à un plan supérieur.",
+      "atWarning": "Vous approchez de votre limite de stockage.",
+      "upgrade": "Passer à un plan supérieur",
+      "upgradeReason": "Vous utilisez {used} sur {limit}. Passez à un plan supérieur pour plus d'espace."
+    },
+    "bulkBar": {
+      "selected": "{count} sélectionné(s)",
+      "download": "Télécharger",
+      "delete": "Supprimer",
+      "clearSelection": "Effacer la sélection"
+    },
+    "loadMore": {
+      "loading": "Chargement...",
+      "loadMore": "Charger plus"
+    },
+    "itemMenu": {
+      "moreActions": "Plus d'actions pour {name}",
+      "rename": "Renommer",
+      "download": "Télécharger",
+      "share": "Partager",
+      "manageShareLink": "Gérer le lien de partage",
+      "delete": "Supprimer"
+    },
+    "folderModal": {
+      "title": "Nouveau dossier",
+      "nameLabel": "Nom du dossier",
+      "namePlaceholder": "Nom du dossier",
+      "creating": "Création...",
+      "create": "Créer"
+    },
+    "renameModal": {
+      "title": "Renommer",
+      "nameLabel": "Nom",
+      "saving": "Enregistrement...",
+      "save": "Enregistrer"
+    },
+    "deleteConfirm": {
+      "titleOne": "Supprimer « {name} » ?",
+      "titleMany": "Supprimer {count} éléments ?",
+      "body": "Cette action est irréversible.",
+      "folderWarning": " Supprimer un dossier supprime aussi tout son contenu.",
+      "chatWarning": " Les discussions et projets de code sont supprimés définitivement, pas seulement masqués."
+    },
+    "shareModal": {
+      "title": "Partager « {name} »",
+      "body": "Toute personne disposant de ce lien peut consulter cet élément. Aucun compte requis.",
+      "createLink": "Créer un lien de partage",
+      "creatingLink": "Création du lien...",
+      "copyLink": "Copier le lien",
+      "revokeLink": "Révoquer le lien"
+    },
+    "previewPanel": {
+      "label": "Aperçu de l'élément",
+      "close": "Fermer l'aperçu",
+      "updated": "Mis à jour le {date}",
+      "noMessages": "Aucun message pour l'instant.",
+      "noTextPreview": "Ce type de fichier n'a pas d'aperçu texte. Téléchargez-le pour voir son contenu.",
+      "noPreview": "Aucun aperçu disponible pour cet élément."
+    },
+    "selectItem": "Sélectionner {name}",
+    "folder": "Dossier"
+  }
+}

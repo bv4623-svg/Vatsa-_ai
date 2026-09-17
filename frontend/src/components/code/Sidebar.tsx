@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import {
   LogOut, Plus, Search, X, PanelLeft, Folder, Trash2,
@@ -57,6 +58,7 @@ export const Sidebar = ({
   isFree,
   onOpenSettings,
 }: SidebarProps) => {
+  const tNav = useTranslations("nav");
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -215,21 +217,21 @@ export const Sidebar = ({
                 onClick={onLogout}
                 className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-400/10"
               >
-                <LogOut className="w-3.5 h-3.5" /> Sign Out
+                <LogOut className="w-3.5 h-3.5" /> {tNav("signOut")}
               </button>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1">
               <button
                 onClick={onOpenSettings}
-                aria-label="Settings"
+                aria-label={tNav("settings")}
                 className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-accent/10 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               >
                 <Settings className="h-4 w-4" />
               </button>
               <button
                 onClick={onLogout}
-                aria-label="Sign Out"
+                aria-label={tNav("signOut")}
                 className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-accent/10 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               >
                 <LogOut className="h-4 w-4" />

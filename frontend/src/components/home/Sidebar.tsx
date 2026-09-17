@@ -2,6 +2,7 @@
 
 import { memo, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import {
   Archive, Copy, Settings, Plus, X, Search,
@@ -21,6 +22,7 @@ export const Sidebar = memo(({
   onUnpinChat, onToggleFavorite, onDuplicateChat, onArchiveChat,
   activeConversationId, setActiveConversation, isFree,
 }: any) => {
+  const t = useTranslations("nav");
   const [query, setQuery] = useState("");
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
   const [showMenuFor, setShowMenuFor] = useState<string | null>(null);
@@ -124,10 +126,10 @@ export const Sidebar = memo(({
 
           <div className={cn("px-3 pt-3", isCollapsed && "px-2")}>
             {isCollapsed ? (
-              <IconBtn tip="New Chat" side="right" onClick={onNewChat} className="h-9 w-9"><Plus className="h-5 w-5" /></IconBtn>
+              <IconBtn tip={t("newChat")} side="right" onClick={onNewChat} className="h-9 w-9"><Plus className="h-5 w-5" /></IconBtn>
             ) : (
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onNewChat} className="flex w-full items-center gap-2 rounded-xl border border-border bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10">
-                <Plus className="h-4 w-4" /> New Chat <kbd className="ml-auto text-[10px] text-muted-foreground">⌘K</kbd>
+                <Plus className="h-4 w-4" /> {t("newChat")} <kbd className="ml-auto text-[10px] text-muted-foreground">⌘K</kbd>
               </motion.button>
             )}
           </div>
@@ -139,7 +141,7 @@ export const Sidebar = memo(({
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search chats..."
+                  placeholder={t("searchChats")}
                   className="w-full rounded-xl border border-border bg-input/10 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent/50 focus:outline-none"
                 />
                 {query && <button onClick={() => setQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
@@ -257,17 +259,17 @@ export const Sidebar = memo(({
                 </div>
                 <div className="flex flex-wrap gap-1 px-1">
                   <button onClick={onOpenSettings} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground">
-                    <Settings className="w-3.5 h-3.5" /> Settings
+                    <Settings className="w-3.5 h-3.5" /> {t("settings")}
                   </button>
                   <button onClick={onLogout} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-red-400 hover:bg-red-400/10 transition-colors">
-                    <LogOut className="w-3.5 h-3.5" /> Sign Out
+                    <LogOut className="w-3.5 h-3.5" /> {t("signOut")}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-1">
-                <IconBtn tip="Settings" side="right" className="h-9 w-9" onClick={onOpenSettings}><Settings className="h-4 w-4" /></IconBtn>
-                <IconBtn tip="Sign Out" side="right" className="h-9 w-9" onClick={onLogout}><LogOut className="h-4 w-4" /></IconBtn>
+                <IconBtn tip={t("settings")} side="right" className="h-9 w-9" onClick={onOpenSettings}><Settings className="h-4 w-4" /></IconBtn>
+                <IconBtn tip={t("signOut")} side="right" className="h-9 w-9" onClick={onLogout}><LogOut className="h-4 w-4" /></IconBtn>
               </div>
             )}
           </div>

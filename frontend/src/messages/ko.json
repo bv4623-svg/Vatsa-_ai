@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "만들기",
+    "close": "닫기",
+    "loading": "로딩 중...",
+    "confirm": "확인"
+  },
+  "nav": {
+    "scheduled": "예약됨",
+    "library": "라이브러리",
+    "projects": "프로젝트",
+    "settings": "설정",
+    "signOut": "로그아웃",
+    "newChat": "새 채팅",
+    "searchChats": "채팅 검색...",
+    "backToChat": "채팅으로 돌아가기"
+  },
+  "settings": {
+    "language": {
+      "label": "언어",
+      "description": "Vatsa AI 인터페이스가 표시되는 언어입니다.",
+      "searchPlaceholder": "언어 검색...",
+      "noResults": "검색과 일치하는 언어가 없습니다."
+    }
+  },
+  "library": {
+    "header": "라이브러리",
+    "tabs": {
+      "all": "전체",
+      "chats": "채팅",
+      "documents": "문서",
+      "code": "코드",
+      "artifacts": "아티팩트",
+      "uploads": "업로드",
+      "generated": "생성됨",
+      "filtersLabel": "라이브러리 필터"
+    },
+    "toolbar": {
+      "searchPlaceholder": "라이브러리 검색...",
+      "searchLabel": "라이브러리 검색",
+      "sortLabel": "라이브러리 항목 정렬",
+      "sort": {
+        "dateDesc": "최신순",
+        "dateAsc": "오래된순",
+        "nameAsc": "이름 (A-Z)",
+        "nameDesc": "이름 (Z-A)",
+        "sizeDesc": "큰 용량순",
+        "sizeAsc": "작은 용량순"
+      },
+      "gridView": "그리드 보기",
+      "listView": "목록 보기",
+      "newFolder": "새 폴더",
+      "viewModeLabel": "보기 모드"
+    },
+    "breadcrumb": {
+      "root": "라이브러리",
+      "label": "폴더 경로"
+    },
+    "emptyState": {
+      "noResultsTitle": "검색과 일치하는 항목이 없습니다",
+      "noResultsBody": "다른 검색어를 시도하거나 필터를 지워보세요.",
+      "emptyTitle": "아직 여기에 아무것도 없습니다",
+      "emptyBody": "생성한 채팅, 코드 프로젝트, 업로드한 파일, 생성된 이미지가 여기에 자동으로 표시됩니다."
+    },
+    "storage": {
+      "usedOf": "{limit} 중 {used} 사용됨",
+      "typeLabels": {
+        "chat": "채팅",
+        "document": "문서",
+        "code": "코드",
+        "artifact": "아티팩트",
+        "upload": "업로드",
+        "generated": "생성됨"
+      },
+      "atLimit": "저장 공간이 가득 찼습니다. 공간을 확보하거나 업그레이드할 때까지 업로드와 이미지 생성이 차단됩니다.",
+      "atWarning": "저장 공간 한도에 가까워지고 있습니다.",
+      "upgrade": "업그레이드",
+      "upgradeReason": "{limit} 중 {used}를 사용 중입니다. 더 많은 저장 공간을 위해 업그레이드하세요."
+    },
+    "bulkBar": {
+      "selected": "{count}개 선택됨",
+      "download": "다운로드",
+      "delete": "삭제",
+      "clearSelection": "선택 해제"
+    },
+    "loadMore": {
+      "loading": "로딩 중...",
+      "loadMore": "더 불러오기"
+    },
+    "itemMenu": {
+      "moreActions": "{name}에 대한 추가 작업",
+      "rename": "이름 바꾸기",
+      "download": "다운로드",
+      "share": "공유",
+      "manageShareLink": "공유 링크 관리",
+      "delete": "삭제"
+    },
+    "folderModal": {
+      "title": "새 폴더",
+      "nameLabel": "폴더 이름",
+      "namePlaceholder": "폴더 이름",
+      "creating": "만드는 중...",
+      "create": "만들기"
+    },
+    "renameModal": {
+      "title": "이름 바꾸기",
+      "nameLabel": "이름",
+      "saving": "저장 중...",
+      "save": "저장"
+    },
+    "deleteConfirm": {
+      "titleOne": "\"{name}\"을(를) 삭제하시겠습니까?",
+      "titleMany": "{count}개 항목을 삭제하시겠습니까?",
+      "body": "이 작업은 되돌릴 수 없습니다.",
+      "folderWarning": " 폴더를 삭제하면 안에 있는 모든 항목도 삭제됩니다.",
+      "chatWarning": " 채팅과 코드 프로젝트는 숨겨지는 것이 아니라 완전히 삭제됩니다."
+    },
+    "shareModal": {
+      "title": "\"{name}\" 공유",
+      "body": "이 링크가 있는 사람은 누구나 이 항목을 볼 수 있습니다. 계정이 필요하지 않습니다.",
+      "createLink": "공유 링크 만들기",
+      "creatingLink": "링크 만드는 중...",
+      "copyLink": "공유 링크 복사",
+      "revokeLink": "링크 해지"
+    },
+    "previewPanel": {
+      "label": "항목 미리보기",
+      "close": "미리보기 닫기",
+      "updated": "{date}에 업데이트됨",
+      "noMessages": "아직 메시지가 없습니다.",
+      "noTextPreview": "이 파일 형식은 텍스트 미리보기를 지원하지 않습니다. 내용을 보려면 다운로드하세요.",
+      "noPreview": "이 항목에 대한 미리보기를 사용할 수 없습니다."
+    },
+    "selectItem": "{name} 선택",
+    "folder": "폴더"
+  }
+}

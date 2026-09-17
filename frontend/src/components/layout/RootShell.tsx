@@ -7,11 +7,13 @@ import { SettingsModal } from "@/components/settings/settings-modal";
 import { AuthProvider } from "@/context/AuthContext";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UpgradeProvider } from "@/components/billing/UpgradeProvider";
+import { useSyncProfileLocale } from "@/hooks/i18n/useSyncProfileLocale";
 
 export function RootShell({ children }: { children: ReactNode }) {
   // usePathname instead of window.location: reading window during render
   // gave the transition a different key on the server than on the client.
   const pathname = usePathname();
+  useSyncProfileLocale();
 
   return (
     <AuthProvider>

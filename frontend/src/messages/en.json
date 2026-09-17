@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "loading": "Loading...",
+    "confirm": "Confirm"
+  },
+  "nav": {
+    "scheduled": "Scheduled",
+    "library": "Library",
+    "projects": "Projects",
+    "settings": "Settings",
+    "signOut": "Sign Out",
+    "newChat": "New Chat",
+    "searchChats": "Search chats...",
+    "backToChat": "Back to chat"
+  },
+  "settings": {
+    "language": {
+      "label": "Language",
+      "description": "The language Vatsa AI's interface is shown in.",
+      "searchPlaceholder": "Search languages...",
+      "noResults": "No languages match your search."
+    }
+  },
+  "library": {
+    "header": "Library",
+    "tabs": {
+      "all": "All",
+      "chats": "Chats",
+      "documents": "Documents",
+      "code": "Code",
+      "artifacts": "Artifacts",
+      "uploads": "Uploads",
+      "generated": "Generated",
+      "filtersLabel": "Library filters"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search library...",
+      "searchLabel": "Search library",
+      "sortLabel": "Sort library items",
+      "sort": {
+        "dateDesc": "Newest first",
+        "dateAsc": "Oldest first",
+        "nameAsc": "Name (A-Z)",
+        "nameDesc": "Name (Z-A)",
+        "sizeDesc": "Largest first",
+        "sizeAsc": "Smallest first"
+      },
+      "gridView": "Grid view",
+      "listView": "List view",
+      "newFolder": "New folder",
+      "viewModeLabel": "View mode"
+    },
+    "breadcrumb": {
+      "root": "Library",
+      "label": "Folder path"
+    },
+    "emptyState": {
+      "noResultsTitle": "No items match your search",
+      "noResultsBody": "Try a different search term or clear the filter.",
+      "emptyTitle": "Nothing here yet",
+      "emptyBody": "Chats, code projects, uploads and generated images you create show up here automatically."
+    },
+    "storage": {
+      "usedOf": "{used} of {limit} used",
+      "typeLabels": {
+        "chat": "Chats",
+        "document": "Documents",
+        "code": "Code",
+        "artifact": "Artifacts",
+        "upload": "Uploads",
+        "generated": "Generated"
+      },
+      "atLimit": "You're out of storage. Uploads and generated images are blocked until you free up space or upgrade.",
+      "atWarning": "You're close to your storage limit.",
+      "upgrade": "Upgrade",
+      "upgradeReason": "You're using {used} of {limit}. Upgrade for more storage."
+    },
+    "bulkBar": {
+      "selected": "{count} selected",
+      "download": "Download",
+      "delete": "Delete",
+      "clearSelection": "Clear selection"
+    },
+    "loadMore": {
+      "loading": "Loading...",
+      "loadMore": "Load more"
+    },
+    "itemMenu": {
+      "moreActions": "More actions for {name}",
+      "rename": "Rename",
+      "download": "Download",
+      "share": "Share",
+      "manageShareLink": "Manage share link",
+      "delete": "Delete"
+    },
+    "folderModal": {
+      "title": "New folder",
+      "nameLabel": "Folder name",
+      "namePlaceholder": "Folder name",
+      "creating": "Creating...",
+      "create": "Create"
+    },
+    "renameModal": {
+      "title": "Rename",
+      "nameLabel": "Name",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "deleteConfirm": {
+      "titleOne": "Delete \"{name}\"?",
+      "titleMany": "Delete {count} items?",
+      "body": "This can't be undone.",
+      "folderWarning": " Deleting a folder also deletes everything inside it.",
+      "chatWarning": " Chats and code projects are permanently removed, not just hidden."
+    },
+    "shareModal": {
+      "title": "Share \"{name}\"",
+      "body": "Anyone with this link can view this item. No account required.",
+      "createLink": "Create share link",
+      "creatingLink": "Creating link...",
+      "copyLink": "Copy share link",
+      "revokeLink": "Revoke link"
+    },
+    "previewPanel": {
+      "label": "Item preview",
+      "close": "Close preview",
+      "updated": "Updated {date}",
+      "noMessages": "No messages yet.",
+      "noTextPreview": "This file type has no text preview. Download it to view the contents.",
+      "noPreview": "No preview available for this item."
+    },
+    "selectItem": "Select {name}",
+    "folder": "Folder"
+  }
+}

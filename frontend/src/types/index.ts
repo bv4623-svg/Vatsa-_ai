@@ -99,6 +99,9 @@ export interface User {
   name: string;
   avatarUrl?: string;
   plan: Plan;
+  // Free/pro/ultra tier gating (see backend app/services/feature_access.py).
+  tier?: "free" | "pro" | "ultra";
+  usage?: Record<string, { used: number; limit: number }>;
 }
 
 export interface UserSettings {

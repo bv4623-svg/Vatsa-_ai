@@ -9,6 +9,7 @@ from app.models.token import TokenAccount, TokenTransaction
 from app.auth.jwt import get_password_hash, verify_password, create_access_token
 from app.auth.dependencies import get_current_user
 from app.routers.auth.schemas import RegisterRequest, LoginRequest, OnboardingRequest
+from app.services.feature_access import user_tier, check_daily_limit
 
 router = APIRouter(tags=["authentication"])
 
@@ -112,16 +113,22 @@ def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
 def get_current_user_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     token_acc = db.query(TokenAccount).filter_by(user_id=user.id).first()
     balance = token_acc.balance if token_acc else 50000
+    tier = user_tier(user)
+    usage = {}
+    for feature in ("chat_messages", "code_messages", "image_gen", "web_search"):
+        _, used, limit = check_daily_limit(db, user, feature)
+        usage[feature] = {"used": used, "limit": limit}
     return {
         "id": user.id, "email": user.email,
         "name": user.full_name or user.email.split("@")[0],
         "full_name": user.full_name or user.email.split("@")[0],
-        "username": user.username, "tier": user.tier or "free",
+        "username": user.username, "tier": tier,
         "is_active": user.is_active, "is_verified": user.is_verified,
         "profile_completed": user.profile_completed,
         "birth_month": user.birth_month, "birth_year": user.birth_year,
         "tokens": balance, "token_balance": balance,
         "created_at": user.created_at.isoformat() if user.created_at else None,
+        "usage": usage,
     }
 
 

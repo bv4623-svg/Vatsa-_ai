@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader, Lock, Shield, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Loader, Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Crown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -17,6 +17,10 @@ import { Sidebar } from "@/components/home/Sidebar";
 import { SettingsModal } from "@/components/home/SettingsModal";
 import { ChatEmptyState } from "@/components/home/ChatEmptyState";
 import { ChatMessagesView } from "@/components/home/ChatMessagesView";
+import { UpgradeModal } from "@/components/billing/UpgradeModal";
+import { UsageBar } from "@/components/billing/UsageBar";
+import { UpgradeBanner } from "@/components/billing/UpgradeBanner";
+import type { UpgradeGateInfo } from "@/hooks/home/useHomeChat";
 
 const CommandPalette = dynamic(
   () => import("@/components/layout/command-palette").then(mod => mod.CommandPalette),
@@ -54,6 +58,40 @@ export default function HomePage() {
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
   const [showVoicePopover, setShowVoicePopover] = useState(false);
 
+  const tier: "free" | "pro" | "ultra" = (user?.tier as any) || "free";
+  const isFree = tier === "free";
+  const [upgradeGate, setUpgradeGate] = useState<{
+    open: boolean; reason: string; feature?: string;
+    suggestedTier?: "pro" | "ultra"; limitInfo?: { used: number; limit: number };
+  }>({ open: false, reason: "" });
+  const [bannerDismissedAtCount, setBannerDismissedAtCount] = useState<number | null>(null);
+
+  const openUpgradeModal = useCallback((reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
+    setUpgradeGate({ open: true, reason, feature, suggestedTier, limitInfo });
+  }, []);
+
+  const handleToggleReasoning = useCallback(() => {
+    if (isFree) {
+      openUpgradeModal("Reasoning (step-by-step thinking) is a Pro feature.", "reasoning", "pro");
+      return;
+    }
+    setReasoningEnabled((v) => !v);
+  }, [isFree, openUpgradeModal]);
+
+  const handleUpgradeGate = useCallback((info: UpgradeGateInfo) => {
+    const featureLabel = (info.feature || "").replace(/_/g, " ");
+    if (info.error === "daily_limit_reached") {
+      openUpgradeModal(
+        `You've used all ${info.limit} free ${featureLabel} today.`,
+        info.feature,
+        "pro",
+        info.used != null && info.limit != null ? { used: info.used, limit: info.limit } : undefined,
+      );
+    } else {
+      openUpgradeModal(`${featureLabel || "This feature"} is a Pro feature.`, info.feature, info.suggestedTier || "pro");
+    }
+  }, [openUpgradeModal]);
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -69,6 +107,9 @@ export default function HomePage() {
     handleRenameChat, handlePinChat, handleUnpinChat, handleToggleFavorite,
     handleDuplicateChat, handleArchiveChat,
   } = useHomeConversations({ router, setUser, setDraftMessage, setErrorState });
+
+  const showUpgradeBanner =
+    isFree && messages.length >= 5 && (bannerDismissedAtCount == null || messages.length >= bannerDismissedAtCount + 10);
 
   const {
     attachments, setAttachments, showAttachmentMenu, setShowAttachmentMenu,
@@ -97,6 +138,7 @@ export default function HomePage() {
     activeConversationId, conversations, messages, privateMode, user,
     attachments, setAttachments, webSearchEnabled, reasoningEnabled, addMessageToConversation, updateConversation, handleRenameChat,
     handleNewChat: onNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
+    onUpgradeRequired: handleUpgradeGate,
   });
 
   const handleToggleSidebar = useCallback(() => {
@@ -217,8 +259,27 @@ export default function HomePage() {
               </div>
               {privateMode && (<div className="flex items-center gap-1 text-xs text-accent font-medium"><Lock className="w-3 h-3" /> Private</div>)}
             </div>
-            <div className="flex items-center gap-1" />
+            <div className="flex items-center gap-1">
+              {tier === "ultra" ? (
+                <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-400">
+                  <Crown className="h-3 w-3" /> Ultra
+                </div>
+              ) : tier === "pro" ? (
+                <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-2.5 py-1 text-[11px] font-medium text-purple-400">
+                  <Star className="h-3 w-3" /> Pro
+                </div>
+              ) : (
+                <button
+                  onClick={() => router.push("/pricing")}
+                  className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-[11px] font-medium text-white hover:opacity-90"
+                >
+                  <Sparkles className="h-3 w-3" /> Upgrade to Pro
+                </button>
+              )}
+            </div>
           </header>
+
+          {isFree && <UsageBar usage={user?.usage} />}
 
           <div className="flex flex-1 overflow-hidden">
             <Sidebar
@@ -265,7 +326,7 @@ export default function HomePage() {
                   webSearchEnabled={webSearchEnabled}
                   onToggleWebSearch={() => { setWebSearchEnabled((v) => !v); setShowWebSearchPopover(false); }}
                   reasoningEnabled={reasoningEnabled}
-                  onToggleReasoning={() => setReasoningEnabled((v) => !v)}
+                  onToggleReasoning={handleToggleReasoning}
                   showVoicePopover={showVoicePopover}
                   setShowVoicePopover={setShowVoicePopover}
                   fileInputRef={fileInputRef}
@@ -300,11 +361,16 @@ export default function HomePage() {
                   webSearchEnabled={webSearchEnabled}
                   onToggleWebSearch={() => setWebSearchEnabled((v) => !v)}
                   reasoningEnabled={reasoningEnabled}
-                  onToggleReasoning={() => setReasoningEnabled((v) => !v)}
+                  onToggleReasoning={handleToggleReasoning}
                   fileInputRef={fileInputRef}
                   folderInputRef={folderInputRef}
                   onFileUpload={handleFileUpload}
                   modKey={MOD_KEY}
+                  banner={
+                    showUpgradeBanner ? (
+                      <UpgradeBanner onDismiss={() => setBannerDismissedAtCount(messages.length)} />
+                    ) : undefined
+                  }
                 />
               )}
             </div>
@@ -346,6 +412,15 @@ export default function HomePage() {
             onLogout={handleLogout}
             onClearAllChats={handleClearAllChats}
             onExportChats={handleExportChats}
+          />
+
+          <UpgradeModal
+            open={upgradeGate.open}
+            onClose={() => setUpgradeGate((g) => ({ ...g, open: false }))}
+            reason={upgradeGate.reason}
+            feature={upgradeGate.feature}
+            suggestedTier={upgradeGate.suggestedTier}
+            limitInfo={upgradeGate.limitInfo}
           />
 
           {showShortcutHelper && (

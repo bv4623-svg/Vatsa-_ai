@@ -98,7 +98,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const { updateSettings, resetSettings } = useSettingsActions();
   const { toast } = useToast();
 
-  const isPremium = userTier === "premium";
+  const isPremium = userTier === "pro";
   const [section, setSection] = useState<"general" | "appearance" | "language" | "chat" | "memory" | "history" | "models" | "voice" | "notifications" | "account" | "billing" | "privacy" | "keyboard" | "about" | "legal">("general");
   const [memoryInput, setMemoryInput] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
@@ -552,7 +552,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   <button
                     type="button"
                     onClick={() => {
-                      setUserTier(isPremium ? "free" : "premium");
+                      setUserTier(isPremium ? "free" : "pro");
                       toast({ type: "info", message: isPremium ? "You are now on the Free plan." : "You are now on the Pro plan." });
                     }}
                     className="rounded-lg bg-primary-600 px-3.5 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-85"

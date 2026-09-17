@@ -4,6 +4,23 @@ import type { Attachment } from "@/types/home";
 import { API_BASE } from "@/lib/home/constants";
 import { isImageGenQuery } from "@/lib/home/imageQuery";
 
+export interface UpgradeGateInfo {
+  error: "upgrade_required" | "daily_limit_reached";
+  feature: string;
+  currentTier?: string;
+  suggestedTier?: "pro" | "ultra";
+  used?: number;
+  limit?: number;
+}
+
+export class UpgradeRequiredError extends Error {
+  info: UpgradeGateInfo;
+  constructor(info: UpgradeGateInfo) {
+    super(info.error === "daily_limit_reached" ? "Daily limit reached" : "Upgrade required");
+    this.info = info;
+  }
+}
+
 interface UseHomeChatParams {
   activeConversationId: string | null;
   conversations: Conversation[];
@@ -22,6 +39,7 @@ interface UseHomeChatParams {
   setInputValue: (v: string) => void;
   setIsFirstMessage: (v: boolean) => void;
   setErrorState: (err: { message: string; stack?: string } | null) => void;
+  onUpgradeRequired?: (info: UpgradeGateInfo) => void;
 }
 
 /**
@@ -34,7 +52,7 @@ export function useHomeChat(params: UseHomeChatParams) {
   const {
     activeConversationId, conversations, messages, privateMode, user,
     attachments, setAttachments, webSearchEnabled, reasoningEnabled, addMessageToConversation, updateConversation, handleRenameChat,
-    handleNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
+    handleNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState, onUpgradeRequired,
   } = params;
 
   const [isLoading, setIsLoading] = useState(false);
@@ -133,6 +151,20 @@ export function useHomeChat(params: UseHomeChatParams) {
       });
 
       if (!response.ok) {
+        if (response.status === 402 || response.status === 429) {
+          const body = await response.json().catch(() => null);
+          const detail = body?.detail;
+          if (detail?.error === "upgrade_required" || detail?.error === "daily_limit_reached") {
+            throw new UpgradeRequiredError({
+              error: detail.error,
+              feature: detail.feature,
+              currentTier: detail.current_tier,
+              suggestedTier: detail.suggested_tier,
+              used: detail.used,
+              limit: detail.limit,
+            });
+          }
+        }
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
@@ -270,9 +302,18 @@ export function useHomeChat(params: UseHomeChatParams) {
       setErrorState(null);
     } catch (error: any) {
       const isAbort = error.name === "AbortError";
+      const isUpgradeGate = error instanceof UpgradeRequiredError;
       const fallbackContent = isAbort
         ? (lastStreamedText || "⏹️ Generation stopped.")
+        : isUpgradeGate
+        ? (error.info.error === "daily_limit_reached"
+            ? `You've used all ${error.info.limit} free requests for today.`
+            : "That's a Pro feature.")
         : `⚠️ Failed: ${error.message || "Unknown error"}`;
+
+      if (isUpgradeGate) {
+        onUpgradeRequired?.(error.info);
+      }
 
       if (streamAssistantId) {
         // A streaming placeholder is already in the conversation -- finish
@@ -292,7 +333,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           content: fallbackContent, createdAt: new Date().toISOString(),
         });
       }
-      setErrorState(isAbort ? null : { message: error.message || "Unknown error", stack: error.stack });
+      setErrorState((isAbort || isUpgradeGate) ? null : { message: error.message || "Unknown error", stack: error.stack });
     } finally {
       setIsLoading(false);
       setIsImageGenLoading(false);
@@ -300,7 +341,7 @@ export function useHomeChat(params: UseHomeChatParams) {
   }, [
     activeConversationId, conversations, privateMode, user, attachments, webSearchEnabled, reasoningEnabled,
     isLoading, addMessageToConversation, updateConversation, handleRenameChat, handleNewChat,
-    setDraftMessage, setAttachments, setInputValue, setIsFirstMessage, setErrorState,
+    setDraftMessage, setAttachments, setInputValue, setIsFirstMessage, setErrorState, onUpgradeRequired,
   ]);
 
   const handleRetry = useCallback(() => {

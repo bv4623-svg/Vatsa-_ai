@@ -464,7 +464,7 @@ export default function PricingPage() {
             });
             const result = await verifyRes.json();
             if (result.status === "success") {
-              setUserTier("premium");
+              setUserTier("pro");
               addToast({ message: "🎉 Payment successful! Welcome to Pro.", type: "success" });
               router.push("/home");
             } else {
@@ -745,12 +745,12 @@ export default function PricingPage() {
                   <span
                     className={cn(
                       "px-2 py-0.5 rounded-full text-xs font-medium border",
-                      userTier === "premium"
+                      userTier === "pro"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800"
                         : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
                     )}
                   >
-                    {userTier === "premium" ? "✨ Pro" : "Free"}
+                    {userTier === "pro" ? "✨ Pro" : "Free"}
                   </span>
                 </div>
               ) : (

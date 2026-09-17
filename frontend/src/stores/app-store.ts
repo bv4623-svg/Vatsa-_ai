@@ -57,7 +57,7 @@ const getInitialState = () => ({
   user: null as User | null,
   isAuthenticated: false,
   userId: null as string | null,
-  userTier: "free" as "free" | "premium",
+  userTier: "free" as "free" | "pro" | "ultra",
   subscription: null as UserSubscription | null,
   settings: DEFAULT_SETTINGS,
   sidebarCollapsed: false,
@@ -107,7 +107,7 @@ interface AppState extends ReturnType<typeof getInitialState> {
   get currentChat(): ExtendedConversation | undefined;
   setHasHydrated: (v: boolean) => void;
   setUserId: (id: string) => void;
-  setUserTier: (tier: "free" | "premium") => void;
+  setUserTier: (tier: "free" | "pro" | "ultra") => void;
   setUser: (user: User | null) => void;
   setSubscription: (sub: UserSubscription | null) => void;
   login: (email: string, password: string) => Promise<void>;

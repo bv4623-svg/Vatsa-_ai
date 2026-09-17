@@ -15,7 +15,35 @@ from app.services.token_service import TokenService
 
 logger = logging.getLogger("PaymentService")
 
+GST_RATE = 0.18
+
+# Plan ids used by the pricing page CTAs (/checkout?plan=pro|business).
+# Amounts are the published USD list prices plus the 18% GST shown on the
+# pricing page -- Razorpay charges in the smallest currency unit, so
+# $24.00 + 18% GST = $28.32 = 2832 cents.
+def _usd_with_gst(dollars: float) -> int:
+    return int(round(dollars * (1 + GST_RATE) * 100))
+
+
 PLANS: Dict[str, Dict[str, Any]] = {
+    "pro": {
+        "id": "pro",
+        "name": "Pro Monthly",
+        "amount_paise": _usd_with_gst(24.00),
+        "currency": "USD",
+        "tokens": 500000,
+        "tier": "pro",
+        "duration_days": 30,
+    },
+    "business": {
+        "id": "business",
+        "name": "Business Monthly",
+        "amount_paise": _usd_with_gst(99.00),
+        "currency": "USD",
+        "tokens": 2000000,
+        "tier": "pro",
+        "duration_days": 30,
+    },
     "pro_monthly": {
         "id": "pro_monthly",
         "name": "Pro Monthly",

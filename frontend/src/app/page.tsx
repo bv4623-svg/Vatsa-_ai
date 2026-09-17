@@ -2419,11 +2419,11 @@ export default function LandingPage() {
       const url = prompt ? `/home?prompt=${encodeURIComponent(prompt)}` : "/home";
       router.push(url);
     } else {
-      router.push("/auth/login");
+      router.push("/login");
     }
   };
 
-  const goToLogin = () => router.push("/auth/login");
+  const goToLogin = () => router.push("/login");
   const startBuilding = () => handleAction();
 
   // Show loader while checking auth

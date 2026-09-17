@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuthStore } from "@/stores/auth";
+import { establishSession } from "@/lib/session";
 
 function CallbackInner() {
   const router = useRouter();
@@ -31,12 +31,12 @@ function CallbackInner() {
     // Handle OAuth error first
     if (error) {
       console.error("OAuth error:", error);
-      router.replace(`/auth/login?error=${encodeURIComponent(error)}`);
+      router.replace(`/login?error=${encodeURIComponent(error)}`);
       return;
     }
 
     if (!token) {
-      router.replace("/auth/login?error=NoToken");
+      router.replace("/login?error=NoToken");
       return;
     }
 
@@ -56,7 +56,7 @@ function CallbackInner() {
 
         if (!res.ok) {
           if (res.status === 401) {
-            router.replace("/auth/login?error=SessionExpired");
+            router.replace("/login?error=SessionExpired");
             return;
           }
           throw new Error("Failed to fetch user");
@@ -64,7 +64,7 @@ function CallbackInner() {
 
         const data = await res.json();
         setUserData(data);
-        useAuthStore.getState().setAuth(data, token);
+        establishSession(data, token);
 
         // --- Check if onboarding is done ---
         // Support both flat and nested responses
@@ -88,7 +88,7 @@ function CallbackInner() {
           router.replace("/home");
           return;
         }
-        router.replace("/auth/login?error=AuthFailed");
+        router.replace("/login?error=AuthFailed");
       } finally {
         setLoading(false);
       }
@@ -124,7 +124,7 @@ function CallbackInner() {
     if (!token) {
       setOnboardingError("Session expired. Please log in again.");
       setSubmitting(false);
-      router.replace("/auth/login");
+      router.replace("/login");
       return;
     }
 

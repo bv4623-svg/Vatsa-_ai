@@ -14,17 +14,33 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const authListeners = new Set<() => void>();
 
+// useSyncExternalStore compares snapshots by reference, so parsing the JSON
+// on every call would hand React a new object each time and spin forever.
+// Cache against the raw string and only re-parse when it actually changes.
+let cachedRaw: string | null = null;
+let cachedUser: User | null = null;
+
 function getStoredUser(): User | null {
   if (typeof window === "undefined") return null;
+
   const stored = localStorage.getItem("user");
-  if (!stored) return null;
+  if (stored === cachedRaw) return cachedUser;
+
+  cachedRaw = stored;
+  if (!stored) {
+    cachedUser = null;
+    return cachedUser;
+  }
+
   try {
     const parsed = JSON.parse(stored) as User;
-    return parsed && typeof parsed === "object" ? parsed : null;
+    cachedUser = parsed && typeof parsed === "object" ? parsed : null;
   } catch {
     localStorage.removeItem("user");
-    return null;
+    cachedRaw = null;
+    cachedUser = null;
   }
+  return cachedUser;
 }
 
 function subscribeToAuth(listener: () => void) {

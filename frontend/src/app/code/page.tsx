@@ -23,7 +23,7 @@ const CodePage = () => {
 
   useEffect(() => {
     if (mounted && !isLoading && !isAuthenticated) {
-      router.push("/auth/login");
+      router.push("/login");
     }
   }, [mounted, isLoading, isAuthenticated, router]);
 

@@ -25,6 +25,23 @@ interface SidebarProps {
   isFree?: boolean;
 }
 
+/** Declared at module scope: a component defined inside the render body is
+ * a new type on every render, which remounts it and drops its state. */
+function Logo() {
+  return (
+    <div className="relative h-7 w-7 overflow-hidden rounded-full">
+      <Image
+        src="/logo.png"
+        alt="Vatsa AI"
+        width={28}
+        height={28}
+        className="rounded-full object-cover"
+        priority
+      />
+    </div>
+  );
+}
+
 export const Sidebar = ({
   projects,
   activeProjectId,
@@ -51,19 +68,6 @@ export const Sidebar = ({
       ? projects.filter((c) => c.title?.toLowerCase().includes(q))
       : projects;
   }, [projects, debouncedQuery]);
-
-  const Logo = () => (
-    <div className="relative h-7 w-7 overflow-hidden rounded-full">
-      <Image
-        src="/logo.png"
-        alt="Vatsa AI"
-        width={28}
-        height={28}
-        className="rounded-full object-cover"
-        priority
-      />
-    </div>
-  );
 
   return (
     <motion.aside

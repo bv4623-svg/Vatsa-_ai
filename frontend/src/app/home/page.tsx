@@ -20,6 +20,7 @@ import { ChatMessagesView } from "@/components/home/ChatMessagesView";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { UsageBar } from "@/components/billing/UsageBar";
 import { UpgradeBanner } from "@/components/billing/UpgradeBanner";
+import { clearSession } from "@/lib/session";
 import type { UpgradeGateInfo } from "@/hooks/home/useHomeChat";
 
 const CommandPalette = dynamic(
@@ -146,10 +147,9 @@ export default function HomePage() {
   }, [sidebarCollapsed, setSidebarCollapsed]);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("access_token");
-    setUser(null);
-    router.push("/auth/login");
-  }, [router, setUser]);
+    clearSession();
+    router.push("/");
+  }, [router]);
 
   const handleOpenSettings = useCallback(() => setIsSettingsOpen(true), []);
 

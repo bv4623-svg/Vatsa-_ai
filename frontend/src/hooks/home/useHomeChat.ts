@@ -13,6 +13,7 @@ interface UseHomeChatParams {
   attachments: Attachment[];
   setAttachments: (updater: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void;
   webSearchEnabled: boolean;
+  reasoningEnabled: boolean;
   addMessageToConversation: (convId: string, msg: Message) => void;
   updateConversation: (id: string, updater: (conv: Conversation) => Conversation) => void;
   handleRenameChat: (id: string, title: string) => Promise<void>;
@@ -32,7 +33,7 @@ interface UseHomeChatParams {
 export function useHomeChat(params: UseHomeChatParams) {
   const {
     activeConversationId, conversations, messages, privateMode, user,
-    attachments, setAttachments, webSearchEnabled, addMessageToConversation, updateConversation, handleRenameChat,
+    attachments, setAttachments, webSearchEnabled, reasoningEnabled, addMessageToConversation, updateConversation, handleRenameChat,
     handleNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
   } = params;
 
@@ -126,6 +127,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           attachments: payloadAttachments,
           stream: true,
           web_search: willGenImage ? false : webSearchEnabled,
+          reasoning: willGenImage ? false : reasoningEnabled,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -146,6 +148,7 @@ export function useHomeChat(params: UseHomeChatParams) {
         const decoder = new TextDecoder();
         let buffer = "";
         let streamedText = "";
+        let thinkingText = "";
         let sseError: string | null = null;
         let sources: any[] | undefined;
 
@@ -165,7 +168,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           updateConversation(convId, (conv) => ({
             ...conv,
             messages: (conv.messages || []).map((m) =>
-              m.id === assistantId ? { ...m, content: streamedText } : m
+              m.id === assistantId ? { ...m, content: streamedText, thinking: thinkingText || undefined } : m
             ),
           }));
         };
@@ -185,6 +188,7 @@ export function useHomeChat(params: UseHomeChatParams) {
             try {
               const evt = JSON.parse(payload);
               if (evt.error) sseError = evt.error;
+              else if (evt.thinking) thinkingText += evt.thinking;
               else if (evt.delta) streamedText += evt.delta;
               else if (evt.done && evt.sources) sources = evt.sources;
               flush();
@@ -221,6 +225,7 @@ export function useHomeChat(params: UseHomeChatParams) {
                   content: textContent || (imageUrl ? "" : "No response from AI"),
                   isStreaming: false,
                   sources,
+                  thinking: thinkingText || undefined,
                   // @ts-ignore
                   imageUrl,
                 }
@@ -234,6 +239,7 @@ export function useHomeChat(params: UseHomeChatParams) {
         textContent = data.response || "No response from AI";
         selectedModel = data.selected_model || "Vatsa AI";
         const sources = data.sources;
+        const thinking = data.reasoning || undefined;
 
         if (!imageUrl && textContent) {
           const m = textContent.match(/!\[[^\]]*\]\((data:image\/[^)\s]+|https?:\/\/[^)\s]+)\)/);
@@ -254,6 +260,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           createdAt: new Date().toISOString(),
           model: selectedModel,
           sources,
+          thinking,
           // @ts-ignore
           imageUrl,
         };
@@ -291,7 +298,7 @@ export function useHomeChat(params: UseHomeChatParams) {
       setIsImageGenLoading(false);
     }
   }, [
-    activeConversationId, conversations, privateMode, user, attachments, webSearchEnabled,
+    activeConversationId, conversations, privateMode, user, attachments, webSearchEnabled, reasoningEnabled,
     isLoading, addMessageToConversation, updateConversation, handleRenameChat, handleNewChat,
     setDraftMessage, setAttachments, setInputValue, setIsFirstMessage, setErrorState,
   ]);

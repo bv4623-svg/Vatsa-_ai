@@ -59,6 +59,7 @@ export interface Message {
   content: string;
   model?: string;
   sources?: Source[];
+  thinking?: string;
   citations?: Citation[];
   toolCalls?: ToolCall[];
   orchestrationSteps?: OrchestrationStep[];

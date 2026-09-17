@@ -50,6 +50,7 @@ export default function HomePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showWebSearchPopover, setShowWebSearchPopover] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [reasoningEnabled, setReasoningEnabled] = useState(false);
   const [showVoicePopover, setShowVoicePopover] = useState(false);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -89,7 +90,7 @@ export default function HomePage() {
     sendMessage, handleRetry, handleRegenerate, handleCopy, handleFeedback, handleShare,
   } = useHomeChat({
     activeConversationId, conversations, messages, privateMode, user,
-    attachments, setAttachments, webSearchEnabled, addMessageToConversation, updateConversation, handleRenameChat,
+    attachments, setAttachments, webSearchEnabled, reasoningEnabled, addMessageToConversation, updateConversation, handleRenameChat,
     handleNewChat: onNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
   });
 
@@ -256,6 +257,8 @@ export default function HomePage() {
                   setShowWebSearchPopover={setShowWebSearchPopover}
                   webSearchEnabled={webSearchEnabled}
                   onToggleWebSearch={() => { setWebSearchEnabled((v) => !v); setShowWebSearchPopover(false); }}
+                  reasoningEnabled={reasoningEnabled}
+                  onToggleReasoning={() => setReasoningEnabled((v) => !v)}
                   showVoicePopover={showVoicePopover}
                   setShowVoicePopover={setShowVoicePopover}
                   fileInputRef={fileInputRef}
@@ -287,6 +290,8 @@ export default function HomePage() {
                   setShowAttachmentMenu={setShowAttachmentMenu}
                   webSearchEnabled={webSearchEnabled}
                   onToggleWebSearch={() => setWebSearchEnabled((v) => !v)}
+                  reasoningEnabled={reasoningEnabled}
+                  onToggleReasoning={() => setReasoningEnabled((v) => !v)}
                   fileInputRef={fileInputRef}
                   folderInputRef={folderInputRef}
                   onFileUpload={handleFileUpload}

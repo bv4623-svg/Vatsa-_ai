@@ -65,6 +65,7 @@ class ChatRequest(BaseModel):
     attachments: Optional[List[Union[str, Dict[str, Any]]]] = None
     stream: Optional[bool] = False
     web_search: Optional[bool] = Field(False, alias="webSearch")
+    reasoning: Optional[bool] = False
     model_config = {"populate_by_name": True}
 
 
@@ -121,6 +122,7 @@ def _persist_conversation(
     model_name: str = "Vatsa AI",
     image_url: Optional[str] = None,
     sources: Optional[List[Dict[str, Any]]] = None,
+    reasoning_text: Optional[str] = None,
 ) -> None:
     if not conv:
         return
@@ -138,6 +140,8 @@ def _persist_conversation(
         assistant_msg["imageUrl"] = image_url
     if sources:
         assistant_msg["sources"] = sources
+    if reasoning_text:
+        assistant_msg["thinking"] = reasoning_text
     msgs.append(assistant_msg)
     conv.messages = msgs
     conv.updated_at = datetime.utcnow()
@@ -156,8 +160,10 @@ async def _stream_chat_response(
     background_tasks: BackgroundTasks,
     search_context: Optional[str] = None,
     sources: Optional[List[Dict[str, Any]]] = None,
+    reasoning: bool = False,
 ) -> AsyncGenerator[str, None]:
     full_text = ""
+    reasoning_text = ""
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     try:
         async for event in AIService.stream_response(
@@ -169,8 +175,11 @@ async def _stream_chat_response(
             workspace=workspace,
             attachments=parsed_attachments,
             search_context=search_context,
+            reasoning=reasoning,
         ):
-            if "delta" in event:
+            if "thinking" in event:
+                yield f"data: {json.dumps({'thinking': event['thinking']})}\n\n"
+            elif "delta" in event:
                 yield f"data: {json.dumps({'delta': event['delta']})}\n\n"
             elif "error" in event:
                 logger.warning(f"Stream error for user {user.id}: {event['error']}")
@@ -178,6 +187,7 @@ async def _stream_chat_response(
                 return
             elif event.get("done"):
                 full_text = event["content"]
+                reasoning_text = event.get("reasoning", "")
                 usage = event["usage"]
     except Exception as e:
         # Never forward exception text to the client -- may name a
@@ -187,12 +197,14 @@ async def _stream_chat_response(
         return
 
     if full_text:
-        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources)
+        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources, reasoning_text=reasoning_text)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
     done_event: Dict[str, Any] = {"done": True, "usage": usage, "conversation_id": req.conversation_id}
     if sources:
         done_event["sources"] = sources
+    if reasoning_text:
+        done_event["reasoning"] = reasoning_text
     yield f"data: {json.dumps(done_event)}\n\n"
 
 
@@ -252,12 +264,13 @@ async def chat_endpoint(
             _stream_chat_response(
                 req, user, db, conv, history_messages, parsed_attachments,
                 chosen_model, workspace, background_tasks, search_context, sources,
+                req.reasoning,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    # --- 4. Non-streaming path (unchanged behavior, plus sources when present) ---
+    # --- 4. Non-streaming path (unchanged behavior, plus sources/reasoning when present) ---
     try:
         result = await AIService.generate_response(
             db=db,
@@ -268,6 +281,7 @@ async def chat_endpoint(
             workspace=workspace,
             attachments=parsed_attachments,
             search_context=search_context,
+            reasoning=req.reasoning,
         )
     except ValueError as ve:
         raise HTTPException(status_code=402, detail=str(ve))
@@ -280,7 +294,10 @@ async def chat_endpoint(
 
     if sources:
         result["sources"] = sources
-    _persist_conversation(conv, db, req.message, result["response"], result["selected_model"], sources=sources)
+    _persist_conversation(
+        conv, db, req.message, result["response"], result["selected_model"],
+        sources=sources, reasoning_text=result.get("reasoning"),
+    )
     background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
     return result

@@ -36,7 +36,7 @@ export function useCodeConversations(
   const fetchConversations = useCallback(async () => {
     try {
       if (!accessToken) {
-        router.push("/auth/login");
+        router.push("/login");
         return;
       }
       const res = await fetch(
@@ -44,7 +44,7 @@ export function useCodeConversations(
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       if (res.status === 401) {
-        router.push("/auth/login");
+        router.push("/login");
         return;
       }
       if (!res.ok) {

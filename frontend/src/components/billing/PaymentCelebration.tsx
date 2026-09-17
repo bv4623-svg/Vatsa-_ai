@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, Star, PartyPopper } from "lucide-react";
 
@@ -10,25 +9,41 @@ interface PaymentCelebrationProps {
   onContinue: () => void;
 }
 
+interface ConfettiPiece {
+  id: number;
+  x: number;
+  delay: number;
+  duration: number;
+  color: string;
+  rotate: number;
+  size: number;
+}
+
 const CONFETTI_COLORS = ["#a855f7", "#ec4899", "#f59e0b", "#22c55e", "#3b82f6"];
+
+/** Deterministic spread derived from the piece index. Math.random() during
+ * render is impure, and scattering 60 pieces does not need real entropy --
+ * the golden-ratio stride just avoids visible banding. */
+function scatter(index: number, salt: number): number {
+  const v = (index + 1) * 0.6180339887 * (salt + 1);
+  return v - Math.floor(v);
+}
+
+const CONFETTI_PIECES: ConfettiPiece[] = Array.from({ length: 60 }, (_, i) => ({
+  id: i,
+  x: scatter(i, 0) * 100,
+  delay: scatter(i, 1) * 0.4,
+  duration: 2.2 + scatter(i, 2) * 1.4,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  rotate: scatter(i, 3) * 360,
+  size: 6 + scatter(i, 4) * 6,
+}));
 
 /** Shown right after a Razorpay payment verifies -- confetti burst + an
  * unlock card with the new tier badge. No page reload: the caller has
  * already patched the tier into the store before rendering this. */
 export function PaymentCelebration({ open, tier, onContinue }: PaymentCelebrationProps) {
-  const confetti = useMemo(
-    () =>
-      Array.from({ length: 60 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100,
-        delay: Math.random() * 0.4,
-        duration: 2.2 + Math.random() * 1.4,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        rotate: Math.random() * 360,
-        size: 6 + Math.random() * 6,
-      })),
-    []
-  );
+  const confetti = CONFETTI_PIECES;
 
   return (
     <AnimatePresence>

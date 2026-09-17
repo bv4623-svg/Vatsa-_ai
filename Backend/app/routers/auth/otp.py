@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+import os
 import secrets
 
 from app.database import get_db
@@ -49,9 +50,22 @@ def send_otp(req: OtpSendRequest, db: Session = Depends(get_db)):
 
     print(f"\n[OTP] Generated for {email}: {code}  (purpose={purpose})\n", flush=True)
 
+    missing = [k for k in ("EMAIL_USERNAME", "EMAIL_PASSWORD") if not os.getenv(k)]
+    if missing:
+        # Distinguish "this server can't send email" from "sending failed",
+        # so the UI can say which env vars are missing instead of showing a
+        # generic 500 the user can do nothing about.
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Email delivery is not configured on this server. "
+                f"Missing environment variable(s): {', '.join(missing)}."
+            ),
+        )
+
     sent = send_otp_email(email, code, purpose)
     if not sent:
-        raise HTTPException(500, "Failed to send email. Check SMTP config.")
+        raise HTTPException(502, "Could not send the email. Check the SMTP credentials and try again.")
 
     return {"success": True, "message": f"OTP sent to {email}"}
 

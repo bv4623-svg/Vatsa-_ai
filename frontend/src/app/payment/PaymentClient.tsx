@@ -55,88 +55,6 @@ export default function PaymentClient() {
   // FAQ state (unchanged)
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
 
-  // ─── RAZORPAY CHECKOUT LOGIC ──────────────────────────────
-  const [loading, setLoading] = useState(false);
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const handlePayment = async () => {
-    setLoading(true);
-    try {
-      const isLoaded = await loadRazorpayScript();
-      if (!isLoaded) {
-        alert("Razorpay SDK load nahi ho paaya. Internet check karo.");
-        setLoading(false);
-        return;
-      }
-
-      const amount = 10000; // ₹100 (paise)
-      const response = await fetch("http://localhost:8000/payment/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, currency: "INR" })
-      });
-      const orderData = await response.json();
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: "Vatsa AI",
-        description: "Payment for your order",
-        order_id: orderData.order_id,
-        prefill: {
-          name: "Test User",
-          email: "test@example.com",
-          contact: "9999999999"
-        },
-        theme: { color: "#F37254" },
-        handler: function (response: any) {
-          verifyPayment(response, orderData.order_id);
-        }
-      };
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
-    } catch (error) {
-      console.error(error);
-      alert("Payment initiation failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyPayment = async (paymentResponse: any, orderId: string) => {
-    try {
-      const verifyRes = await fetch("http://localhost:8000/payment/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          razorpay_order_id: orderId,
-          razorpay_payment_id: paymentResponse.razorpay_payment_id,
-          razorpay_signature: paymentResponse.razorpay_signature
-        })
-      });
-      const result = await verifyRes.json();
-      if (result.status === "success") {
-        alert("✅ Payment successful! Your order is confirmed.");
-        window.location.href = "/payment/success";
-      } else {
-        alert("❌ Payment verification failed. Support se contact karein.");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Verification failed.");
-    }
-  };
-  // ─── END RAZORPAY LOGIC ──────────────────────────────────
 
   return (
     <main className="relative min-h-screen bg-transparent text-gray-900 dark:text-gray-100">
@@ -158,7 +76,7 @@ export default function PaymentClient() {
               <button className="focus-ring hidden items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-xs text-gray-500 dark:text-gray-400 sm:flex hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
                 <Command size={13} /> K
               </button>
-              <Link href="/auth/login" className="focus-ring hidden rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white sm:block transition-colors">
+              <Link href="/login" className="focus-ring hidden rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white sm:block transition-colors">
                 Sign in
               </Link>
               <Magnetic strength={0.25}>
@@ -199,23 +117,14 @@ export default function PaymentClient() {
               <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 2, 2026
             </p>
 
-            {/* ─── NEW: PAY NOW BUTTON ─── */}
+            {/* Purchases happen on the pricing page, not on this policy page. */}
             <div className="mt-6 flex justify-center">
-              <button
-                onClick={handlePayment}
-                disabled={loading}
-                className="px-8 py-3 bg-blue-600 text-white text-lg font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+              <Link
+                href="/pricing"
+                className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3 text-lg font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-700"
               >
-                {loading ? (
-                  <>
-                    <span className="animate-spin">⏳</span> Processing...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="w-5 h-5" /> Pay Now ₹100
-                  </>
-                )}
-              </button>
+                <CreditCard className="h-5 w-5" /> View plans &amp; pricing
+              </Link>
             </div>
           </div>
         </div>

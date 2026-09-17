@@ -27,6 +27,12 @@ const BACKEND_AUTH_PREFIXES = [
   "/auth/refresh",
 ];
 
+// Pages that require a signed-in user. The bearer token in localStorage is
+// still the authority (the backend validates the JWT on every API call);
+// the vatsa_session cookie only lets us bounce anonymous visitors here
+// instead of flashing an empty authed shell first.
+const PROTECTED_PREFIXES = ["/home", "/code", "/workspace", "/checkout", "/billing", "/settings"];
+
 function isBackendAuthPath(path: string) {
   return BACKEND_AUTH_PREFIXES.some((p) => path.startsWith(p));
 }
@@ -36,9 +42,20 @@ function isFrontendPage(path: string) {
   return FRONTEND_PAGE_PREFIXES.some((p) => path === p);
 }
 
+function isProtectedPage(path: string) {
+  return PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+}
+
 export default async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const path = url.pathname;
+
+  // ── Gate private pages ─────────────────────────────────────
+  if (isProtectedPage(path) && !request.cookies.get("vatsa_session")?.value) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", `${path}${url.search}`);
+    return NextResponse.redirect(loginUrl);
+  }
 
   // ── Decide whether to proxy ────────────────────────────────
   let shouldProxy = false;

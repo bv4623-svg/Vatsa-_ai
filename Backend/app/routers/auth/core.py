@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime
+
+from app.utils.rate_limit import client_ip, enforce_rate_limit, reset_rate_limit
 
 from app.database import get_db
 from app.models.user import User
@@ -20,8 +22,10 @@ router = APIRouter(tags=["authentication"])
 @router.post("/auth/register")
 @router.post("/api/auth/register")
 @router.post("/api/auth/signup")
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
+    enforce_rate_limit(f"register:ip:{client_ip(request)}", limit=5, window_seconds=600)
+
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -68,13 +72,23 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/auth/login")
 @router.post("/api/auth/login")
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
+
+    # Throttle per-IP and per-account so neither a single source nor a
+    # single target can be brute-forced.
+    ip = client_ip(request)
+    enforce_rate_limit(f"login:ip:{ip}", limit=10, window_seconds=300)
+    enforce_rate_limit(f"login:email:{email}", limit=5, window_seconds=300)
+
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(req.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="User account is deactivated")
+
+    reset_rate_limit(f"login:ip:{ip}")
+    reset_rate_limit(f"login:email:{email}")
 
     user.last_login = datetime.utcnow()
     db.commit()

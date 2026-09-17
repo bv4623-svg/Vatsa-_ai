@@ -1,59 +1,21 @@
-"use client";
-
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import "./globals.css";
-import { SettingsModal } from "@/components/settings/settings-modal";
-import { useAppStore } from "@/stores/app-store";
-import { AuthProvider } from "@/context/AuthContext";
+import { RootShell } from "@/components/layout/RootShell";
 
-// AppInitializer component – placed inside layout to fetch data on mount
-function AppInitializer() {
-  const { fetchAllData, isAuthenticated } = useAppStore();
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token && !isAuthenticated) {
-      fetchAllData();
-    }
-  }, [fetchAllData, isAuthenticated]);
-
-  return null; // no UI
-}
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Vatsa AI — Intelligence, orchestrated",
+    template: "%s | Vatsa AI",
+  },
+  description:
+    "Your intelligent AI workspace for coding, research, writing, and business.",
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  // Theme logic – reads from localStorage and applies dark class
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('vatsa-storage');
-      let theme = 'system';
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed.state?.settings?.theme) {
-            theme = parsed.state.settings.theme;
-          } else if (parsed.state?.theme) {
-            theme = parsed.state.theme;
-          }
-        } catch (e) {
-          // ignore parse errors
-        }
-      }
-      let resolved = theme;
-      if (theme === 'system') {
-        resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      if (resolved === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    } catch (e) {
-      // ignore localStorage errors
-    }
-  }, []);
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -65,22 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased font-sans">
-        <AuthProvider>
-          <AppInitializer />
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={typeof window !== 'undefined' ? window.location.pathname : 'initial'}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="min-h-screen"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-          <SettingsModal open={false} onClose={() => {}} />
-        </AuthProvider>
+        <RootShell>{children}</RootShell>
       </body>
     </html>
   );

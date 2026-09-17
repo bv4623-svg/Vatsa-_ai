@@ -18,6 +18,7 @@ import { useCodeConversations } from "@/hooks/code/useCodeConversations";
 import { useCodeChat } from "@/hooks/code/useCodeChat";
 import { useWorkspaceTheme } from "@/hooks/code/useWorkspaceTheme";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
+import { clearSession } from "@/lib/session";
 import type { UpgradeGateInfo } from "@/lib/billing/upgradeError";
 import type { ProjectFile, PreviewMode } from "@/types/code";
 
@@ -146,9 +147,9 @@ export function CodeWorkspace() {
   }, [createProject, resetForNewProject, resetWorkspacePanel, setActiveProjectId, activeProjectIdRef]);
 
   const handleLogout = useCallback(() => {
-    logout();
-    router.push("/auth/login");
-  }, [logout, router]);
+    clearSession();
+    router.push("/");
+  }, [router]);
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed((p) => !p), []);
 

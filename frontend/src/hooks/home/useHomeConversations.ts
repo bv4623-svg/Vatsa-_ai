@@ -77,7 +77,7 @@ export function useHomeConversations({ router, setUser, setDraftMessage, setErro
       console.error("Auth error:", error);
       if (error.message === "Unauthorized") {
         localStorage.removeItem("access_token");
-        router.push("/auth/login");
+        router.push("/login");
       } else {
         setErrorState({ message: error.message || "Failed to load profile" });
       }
@@ -88,7 +88,7 @@ export function useHomeConversations({ router, setUser, setDraftMessage, setErro
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    if (!token) { router.push("/auth/login"); return; }
+    if (!token) { router.push("/login"); return; }
     fetchProfileAndChats(token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -112,7 +112,7 @@ export function useHomeConversations({ router, setUser, setDraftMessage, setErro
     if (creatingChatRef.current) return creatingChatRef.current;
 
     const token = localStorage.getItem("access_token");
-    if (!token) { router.push("/auth/login"); return null; }
+    if (!token) { router.push("/login"); return null; }
 
     const task = (async (): Promise<string | null> => {
       try {

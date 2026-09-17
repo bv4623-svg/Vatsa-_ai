@@ -46,3 +46,25 @@ def send_task_result_email(to_email: str, task_title: str, success: bool, error:
     </div>
     """
     return _send(to_email, subject, html)
+
+
+def send_notification_email(to_email: str, title: str, message: Optional[str] = None) -> bool:
+    """Generic account-event email (quota warnings, etc.) -- distinct
+    from send_task_result_email, which is worded specifically for a
+    scheduled task's own run outcome and would read as nonsense for
+    anything else."""
+    subject = f"Vatsa AI — {title}"
+    body = f'<p style="font-size:14px;color:#ccc;">{message}</p>' if message else ""
+
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;
+                background:#0a0a0a;color:#fff;padding:32px;border-radius:16px;">
+      <h1 style="color:#10b981;margin:0 0 8px;">Vatsa AI</h1>
+      <p style="font-size:15px;font-weight:600;">{title}</p>
+      {body}
+      <p style="color:#555;font-size:11px;margin-top:32px;">
+        Manage notification preferences in Settings.
+      </p>
+    </div>
+    """
+    return _send(to_email, subject, html)

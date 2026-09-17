@@ -11,6 +11,14 @@ export interface AuthResponse {
   user: User;
 }
 
+/** login() returns this instead when the account has 2FA enabled -- no
+ * token is issued until verifyLogin2FA() exchanges pending_token + a real
+ * TOTP/backup code for one. */
+export interface Requires2FAResponse {
+  requires_2fa: true;
+  pending_token: string;
+}
+
 async function parseJsonOrThrow(res: Response): Promise<any> {
   let data: any = {};
   try {
@@ -24,11 +32,20 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
   return data;
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export async function login(email: string, password: string): Promise<AuthResponse | Requires2FAResponse> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+  });
+  return parseJsonOrThrow(res);
+}
+
+export async function verifyLogin2FA(pendingToken: string, code: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/auth/2fa/verify-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pending_token: pendingToken, code }),
   });
   return parseJsonOrThrow(res);
 }

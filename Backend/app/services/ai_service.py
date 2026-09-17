@@ -257,6 +257,7 @@ class AIService:
         search_context: Optional[str] = None,
         reasoning: bool = False,
         project_instructions: Optional[str] = None,
+        response_style_instructions: Optional[str] = None,
     ):
         """
         Streaming counterpart to generate_response with identical
@@ -280,7 +281,8 @@ class AIService:
             return
 
         messages = AIService._build_messages(
-            user, db, query, conversation_history, is_code, attachments, search_context, project_instructions
+            user, db, query, conversation_history, is_code, attachments, search_context,
+            project_instructions, response_style_instructions,
         )
         # Reasoning models spend a large share of their token budget on
         # the "thinking" phase before ever emitting the answer -- a
@@ -367,6 +369,7 @@ class AIService:
         attachments: Optional[List[Dict[str, Any]]] = None,
         search_context: Optional[str] = None,
         project_instructions: Optional[str] = None,
+        response_style_instructions: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Shared system-prompt + message-sequence builder used by both the
@@ -407,6 +410,9 @@ class AIService:
                 "These are standing instructions for the project this chat belongs "
                 "to. Apply them to every reply in this conversation."
             )
+
+        if response_style_instructions:
+            system_parts.append(f"\n=== RESPONSE STYLE ===\n{response_style_instructions}")
 
         if is_code:
             system_parts.append(
@@ -474,6 +480,7 @@ class AIService:
         search_context: Optional[str] = None,
         reasoning: bool = False,
         project_instructions: Optional[str] = None,
+        response_style_instructions: Optional[str] = None,
     ) -> Dict[str, Any]:
         is_code = (workspace == "code")
         target_model = REASONING_MODEL if reasoning else AIService.map_model(model_name)
@@ -485,7 +492,8 @@ class AIService:
             raise ValueError(reason)
 
         messages = AIService._build_messages(
-            user, db, query, conversation_history, is_code, attachments, search_context, project_instructions
+            user, db, query, conversation_history, is_code, attachments, search_context,
+            project_instructions, response_style_instructions,
         )
 
         # 3. Call OpenRouter with fallback models (none in reasoning mode --

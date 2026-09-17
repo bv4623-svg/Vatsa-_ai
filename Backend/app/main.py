@@ -27,10 +27,12 @@ from app.routers import memory, payment, tokens, upload, files, vision
 from app.routers import library as library_router
 from app.routers import scheduled_tasks as scheduled_tasks_router
 from app.routers import chat_projects as chat_projects_router
+from app.routers import account as account_router
 from app.core.classifier import IntentClassifier
 from intents_data import INTENTS
 from app.database import init_db
 from app.services.scheduled_tasks import init_scheduler, shutdown_scheduler
+from app.services.account import register_account_jobs
 
 # Initialize intent classifier singleton
 intent_classifier = IntentClassifier()
@@ -40,6 +42,7 @@ intent_classifier = IntentClassifier()
 async def lifespan(app: FastAPI):
     init_db()
     init_scheduler()
+    register_account_jobs()
     yield
     shutdown_scheduler()
 
@@ -68,6 +71,7 @@ app.include_router(vision.router)
 app.include_router(library_router.router)
 app.include_router(scheduled_tasks_router.router)
 app.include_router(chat_projects_router.router)
+app.include_router(account_router.router)
 
 
 # Intent classification endpoints

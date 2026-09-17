@@ -64,7 +64,7 @@ def _get_or_create_oauth_user(db: Session, email: str, name: str, provider: str)
 
 
 def _redirect_with_token(user: User):
-    jwt_token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name})
+    jwt_token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
     qs = urlencode({
         "access_token": jwt_token,
         "email": user.email,

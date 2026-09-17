@@ -73,7 +73,16 @@ def init_db():
     import app.models.library_item
     import app.models.scheduled_task
     import app.models.chat_project
+    import app.models.api_key
+    import app.models.connected_account
+    import app.models.notification
     Base.metadata.create_all(bind=engine)
     _ensure_column("conversations", "project_id", "VARCHAR(36)")
     _ensure_column("library_items", "project_id", "VARCHAR(36)")
+    _ensure_column("users", "token_version", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column("users", "is_deleted", "BOOLEAN NOT NULL DEFAULT 0")
+    _ensure_column("users", "deleted_at", "DATETIME")
+    _ensure_column("users", "totp_secret", "VARCHAR")
+    _ensure_column("users", "two_factor_enabled", "BOOLEAN NOT NULL DEFAULT 0")
+    _ensure_column("users", "backup_codes", "JSON")
 

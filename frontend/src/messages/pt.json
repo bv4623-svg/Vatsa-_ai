@@ -25,6 +25,51 @@
       "description": "O idioma em que a interface do Vatsa AI é exibida.",
       "searchPlaceholder": "Buscar idiomas...",
       "noResults": "Nenhum idioma corresponde à sua busca."
+    },
+    "theme": {
+      "label": "Tema",
+      "description": "A aparência da interface do Vatsa AI.",
+      "light": "Claro",
+      "dark": "Escuro",
+      "system": "Sistema"
+    },
+    "timezone": {
+      "label": "Fuso horário",
+      "description": "Usado para mostrar horários (como execuções de tarefas agendadas) no seu horário local."
+    },
+    "defaultModel": {
+      "label": "Modelo padrão",
+      "description": "Usado para novas conversas, a menos que você escolha outro modelo.",
+      "auto": "Automático (recomendado)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "Estilo de resposta",
+      "description": "Adicionado às instruções de cada resposta.",
+      "default": "Padrão",
+      "concise": "Conciso",
+      "detailed": "Detalhado",
+      "friendly": "Amigável",
+      "formal": "Formal"
+    },
+    "autoSave": {
+      "label": "Salvar conversas automaticamente",
+      "description": "Quando desativado, novas mensagens não são salvas no seu histórico."
+    },
+    "retention": {
+      "label": "Retenção de histórico",
+      "description": "Exclui automaticamente conversas mais antigas que isso.",
+      "30d": "30 dias",
+      "90d": "90 dias",
+      "forever": "Para sempre"
+    },
+    "notify": {
+      "email": "Notificações por e-mail",
+      "inApp": "Notificações no app",
+      "quota": "Avisos de limite de armazenamento",
+      "product": "Atualizações do produto"
     }
   },
   "library": {

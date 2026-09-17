@@ -1,0 +1,69 @@
+import logging
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.database import SessionLocal
+from app.models.user import User
+
+logger = logging.getLogger("AccountDeletion")
+
+HARD_DELETE_GRACE_DAYS = 30
+
+
+def soft_delete_account(db: Session, user: User) -> None:
+    """Blocks login immediately (is_active=False is already checked by
+    get_current_user and the login endpoint) without destroying data --
+    a real hard delete follows automatically after the grace period via
+    hard_delete_expired_accounts."""
+    user.is_deleted = True
+    user.is_active = False
+    user.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+
+
+def _tables_with_user_id(db: Session) -> list:
+    rows = db.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
+    tables = []
+    for (name,) in rows:
+        cols = db.execute(text(f"PRAGMA table_info({name})")).fetchall()
+        if any(c[1] == "user_id" for c in cols):
+            tables.append(name)
+    return tables
+
+
+def _cascade_delete_user(db: Session, user_id: int) -> None:
+    """Manual cascade across every table with a user_id column -- this
+    app's SQLite connection runs without PRAGMA foreign_keys=ON, so
+    ORM-declared relationship() cascades only cover the handful of
+    tables User.py itself declares a relationship for; every other
+    owned table (library_items, scheduled_tasks, chat_projects,
+    api_keys, ...) would otherwise be left orphaned."""
+    for table in _tables_with_user_id(db):
+        if table == "users":
+            continue
+        db.execute(text(f"DELETE FROM {table} WHERE user_id = :uid"), {"uid": user_id})
+
+
+def hard_delete_expired_accounts() -> int:
+    """Cron target (see app.services.account.scheduler_jobs): permanently
+    removes any account whose grace period has elapsed. Runs in its own
+    DB session since it's called from a background scheduler thread, not
+    a request."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=HARD_DELETE_GRACE_DAYS)
+    db = SessionLocal()
+    deleted = 0
+    try:
+        expired = db.query(User).filter(User.is_deleted.is_(True), User.deleted_at <= cutoff).all()
+        for user in expired:
+            _cascade_delete_user(db, user.id)
+            db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user.id})
+            deleted += 1
+        db.commit()
+    except Exception:
+        logger.exception("Hard-delete pass failed")
+        db.rollback()
+    finally:
+        db.close()
+    return deleted

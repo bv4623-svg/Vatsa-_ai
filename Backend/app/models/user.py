@@ -31,6 +31,24 @@ class User(Base):
     # Preferences / settings
     settings = Column(JSON, default={})
 
+    # Bumped by POST /api/account/sessions/sign-out-others to invalidate
+    # every access token issued before that moment (see auth/jwt.py and
+    # auth/dependencies.py) -- a token with no "tv" claim at all predates
+    # this feature and is grandfathered in as valid.
+    token_version = Column(Integer, nullable=False, default=0)
+
+    # Soft delete: is_active=False blocks login/get_current_user
+    # immediately; a daily job hard-deletes rows past the grace period
+    # (see app/services/account/deletion.py).
+    is_deleted = Column(Boolean, nullable=False, default=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Two-factor auth (TOTP). backup_codes stores hashes only, never the
+    # plaintext codes shown to the user once at generation time.
+    totp_secret = Column(String, nullable=True)
+    two_factor_enabled = Column(Boolean, nullable=False, default=False)
+    backup_codes = Column(JSON, nullable=True, default=list)
+
     # Timestamps (timezone-aware)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -54,5 +72,6 @@ class User(Base):
             "is_verified": self.is_verified,
             "profile_completed": self.profile_completed,
             "settings": self.settings or {},
+            "twoFactorEnabled": self.two_factor_enabled,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

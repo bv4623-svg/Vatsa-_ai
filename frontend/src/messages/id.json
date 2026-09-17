@@ -25,6 +25,51 @@
       "description": "Bahasa yang digunakan untuk menampilkan antarmuka Vatsa AI.",
       "searchPlaceholder": "Cari bahasa...",
       "noResults": "Tidak ada bahasa yang cocok dengan pencarian Anda."
+    },
+    "theme": {
+      "label": "Tema",
+      "description": "Tampilan antarmuka Vatsa AI.",
+      "light": "Terang",
+      "dark": "Gelap",
+      "system": "Sistem"
+    },
+    "timezone": {
+      "label": "Zona waktu",
+      "description": "Digunakan untuk menampilkan waktu (seperti eksekusi tugas terjadwal) dalam waktu lokal Anda."
+    },
+    "defaultModel": {
+      "label": "Model default",
+      "description": "Digunakan untuk obrolan baru kecuali Anda memilih model lain.",
+      "auto": "Otomatis (disarankan)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "Gaya respons",
+      "description": "Ditambahkan ke instruksi setiap balasan.",
+      "default": "Default",
+      "concise": "Ringkas",
+      "detailed": "Detail",
+      "friendly": "Ramah",
+      "formal": "Formal"
+    },
+    "autoSave": {
+      "label": "Simpan obrolan otomatis",
+      "description": "Jika nonaktif, pesan baru tidak disimpan ke riwayat obrolan."
+    },
+    "retention": {
+      "label": "Retensi riwayat",
+      "description": "Otomatis hapus obrolan yang lebih lama dari ini.",
+      "30d": "30 hari",
+      "90d": "90 hari",
+      "forever": "Selamanya"
+    },
+    "notify": {
+      "email": "Notifikasi email",
+      "inApp": "Notifikasi dalam aplikasi",
+      "quota": "Peringatan kuota penyimpanan",
+      "product": "Pembaruan produk"
     }
   },
   "library": {

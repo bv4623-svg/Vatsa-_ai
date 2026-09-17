@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.utils.rate_limit import client_ip, enforce_rate_limit, reset_rate_limit
 
@@ -63,7 +63,7 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
     db.commit()
     db.refresh(user)
 
-    token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name})
+    token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
     return {
         "access_token": token, "token_type": "bearer",
         "full_name": user.full_name, "tier": user.tier,
@@ -92,6 +92,14 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     reset_rate_limit(f"login:ip:{ip}")
     reset_rate_limit(f"login:email:{email}")
 
+    if user.two_factor_enabled:
+        # Password verified, but no real session token yet -- the
+        # pending token only carries scope="2fa_pending" (rejected by
+        # get_current_user like every other scoped token) and is
+        # exchanged for a real one by POST /auth/2fa/verify-login.
+        pending_token = create_access_token({"sub": str(user.id), "scope": "2fa_pending"}, expires_delta=timedelta(minutes=10))
+        return {"requires_2fa": True, "pending_token": pending_token}
+
     user.last_login = datetime.utcnow()
     db.commit()
 
@@ -100,7 +108,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
         db.add(TokenAccount(user_id=user.id, balance=50000, total_purchased=0, total_used=0))
         db.commit()
 
-    token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name})
+    token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
     return {
         "access_token": token, "token_type": "bearer",
         "full_name": user.full_name, "tier": user.tier or "free",
@@ -116,7 +124,7 @@ def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
-    token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name})
+    token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
     return {"access_token": token, "token_type": "bearer"}
 
 
@@ -146,6 +154,7 @@ def get_current_user_profile(user: User = Depends(get_current_user), db: Session
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "usage": usage,
         "settings": user.settings or {},
+        "twoFactorEnabled": user.two_factor_enabled,
     }
 
 

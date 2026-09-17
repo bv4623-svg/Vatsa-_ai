@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { getToken, setToken, removeToken } from "@/lib/auth";
 
@@ -15,6 +16,7 @@ export interface User {
   profile_completed: boolean;
   settings?: Record<string, any>;
   created_at?: string;
+  twoFactorEnabled?: boolean;
 }
 
 interface AuthState {
@@ -109,12 +111,14 @@ export const useAccessToken = () => useAuthStore((s) => s.accessToken);
 export const useIsAuthenticated = () => useAuthStore((s) => s.isAuthenticated);
 export const useAuthLoading = () => useAuthStore((s) => s.isLoading);
 export const useAuthError = () => useAuthStore((s) => s.error);
-export const useAuthActions = () => useAuthStore((s) => ({
-  setAuth: s.setAuth,
-  updateUser: s.updateUser,
-  logout: s.logout,
-  setLoading: s.setLoading,
-  setError: s.setError,
-  clearError: s.clearError,
-  hydrate: s.hydrate,
-}));
+export const useAuthActions = () => useAuthStore(
+  useShallow((s) => ({
+    setAuth: s.setAuth,
+    updateUser: s.updateUser,
+    logout: s.logout,
+    setLoading: s.setLoading,
+    setError: s.setError,
+    clearError: s.clearError,
+    hydrate: s.hydrate,
+  }))
+);

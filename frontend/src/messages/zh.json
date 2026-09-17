@@ -25,6 +25,51 @@
       "description": "Vatsa AI 界面显示所使用的语言。",
       "searchPlaceholder": "搜索语言...",
       "noResults": "没有与搜索匹配的语言。"
+    },
+    "theme": {
+      "label": "主题",
+      "description": "Vatsa AI 界面的外观。",
+      "light": "浅色",
+      "dark": "深色",
+      "system": "系统"
+    },
+    "timezone": {
+      "label": "时区",
+      "description": "用于以您的当地时间显示时间（例如定时任务的运行时间）。"
+    },
+    "defaultModel": {
+      "label": "默认模型",
+      "description": "除非您选择其他模型，否则将用于新对话。",
+      "auto": "自动（推荐）",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "回复风格",
+      "description": "会添加到每次回复的指令中。",
+      "default": "默认",
+      "concise": "简洁",
+      "detailed": "详细",
+      "friendly": "亲切",
+      "formal": "正式"
+    },
+    "autoSave": {
+      "label": "自动保存对话",
+      "description": "关闭后，新消息将不会保存到对话记录中。"
+    },
+    "retention": {
+      "label": "记录保留时间",
+      "description": "自动删除早于此时间的对话。",
+      "30d": "30 天",
+      "90d": "90 天",
+      "forever": "永久保留"
+    },
+    "notify": {
+      "email": "邮件通知",
+      "inApp": "应用内通知",
+      "quota": "存储配额警告",
+      "product": "产品更新"
     }
   },
   "library": {

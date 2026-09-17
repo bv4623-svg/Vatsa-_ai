@@ -1,0 +1,10 @@
+export { GeneralTab } from "./GeneralTab";
+export { AppearanceTab } from "./AppearanceTab";
+export { LanguageTab } from "./LanguageTab";
+export { PreferencesTab } from "./PreferencesTab";
+export { SecurityTab } from "./SecurityTab";
+export { ApiKeysTab } from "./ApiKeysTab";
+export { ConnectedAccountsTab } from "./ConnectedAccountsTab";
+export { BillingTab } from "./BillingTab";
+export { AccountTab } from "./AccountTab";
+export { LegalTab } from "./LegalTab";

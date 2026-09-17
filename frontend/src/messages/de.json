@@ -25,6 +25,51 @@
       "description": "Die Sprache, in der die Oberfläche von Vatsa AI angezeigt wird.",
       "searchPlaceholder": "Sprachen suchen...",
       "noResults": "Keine Sprache entspricht deiner Suche."
+    },
+    "theme": {
+      "label": "Design",
+      "description": "Wie die Oberfläche von Vatsa AI aussieht.",
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "System"
+    },
+    "timezone": {
+      "label": "Zeitzone",
+      "description": "Wird verwendet, um Zeiten (z. B. geplante Aufgaben) in deiner Ortszeit anzuzeigen."
+    },
+    "defaultModel": {
+      "label": "Standardmodell",
+      "description": "Wird für neue Chats verwendet, sofern du kein anderes Modell wählst.",
+      "auto": "Automatisch (empfohlen)",
+      "fast": "Vatsa Fast",
+      "pro": "Vatsa Pro",
+      "advanced": "Vatsa Advanced"
+    },
+    "responseStyle": {
+      "label": "Antwortstil",
+      "description": "Wird den Anweisungen jeder Antwort hinzugefügt.",
+      "default": "Standard",
+      "concise": "Prägnant",
+      "detailed": "Ausführlich",
+      "friendly": "Freundlich",
+      "formal": "Förmlich"
+    },
+    "autoSave": {
+      "label": "Chats automatisch speichern",
+      "description": "Wenn deaktiviert, werden neue Nachrichten nicht im Verlauf gespeichert."
+    },
+    "retention": {
+      "label": "Verlaufsaufbewahrung",
+      "description": "Löscht automatisch Chats, die älter sind als dies.",
+      "30d": "30 Tage",
+      "90d": "90 Tage",
+      "forever": "Für immer"
+    },
+    "notify": {
+      "email": "E-Mail-Benachrichtigungen",
+      "inApp": "In-App-Benachrichtigungen",
+      "quota": "Speicherplatz-Warnungen",
+      "product": "Produkt-Updates"
     }
   },
   "library": {

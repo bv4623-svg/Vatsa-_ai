@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { AIIcon } from "@/components/brand/AIIcon";
 import {
   Home,
   MessageSquare,
@@ -58,7 +59,7 @@ export default function WorkspaceSidebar() {
 
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-6 border-b border-white/5">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600" />
+        <AIIcon size={32} />
         {!collapsed && <span className="text-white font-bold text-lg">Vatsa AI</span>}
       </div>
 

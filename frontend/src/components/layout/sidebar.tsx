@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
-import Image from "next/image";
+import { AIIcon } from "@/components/brand/AIIcon";
 
 export type PanelKey = never;
 
@@ -244,15 +244,7 @@ export default function Sidebar({
       <div className={cn("flex items-center gap-3 px-3 pt-3", isCollapsed && "flex-col")}>
         {!isCollapsed && (
           <div className="flex min-w-0 flex-1 items-center gap-3 px-1">
-            <div className="relative h-7 w-7 shrink-0">
-              <Image
-                src="/logo.png"
-                alt="Vatsa AI"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
+            <AIIcon size={28} className="shrink-0" />
             <span className="truncate text-[15px] font-semibold tracking-tight text-white">Vatsa AI</span>
           </div>
         )}

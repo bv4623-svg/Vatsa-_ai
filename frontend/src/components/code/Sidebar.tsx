@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import {
   LogOut, Plus, Search, X, PanelLeft, Folder, Trash2,
   Settings,
@@ -13,6 +12,7 @@ import type { Conversation } from "@/services/chat";
 import type { UserProfile } from "@/types/code";
 import { SidebarUpgradeCard } from "@/components/billing/SidebarUpgradeCard";
 import { SidebarWorkspaceLinks } from "@/components/sidebar/SidebarWorkspaceLinks";
+import { AIIcon } from "@/components/brand/AIIcon";
 
 interface SidebarProps {
   projects: Conversation[];
@@ -31,18 +31,7 @@ interface SidebarProps {
 /** Declared at module scope: a component defined inside the render body is
  * a new type on every render, which remounts it and drops its state. */
 function Logo() {
-  return (
-    <div className="relative h-7 w-7 overflow-hidden rounded-full">
-      <Image
-        src="/logo.png"
-        alt="Vatsa AI"
-        width={28}
-        height={28}
-        className="rounded-full object-cover"
-        priority
-      />
-    </div>
-  );
+  return <AIIcon size={28} />;
 }
 
 export const Sidebar = ({

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AIIcon } from '@/components/brand/AIIcon';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -7,9 +8,7 @@ export default function Footer() {
     <footer className="w-full border-t border-white/10 bg-black/40 backdrop-blur-md text-gray-300 py-8 px-6 md:px-12 mt-auto">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-            VA
-          </div>
+          <AIIcon size={32} />
           <span className="text-xl font-semibold text-white">Vatsa AI</span>
         </div>
 

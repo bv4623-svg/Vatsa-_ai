@@ -7,6 +7,7 @@ import {
   PlusCircle, Mic, Sparkles,
 } from "lucide-react";
 import type { ProjectFile } from "@/types/code";
+import { AIIcon } from "@/components/brand/AIIcon";
 
 const QUICK_SUGGESTIONS = [
   { label: "Build a website", icon: <Globe className="h-4 w-4" /> },
@@ -139,14 +140,8 @@ export function CodeWorkspaceEmptyState({
           className="relative mx-auto h-48 w-48 md:h-56 md:w-56"
         >
           <div className="absolute inset-0 animate-pulse rounded-full bg-accent/20 blur-3xl" />
-          <div className="relative h-full w-full overflow-hidden rounded-full bg-gradient-to-br from-accent/10 via-transparent to-accent/5 p-2">
-            <img
-              src="/vatsaAi.png"
-              alt="Vatsa AI"
-              width={224}
-              height={224}
-              className="rounded-full object-cover"
-            />
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent/10 via-transparent to-accent/5 p-2">
+            <AIIcon size={120} />
           </div>
         </motion.div>
 

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { AIIcon } from "@/components/brand/AIIcon";
 import {
   Lock, User, CheckCircle2, AlertCircle, Eye, EyeOff, Loader2, AtSign,
   Shield, Fingerprint, Sparkles, Briefcase, Code2, BookOpen, BarChart3, Bot, Layers,
@@ -486,7 +487,7 @@ export default function AuthPage() {
             <div className="relative rounded-2xl border border-white/6 bg-white/[0.03] backdrop-blur-2xl p-6 md:p-8 shadow-2xl shadow-black/50">
               <div className="flex items-center gap-3 mb-5">
                 <div className="h-12 w-12 flex items-center justify-center">
-                  <Image src="/logo.png" alt="Vatsa AI" width={48} height={48} className="object-contain" priority />
+                  <AIIcon size={44} />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-white">Vatsa AI</h1>

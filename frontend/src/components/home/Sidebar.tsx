@@ -3,7 +3,7 @@
 import { memo, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
+import { AIIcon } from "@/components/brand/AIIcon";
 import {
   Archive, Copy, Settings, Plus, X, Search,
   PanelLeft, MessageSquare, Pencil, Pin, Star, Trash2,
@@ -72,51 +72,11 @@ export const Sidebar = memo(({
           <div className={cn("flex items-center gap-2 px-3 pt-4", isCollapsed && "flex-col")}>
             {!isCollapsed ? (
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <div className="relative w-7 h-7 rounded-full overflow-hidden">
-                  <Image
-                    src="/logo.png"
-                    alt="Vatsa AI"
-                    width={28}
-                    height={28}
-                    className="object-cover rounded-full"
-                    style={{ width: 28, height: 28 }}
-                    priority
-                    onError={(e) => {
-                      const parent = e.currentTarget.parentElement;
-                      if (parent) {
-                        const fallback = document.createElement('div');
-                        fallback.className = 'flex items-center justify-center w-full h-full bg-accent/20 text-accent-foreground font-bold rounded-full text-sm';
-                        fallback.textContent = 'V';
-                        parent.appendChild(fallback);
-                        e.currentTarget.style.display = 'none';
-                      }
-                    }}
-                  />
-                </div>
+                <AIIcon size={28} />
                 <span className="truncate text-[16px] font-semibold tracking-tight text-foreground">Vatsa AI</span>
               </div>
             ) : (
-              <div className="relative w-7 h-7 rounded-full overflow-hidden">
-                <Image
-                  src="/logo.png"
-                  alt="Vatsa AI"
-                  width={28}
-                  height={28}
-                  className="object-cover rounded-full"
-                  style={{ width: 28, height: 28 }}
-                  priority
-                  onError={(e) => {
-                    const parent = e.currentTarget.parentElement;
-                    if (parent) {
-                      const fallback = document.createElement('div');
-                      fallback.className = 'flex items-center justify-center w-full h-full bg-accent/20 text-accent-foreground font-bold rounded-full text-sm';
-                      fallback.textContent = 'V';
-                      parent.appendChild(fallback);
-                      e.currentTarget.style.display = 'none';
-                    }
-                  }}
-                />
-              </div>
+              <AIIcon size={28} />
             )}
             <IconBtn tip={isCollapsed ? "Expand sidebar" : "Collapse sidebar"} side={isCollapsed ? "right" : "bottom"} onClick={toggleSidebar} className="hidden md:inline-flex">
               <PanelLeft className="h-[18px] w-[18px]" />

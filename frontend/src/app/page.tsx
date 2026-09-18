@@ -24,6 +24,7 @@ import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } 
 // ─── ✅ REAL AUTH IMPORT ──────────────────────────────────────────
 import { useAppStore } from "@/stores/app-store";
 import { getPlan, formatPrice, listPrice, annualPrice, annualSavings, DEFAULT_CURRENCY } from "@/data/plans";
+import { AIIcon } from "@/components/brand/AIIcon";
 
 // ─────────────────────────────────────────────────────────────
 // 1. DATA (full – unchanged)
@@ -194,13 +195,13 @@ const PROVIDER_LOGOS: Record<string, string> = {
   Qwen: "/qwen-color.png",
   Llama: "/ollama.png",
   Ollama: "/ollama.png",
-  Meta: "/ollama.png",
   Perplexity: "/perplexity-color.png",
   Midjourney: "/midjourney.png",
   Poe: "/poe-color.png",
-  Recraft: "/logo.png",
-  FLUX: "/logo.png",
 };
+// Meta, Recraft and FLUX have no real brand-kit asset in this app --
+// deliberately left unmapped so the render below falls back to a neutral
+// monogram instead of another company's (or Vatsa's own) actual logo.
 
 const PROVIDERS_LIST = [
   { name: "OpenAI", src: "/openai.png" },
@@ -815,7 +816,7 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
   }, []);
 
   const progress = (stage / (STAGES.length - 1)) * 100;
-  const providerLogo = PROVIDER_LOGOS[a.provider] || "/logo.png";
+  const providerLogo = PROVIDER_LOGOS[a.provider] || null;
 
   return (
     <div className="relative w-full">
@@ -909,12 +910,21 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img
-                  src={providerLogo}
-                  alt={a.provider}
-                  className="h-8 w-8 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
-                  loading="lazy"
-                />
+                {providerLogo ? (
+                  <img
+                    src={providerLogo}
+                    alt={a.provider}
+                    className="h-8 w-8 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/10 text-[11px] font-semibold text-white"
+                    aria-label={a.provider}
+                  >
+                    {a.provider.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <div className="text-[13.5px] font-medium text-white">{a.model}</div>
                   <div className="flex items-center gap-1.5">
@@ -1856,7 +1866,7 @@ function Footer() {
           <div>
             <div className="flex items-center gap-2.5">
               <div className="h-8 w-8 overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 to-cyan-400/20 flex items-center justify-center">
-                <Image src="/logo.png" alt="Vatsa AI" width={28} height={28} className="h-7 w-7 object-contain" />
+                <AIIcon size={20} />
               </div>
               <span className="font-display text-[16px] font-semibold text-white">
                 Vatsa<span className="ml-1 align-super font-mono text-[8px] tracking-[0.18em] text-violet-300/90">AI</span>
@@ -1999,7 +2009,7 @@ function Navbar({ onPalette, onAuth, onStartBuilding }: { onPalette: () => void;
     return (
       <a href="#top" className="group flex items-center gap-2.5">
         <span className="relative grid h-8 w-8 place-items-center overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 via-indigo-500/15 to-cyan-400/20">
-          <Image src="/logo.png" alt="Vatsa" width={20} height={20} className="h-5 w-5 object-contain" />
+          <AIIcon size={20} />
         </span>
         <span className="font-display text-[17px] font-semibold tracking-tight text-white">
           Vatsa<span className="ml-1 align-super font-mono text-[9px] font-medium tracking-[0.18em] text-violet-300/90">AI</span>

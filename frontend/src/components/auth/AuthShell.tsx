@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AIIcon } from "@/components/brand/AIIcon";
 
 export function AuthShell({
   title,
@@ -20,7 +20,7 @@ export function AuthShell({
     <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 py-10">
       <div className="w-full max-w-md">
         <Link href="/" className="mb-6 flex items-center justify-center gap-2">
-          <Image src="/logo.png" alt="" width={32} height={32} className="rounded-full" priority />
+          <AIIcon size={32} />
           <span className="text-lg font-semibold text-white">Vatsa AI</span>
         </Link>
 

@@ -12,7 +12,6 @@ STORAGE_LIMIT_GB = {
     "free": 2,
     "pro": 50,
     "business": 500,
-    "ultra": 1024,
 }
 
 

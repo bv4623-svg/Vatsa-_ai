@@ -1,19 +1,16 @@
 """
-Central free/pro/business/ultra feature-access and daily-limit definitions.
+Central free/pro/business feature-access and daily-limit definitions.
 Every gated endpoint should go through require_feature() (a FastAPI
 dependency, not a decorator -- see note below) rather than checking
 user.tier directly, so limits/access stay in one place.
 
-Note on tier values: the existing payment/registration code predates
-the ultra tier and has historically written "pro", "paid", or
-"premium" for a paid account (see payment_service.py, token_service.py).
-user_tier() normalizes all three legacy values to "pro" so this system
-works with data written before this file existed, without requiring a
+Note on tier values: older payment/registration code wrote "pro", "paid",
+or "premium" for a paid account; user_tier() normalizes all three to "pro"
+so data written before this file existed keeps working without a
 migration. "business" is its own real value (see payment_service.py's
-_PLAN_META) -- it must never fold into "pro", since Business ($99/mo)
-and Pro ($24/mo) are priced differently and FEATURE_MATRIX in the
-frontend's plans.matrix.ts promises Business real extras (Deep research,
-Team collaboration, SSO, 10x the storage) that Pro doesn't get.
+_PLAN_META) and must never fold into "pro": frontend/src/data/plans.matrix.ts
+promises Business real extras (Deep research, Team collaboration, SSO, 10x
+the storage) that Pro doesn't get.
 """
 from datetime import date
 from typing import Dict, Tuple
@@ -28,57 +25,55 @@ from app.models.usage_daily import UsageDaily
 from app.auth.dependencies import get_current_user
 
 FEATURE_ACCESS: Dict[str, Dict[str, bool]] = {
-    "chat_basic":        {"free": True,  "pro": True,  "business": True,  "ultra": True},
-    "chat_streaming":    {"free": True,  "pro": True,  "business": True,  "ultra": True},
-    "web_search":        {"free": True,  "pro": True,  "business": True,  "ultra": True},
-    "memory":            {"free": True,  "pro": True,  "business": True,  "ultra": True},
-    "history":           {"free": True,  "pro": True,  "business": True,  "ultra": True},
-    "vision":            {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "tts":               {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "reasoning":         {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "image_gen":         {"free": True,  "pro": True,  "business": True,  "ultra": True},
-    "agents":            {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "canvas":            {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "research":          {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "sandbox":           {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "tools":             {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "rag":               {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "code_page":         {"free": True,  "pro": True,  "business": True,  "ultra": True},
-    "code_projects":     {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "code_export":       {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "code_deploy":       {"free": False, "pro": True,  "business": True,  "ultra": True},
-    "ultra_model":       {"free": False, "pro": False, "business": False, "ultra": True},
-    "deep_research":     {"free": False, "pro": False, "business": True,  "ultra": True},
-    "team_collaboration":{"free": False, "pro": False, "business": True,  "ultra": True},
-    "sso":               {"free": False, "pro": False, "business": True,  "ultra": True},
+    "chat_basic":        {"free": True,  "pro": True,  "business": True},
+    "chat_streaming":    {"free": True,  "pro": True,  "business": True},
+    "web_search":        {"free": True,  "pro": True,  "business": True},
+    "memory":            {"free": True,  "pro": True,  "business": True},
+    "history":           {"free": True,  "pro": True,  "business": True},
+    "vision":            {"free": False, "pro": True,  "business": True},
+    "tts":               {"free": False, "pro": True,  "business": True},
+    "reasoning":         {"free": False, "pro": True,  "business": True},
+    "image_gen":         {"free": True,  "pro": True,  "business": True},
+    "agents":            {"free": False, "pro": True,  "business": True},
+    "canvas":            {"free": False, "pro": True,  "business": True},
+    "research":          {"free": False, "pro": True,  "business": True},
+    "sandbox":           {"free": False, "pro": True,  "business": True},
+    "tools":             {"free": False, "pro": True,  "business": True},
+    "rag":               {"free": False, "pro": True,  "business": True},
+    "code_page":         {"free": True,  "pro": True,  "business": True},
+    "code_projects":     {"free": False, "pro": True,  "business": True},
+    "code_export":       {"free": False, "pro": True,  "business": True},
+    "code_deploy":       {"free": False, "pro": True,  "business": True},
+    "deep_research":     {"free": False, "pro": False, "business": True},
+    "team_collaboration":{"free": False, "pro": False, "business": True},
+    "sso":               {"free": False, "pro": False, "business": True},
 }
 
 DAILY_LIMITS: Dict[str, Dict[str, int]] = {
-    "chat_messages":  {"free": 25,  "pro": 2000, "business": 2000, "ultra": 999999},
-    "code_messages":  {"free": 3,   "pro": 500,  "business": 500,  "ultra": 999999},
-    "image_gen":      {"free": 20,  "pro": 200,  "business": 200,  "ultra": 500},
-    "web_search":     {"free": 5,   "pro": 500,  "business": 500,  "ultra": 5000},
-    "vision":         {"free": 0,   "pro": 100,  "business": 100,  "ultra": 1000},
-    "tts":            {"free": 0,   "pro": 100,  "business": 100,  "ultra": 1000},
-    "reasoning":      {"free": 0,   "pro": 200,  "business": 200,  "ultra": 2000},
-    "sandbox_run":    {"free": 0,   "pro": 200,  "business": 200,  "ultra": 2000},
-    "rag_query":      {"free": 0,   "pro": 500,  "business": 500,  "ultra": 5000},
+    "chat_messages":  {"free": 25,  "pro": 2000, "business": 2000},
+    "code_messages":  {"free": 3,   "pro": 500,  "business": 500},
+    "image_gen":      {"free": 20,  "pro": 200,  "business": 200},
+    "web_search":     {"free": 5,   "pro": 500,  "business": 500},
+    "vision":         {"free": 0,   "pro": 100,  "business": 100},
+    "tts":            {"free": 0,   "pro": 100,  "business": 100},
+    "reasoning":      {"free": 0,   "pro": 200,  "business": 200},
+    "sandbox_run":    {"free": 0,   "pro": 200,  "business": 200},
+    "rag_query":      {"free": 0,   "pro": 500,  "business": 500},
     # Business has real deep-research access (FEATURE_ACCESS above), unlike
-    # Pro -- picked as a real, usable middle ground between "none" (pro)
-    # and Ultra's 50/day, not sourced from a published number anywhere.
-    "deep_research":  {"free": 0,   "pro": 0,    "business": 20,   "ultra": 50},
+    # Pro. 20/day is a working allowance, not a published figure.
+    "deep_research":  {"free": 0,   "pro": 0,    "business": 20},
 }
 
 _LEGACY_PRO_ALIASES = {"paid", "premium", "pro"}
 
 
 def user_tier(user: User) -> str:
-    """Returns 'free' | 'pro' | 'business' | 'ultra', normalizing legacy
-    tier strings."""
+    """Returns 'free' | 'pro' | 'business', normalizing legacy tier
+    strings."""
     raw = (user.tier or "free").lower()
-    if raw == "ultra":
-        return "ultra"
-    if raw == "business":
+    # "ultra" was a third paid plan that no longer exists; anyone still
+    # carrying that value keeps the highest tier we do sell.
+    if raw in ("business", "ultra"):
         return "business"
     if raw in _LEGACY_PRO_ALIASES:
         return "pro"
@@ -162,7 +157,7 @@ def require_feature(feature: str):
                 "error": "upgrade_required",
                 "feature": feature,
                 "current_tier": tier,
-                "suggested_tier": "pro" if tier == "free" else "ultra",
+                "suggested_tier": {"free": "pro", "pro": "business"}.get(tier),
                 "upgrade_url": "/pricing",
             })
         allowed, used, limit = check_daily_limit(db, current_user, feature)

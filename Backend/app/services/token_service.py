@@ -37,7 +37,7 @@ class TokenService:
         # Model tier gating
         model_name = (model or "").lower()
         is_premium_model = any(p in model_name for p in ["claude", "gpt-4o", "sonnet", "opus", "pro"])
-        if is_premium_model and user.tier not in ["paid", "pro", "premium"]:
+        if is_premium_model and (user.tier or "free") == "free":
             # Free users can use premium models only if they have >= 10,000 tokens
             if acc.balance < 10000:
                 return False, f"Model '{model}' is a Pro model. Upgrade to Pro or maintain at least 10,000 tokens to access it."

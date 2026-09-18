@@ -4,7 +4,8 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import { Menu, Command, Sparkles, AlertTriangle, Ban, DollarSign, Calendar, Mail } from "lucide-react";
+import { Menu, Command, Info, CheckCircle2, XCircle, DollarSign, Calendar, Mail, RefreshCcw, AlertTriangle } from "lucide-react";
+import { VatsaMark } from "@/components/pricing/VatsaMark";
 
 // ─── Background ──────────────────────────────────────────────────────
 const NOISE =
@@ -213,32 +214,6 @@ function ModelLogos() {
   );
 }
 
-// ─── VatsaMark ────────────────────────────────────────────────────
-function VatsaMark({ compact = false }: { compact?: boolean }) {
-  return (
-    <Link
-      href="/"
-      className="focus-ring inline-flex items-center gap-2 rounded-lg"
-      aria-label="Vatsa AI home"
-    >
-      <div className="relative h-7 w-7">
-        <Image
-          src="/logo.png"
-          alt="Vatsa AI"
-          fill
-          className="object-contain"
-          sizes="28px"
-        />
-      </div>
-      {!compact && (
-        <span className="text-[17px] font-semibold tracking-[-.04em] text-gray-900 dark:text-white">
-          vatsa<span className="text-gray-400 dark:text-gray-500">.ai</span>
-        </span>
-      )}
-    </Link>
-  );
-}
-
 // ─── Main Client Component ──────────────────────────────────────
 export default function RefundClient() {
   // Scroll reveal
@@ -362,17 +337,17 @@ export default function RefundClient() {
         <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-6 scroll-reveal">
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 text-xs font-medium mb-4 backdrop-blur-sm">
-              <AlertTriangle className="w-4 h-4 text-red-500" />
+              <Info className="w-4 h-4 text-blue-500" />
               Policy Notice
             </div>
             <h1 className="text-4xl md:text-5xl font-bold">
-              <span className="text-red-500 dark:text-red-400">Refund</span> Policy
+              <span className="text-blue-500 dark:text-blue-400">Refund</span> Policy
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-2xl mx-auto">
-              Strict No Refund Policy – All sales are final.
+              Monthly plans: 7-day refund window if unused. Annual plans: 14-day refund window.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 2, 2026
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 18, 2026
             </p>
           </div>
         </div>
@@ -381,13 +356,15 @@ export default function RefundClient() {
         <div className="max-w-4xl mx-auto px-5 lg:px-8 pb-12">
           <div className="glass-card rounded-2xl p-8 md:p-12 scroll-reveal">
             <div className="prose prose-lg dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
-              {/* Warning Banner */}
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 mb-8">
-                <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
-                  <Ban className="w-7 h-7" />
-                  STRICT NO REFUND POLICY
+              {/* Eligibility Banner */}
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 mb-8">
+                <h2 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-7 h-7" />
+                  Real refund windows
                 </h2>
-                <p className="text-lg font-semibold mt-2 text-red-700 dark:text-red-300">All sales are final. No exceptions.</p>
+                <p className="text-lg font-semibold mt-2 text-emerald-700 dark:text-emerald-300">
+                  Monthly plans: 7 days if unused. Annual plans: 14 days.
+                </p>
               </div>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
@@ -395,7 +372,7 @@ export default function RefundClient() {
                 1. Digital Products
               </h2>
               <p>
-                Vatsa AI provides digital AI services and software. Due to the intangible nature of digital products, <strong>all purchases are non-refundable</strong>.
+                Vatsa AI provides digital AI services and software. Because of that, refunds are available within a limited window after purchase (below) rather than indefinitely -- not offered at all, and not automatic after the window closes.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
@@ -403,23 +380,29 @@ export default function RefundClient() {
                 2. Subscription Payments
               </h2>
               <p>
-                All subscription fees (including monthly and annual plans) are non-refundable. We do not offer prorated refunds for unused portions of a subscription.
+                <strong>Monthly plans</strong> can be refunded in full within 7 days of the charge, provided the account has not sent chat messages, generated images, or used any other paid feature during that billing period (&ldquo;unused&rdquo;).
+              </p>
+              <p>
+                <strong>Annual plans</strong> can be refunded in full within 14 days of the charge, no usage condition attached.
+              </p>
+              <p>
+                Outside these windows, subscription fees are non-refundable and we do not offer prorated refunds for the unused remainder of a billing period.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
-                <Ban className="w-6 h-6 text-blue-400" />
+                <XCircle className="w-6 h-6 text-blue-400" />
                 3. Cancellations
               </h2>
               <p>
-                You may cancel your subscription at any time to prevent future charges. However, <strong>no refunds will be issued for the current billing cycle</strong>.
+                You may cancel your subscription at any time to prevent future charges. Cancelling does not by itself trigger a refund -- if you&apos;re still inside your plan&apos;s refund window, request the refund separately using the contact details below; otherwise the current billing cycle is not refunded.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
-                <Ban className="w-6 h-6 text-blue-400" />
+                <XCircle className="w-6 h-6 text-blue-400" />
                 4. Partial Refunds
               </h2>
               <p>
-                We do not issue partial refunds under any circumstances, including service interruption, downtime, or user dissatisfaction.
+                Refunds requested inside the window above are issued in full, not prorated. We do not issue partial refunds for early cancellation outside the window, service interruption, downtime, or user dissatisfaction.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
@@ -444,7 +427,7 @@ export default function RefundClient() {
           {/* ─── Quick links ─── */}
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 scroll-reveal">
             <Link href="/return" className="glass-card rounded-xl p-4 text-center hover:border-blue-500/50 transition-all">
-              <Ban className="w-6 h-6 text-blue-400 mx-auto mb-1" />
+              <RefreshCcw className="w-6 h-6 text-blue-400 mx-auto mb-1" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">Return Policy</span>
             </Link>
             <Link href="/payment" className="glass-card rounded-xl p-4 text-center hover:border-blue-500/50 transition-all">

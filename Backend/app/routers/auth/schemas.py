@@ -4,9 +4,9 @@ from typing import Optional, Dict, Any
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=12)
     full_name: Optional[str] = None
-    verification_token: Optional[str] = None
+    verification_token: str
 
 
 class LoginRequest(BaseModel):
@@ -34,5 +34,5 @@ class OtpVerifyRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=12)
     reset_token: str

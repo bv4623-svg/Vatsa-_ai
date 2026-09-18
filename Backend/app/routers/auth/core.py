@@ -7,10 +7,12 @@ from app.utils.rate_limit import client_ip, enforce_rate_limit, reset_rate_limit
 
 from app.database import get_db
 from app.models.user import User
+from app.models.otp import OTP
 from app.models.token import TokenAccount, TokenTransaction
-from app.auth.jwt import get_password_hash, verify_password, create_access_token
+from app.auth.jwt import get_password_hash, verify_password, needs_rehash, create_access_token
 from app.auth.dependencies import get_current_user
 from app.routers.auth.schemas import RegisterRequest, LoginRequest, OnboardingRequest
+from app.services.password_policy import validate_password_strength
 from sqlalchemy.orm.attributes import flag_modified
 from typing import Any, Dict
 from app.services.feature_access import user_tier, check_daily_limit
@@ -31,6 +33,20 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    validate_password_strength(req.password)
+
+    # Proves this exact email actually received and echoed back a real OTP
+    # (see /auth/otp/send + /auth/otp/verify, purpose="signup") before an
+    # account is created for it -- registering no longer activates an
+    # account for an email address nobody confirmed ownership of.
+    verified_otp = (
+        db.query(OTP)
+        .filter(OTP.email == email, OTP.purpose == "signup", OTP.verification_token == req.verification_token)
+        .first()
+    )
+    if not verified_otp:
+        raise HTTPException(status_code=400, detail="Email verification required. Request a code via /auth/otp/send first.")
 
     display_name = req.full_name or email.split("@")[0]
 
@@ -80,8 +96,8 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     # Throttle per-IP and per-account so neither a single source nor a
     # single target can be brute-forced.
     ip = client_ip(request)
-    enforce_rate_limit(f"login:ip:{ip}", limit=10, window_seconds=300)
-    enforce_rate_limit(f"login:email:{email}", limit=5, window_seconds=300)
+    enforce_rate_limit(f"login:ip:{ip}", limit=5, window_seconds=900)
+    enforce_rate_limit(f"login:email:{email}", limit=5, window_seconds=900)
 
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(req.password, user.hashed_password):
@@ -91,6 +107,13 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
     reset_rate_limit(f"login:ip:{ip}")
     reset_rate_limit(f"login:email:{email}")
+
+    # Legacy pbkdf2_sha256 hashes are upgraded to bcrypt transparently now
+    # that the plaintext password is known-correct -- no forced reset.
+    # Committed immediately since the 2FA branch below returns early.
+    if needs_rehash(user.hashed_password):
+        user.hashed_password = get_password_hash(req.password)
+        db.commit()
 
     if user.two_factor_enabled:
         # Password verified, but no real session token yet -- the
@@ -119,11 +142,26 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
 @router.post("/auth/token")
 @router.post("/api/auth/token")
-def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_form(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """OAuth2-password-form login for interactive /docs use only. Held to
+    the same bar as POST /auth/login -- it must not be a way to skip rate
+    limiting, the deactivated-account check, or a 2FA requirement."""
     email = form_data.username.lower().strip()
+    ip = client_ip(request)
+    enforce_rate_limit(f"login:ip:{ip}", limit=5, window_seconds=900)
+    enforce_rate_limit(f"login:email:{email}", limit=5, window_seconds=900)
+
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="User account is deactivated")
+    if user.two_factor_enabled:
+        raise HTTPException(status_code=400, detail="This account has 2FA enabled -- use POST /auth/login instead")
+
+    reset_rate_limit(f"login:ip:{ip}")
+    reset_rate_limit(f"login:email:{email}")
+
     token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
     return {"access_token": token, "token_type": "bearer"}
 

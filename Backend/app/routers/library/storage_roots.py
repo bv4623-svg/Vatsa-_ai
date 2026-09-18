@@ -14,5 +14,15 @@ STORAGE_ROOTS = {
 
 
 def resolve_path(item_type: str, storage_path: str) -> str:
-    root = STORAGE_ROOTS[item_type]
-    return os.path.join(root, storage_path)
+    """Defense in depth against a storage_path that ever contained ".."
+    segments or was itself absolute (os.path.join silently discards `root`
+    for an absolute second argument) -- both would otherwise resolve
+    outside the intended storage root. Every real writer sanitizes the
+    filename before this is called (see upload.py's sanitize_filename),
+    so this should never actually trigger; it's here in case a future
+    caller doesn't."""
+    root = os.path.realpath(STORAGE_ROOTS[item_type])
+    resolved = os.path.realpath(os.path.join(root, storage_path))
+    if os.path.commonpath([root, resolved]) != root:
+        raise ValueError(f"storage_path escapes its storage root: {storage_path!r}")
+    return resolved

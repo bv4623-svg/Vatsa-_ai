@@ -14,7 +14,7 @@ export function validateEmail(value: string): FieldError {
   return null;
 }
 
-export function validatePassword(value: string, min = 8): FieldError {
+export function validatePassword(value: string, min = 12): FieldError {
   if (!value) return "Enter your password.";
   if (value.length < min) return `Password must be at least ${min} characters.`;
   if (!/[a-zA-Z]/.test(value)) return "Password must contain at least one letter.";

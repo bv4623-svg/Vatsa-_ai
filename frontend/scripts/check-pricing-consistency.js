@@ -1,96 +1,190 @@
 #!/usr/bin/env node
 /**
- * CI gate: fails if any of Vatsa's own canonical plan prices are
- * hardcoded as a literal outside src/data/plans*.ts. Those files are the
- * single source of truth (see plans.ts's own header comment) -- every
- * other price shown anywhere in the app must be computed from an import
- * of them, never retyped.
+ * CI gate for the "only two prices, defined once" rule.
  *
- * Only matches Vatsa's own published numbers (not any "$<number>"),
- * so a landing-page comparison table quoting a *competitor's* per-token
- * API pricing (e.g. "$15 / MTok" for a third-party model) is not a false
- * positive -- those numbers don't appear in this list.
+ *   1. PARITY   frontend/src/config/pricing.ts and Backend/app/config/pricing.py
+ *               hold the same prices, INR rate and access period, and the
+ *               paid prices are exactly $24 and $99.
+ *   2. LITERALS No other file in the frontend source or the backend app
+ *               writes a currency amount ("$24", "₹1,992", "24 USD", "Rs 500").
+ *               Every price on screen is computed from the config.
+ *   3. GATEWAY  Razorpay is the only payment gateway: no other gateway's
+ *               name, and none of its SDKs in a dependency manifest.
+ *   4. PLANS    "Ultra" no longer exists as a plan.
  *
- * Run: node scripts/check-pricing-consistency.js
+ * Run: node scripts/check-pricing-consistency.js   (npm run check:pricing)
+ * Exit code 1 on any failure, so it can gate a Netlify build or CI job.
  */
 const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
-const SRC = path.join(ROOT, "src");
+const REPO = path.resolve(ROOT, "..");
+const FRONTEND_SRC = path.join(ROOT, "src");
+const BACKEND_APP = path.join(REPO, "Backend", "app");
 
-const EXCLUDED_DIRS = new Set(["node_modules", ".next", ".git"]);
-const SCANNED_EXTENSIONS = new Set([".ts", ".tsx"]);
+const FRONTEND_CONFIG = path.join(FRONTEND_SRC, "config", "pricing.ts");
+const BACKEND_CONFIG = path.join(BACKEND_APP, "config", "pricing.py");
 
-// Files that ARE the source of truth -- literals here are the definitions,
-// not duplicates of them.
-const ALLOWED_FILES = [
-  path.join(SRC, "data", "plans.ts"),
-  path.join(SRC, "data", "plans.types.ts"),
-  path.join(SRC, "data", "plans.data.ts"),
-  path.join(SRC, "data", "plans.matrix.ts"),
-  path.join(SRC, "data", "plans.limits.ts"),
-  path.join(SRC, "data", "plans.utils.ts"),
-  path.join(SRC, "data", "plans.content.ts"),
+const EXPECTED_PAID_PRICES = { pro: 24, business: 99 };
+
+const SKIP_DIRS = new Set(["node_modules", ".next", ".git", "__pycache__", ".venv", "venv"]);
+const SCANNED = new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".py", ".md", ".html"]);
+
+// The two files that define prices; everything else must import them.
+const PRICE_DEFINITIONS = new Set([FRONTEND_CONFIG, BACKEND_CONFIG]);
+
+// Files that legitimately mention a retired plan id, to map old accounts.
+const LEGACY_ULTRA_ALLOWED = new Set([
+  path.join(FRONTEND_SRC, "lib", "session.ts"),
+  path.join(BACKEND_APP, "services", "feature_access.py"),
+]);
+
+// A digit right after a currency symbol/code, or a number followed by one.
+const PRICE_LITERAL = [
+  /[$₹€£]\s?\d/,
+  /\bRs\.?\s?\d/i,
+  /\bINR\s?\d/,
+  /\bUSD\s?\d/,
+  /\d\s?(USD|INR|rupees?)\b/i,
 ];
 
-// Canonical values from data/plans.ts, as they'd appear written out: the
-// bare monthly prices and their GST-inclusive totals, in both currencies.
-// Word-boundary + currency-symbol anchored so "$249" or "2499" don't match,
-// and specifically NOT followed by more decimal digits, so a third-party
-// model's own per-token price (e.g. "$0.9 / MTok") isn't a false positive.
-// $0/₹0 (the Free plan) is deliberately not checked: it collides with any
-// fractional third-party price starting "$0." and a wrong "free" price is
-// not a realistic mistake anyone would hand-type.
-const FORBIDDEN_PATTERNS = [
-  /\$24(?![.\d])/, /\$28\.32(?!\d)/,
-  /\$99(?![.\d])/, /\$116\.82(?!\d)/,
-  /\$49(?![.\d])/, /\$57\.82(?!\d)/,
-  /₹499(?![.\d])/, /₹588\.82(?!\d)/,
-  /₹1999(?![.\d])/, /₹2358\.82(?!\d)/,
-  /₹1499(?![.\d])/, /₹1768\.82(?!\d)/,
-];
+const OTHER_GATEWAYS = /\b(stripe|paypal|cashfree|paddle|lemon\s?squeezy|instamojo|payu|braintree|adyen|square\s?up)\b/i;
+const ULTRA_PLAN = /["'`]ultra["'`]|\bUltra\b/;
 
-function walk(dir, files = []) {
+const failures = [];
+const results = [];
+
+function walk(dir, out = []) {
+  if (!fs.existsSync(dir)) return out;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (EXCLUDED_DIRS.has(entry.name)) continue;
+    if (SKIP_DIRS.has(entry.name)) continue;
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      walk(full, files);
-    } else if (SCANNED_EXTENSIONS.has(path.extname(entry.name))) {
-      files.push(full);
+    if (entry.isDirectory()) walk(full, out);
+    else if (SCANNED.has(path.extname(entry.name))) out.push(full);
+  }
+  return out;
+}
+
+function rel(file) {
+  return path.relative(REPO, file).split(path.sep).join("/");
+}
+
+function record(name, problems) {
+  results.push({ name, ok: problems.length === 0, problems });
+  failures.push(...problems);
+}
+
+function scanLines(files, test, skip = () => false) {
+  const hits = [];
+  for (const file of files) {
+    if (skip(file)) continue;
+    fs.readFileSync(file, "utf8")
+      .split("\n")
+      .forEach((line, i) => {
+        if (test(line)) hits.push(`${rel(file)}:${i + 1}  ${line.trim().slice(0, 110)}`);
+      });
+  }
+  return hits;
+}
+
+// ── 1. Parity ────────────────────────────────────────────────────────
+function readConfigs() {
+  const ts = fs.readFileSync(FRONTEND_CONFIG, "utf8");
+  const num = (src, re) => {
+    const m = src.match(re);
+    return m ? Number(m[1]) : NaN;
+  };
+  const frontend = {
+    pro: num(ts, /PRICES_USD[^{]*\{[^}]*\bpro:\s*(\d+)/),
+    business: num(ts, /PRICES_USD[^{]*\{[^}]*\bbusiness:\s*(\d+)/),
+    rate: num(ts, /USD_TO_INR\s*=\s*(\d+)/),
+    days: num(ts, /ACCESS_DAYS\s*=\s*(\d+)/),
+  };
+
+  if (!fs.existsSync(BACKEND_CONFIG)) return { frontend, backend: null };
+  const py = fs.readFileSync(BACKEND_CONFIG, "utf8");
+  const backend = {
+    pro: num(py, /PRICES_USD\s*=\s*\{[^}]*"pro":\s*(\d+)/),
+    business: num(py, /PRICES_USD\s*=\s*\{[^}]*"business":\s*(\d+)/),
+    rate: num(py, /USD_TO_INR\s*=\s*(\d+)/),
+    days: num(py, /ACCESS_DAYS\s*=\s*(\d+)/),
+  };
+  return { frontend, backend };
+}
+
+function checkParity() {
+  const problems = [];
+  const { frontend, backend } = readConfigs();
+
+  for (const [plan, price] of Object.entries(EXPECTED_PAID_PRICES)) {
+    if (frontend[plan] !== price) problems.push(`frontend config: ${plan} is ${frontend[plan]}, expected ${price}`);
+  }
+  if (!Number.isFinite(frontend.rate) || !Number.isFinite(frontend.days)) {
+    problems.push("frontend config: USD_TO_INR / ACCESS_DAYS not found");
+  }
+
+  if (!backend) {
+    console.warn("  ! Backend/app/config/pricing.py not found -- skipping frontend/backend parity (frontend-only checkout).");
+  } else {
+    for (const key of Object.keys(frontend)) {
+      if (frontend[key] !== backend[key]) {
+        problems.push(`frontend ${key}=${frontend[key]} but backend ${key}=${backend[key]}`);
+      }
     }
   }
-  return files;
+  record("Frontend and backend price constants match ($24 Pro, $99 Business)", problems);
+
+  if (Number.isFinite(frontend.rate)) {
+    const inr = Object.fromEntries(Object.entries(EXPECTED_PAID_PRICES).map(([k, v]) => [k, v * frontend.rate]));
+    console.log(`  fixed rate 1 USD = ${frontend.rate} INR  ->  Pro ₹${inr.pro.toLocaleString("en-IN")}, Business ₹${inr.business.toLocaleString("en-IN")}`);
+  }
+}
+
+// ── 2-4. Scans ───────────────────────────────────────────────────────
+function checkScans() {
+  const frontendFiles = walk(FRONTEND_SRC);
+  const backendFiles = walk(BACKEND_APP);
+  const all = [...frontendFiles, ...backendFiles];
+  const isDefinition = (f) => PRICE_DEFINITIONS.has(f);
+
+  record(
+    "Zero hardcoded price literals outside the two config files",
+    scanLines(all, (line) => PRICE_LITERAL.some((re) => re.test(line)), isDefinition)
+  );
+
+  const manifests = [
+    path.join(ROOT, "package.json"),
+    path.join(REPO, "Backend", "requirements.txt"),
+    path.join(REPO, "Backend", "requirements-dev.txt"),
+  ].filter((f) => fs.existsSync(f));
+  record("Razorpay is the only payment gateway (no other gateway code or SDK)", [
+    ...scanLines(all, (line) => OTHER_GATEWAYS.test(line)),
+    ...scanLines(manifests, (line) => OTHER_GATEWAYS.test(line)),
+  ]);
+
+  record(
+    "No Ultra plan left",
+    scanLines(all, (line) => ULTRA_PLAN.test(line), (f) => LEGACY_ULTRA_ALLOWED.has(f))
+  );
 }
 
 function main() {
-  const violations = [];
+  console.log("Pricing consistency check");
+  checkParity();
+  checkScans();
 
-  for (const file of walk(SRC)) {
-    if (ALLOWED_FILES.includes(file)) continue;
-
-    const lines = fs.readFileSync(file, "utf8").split("\n");
-    lines.forEach((line, i) => {
-      for (const pattern of FORBIDDEN_PATTERNS) {
-        if (pattern.test(line)) {
-          violations.push({ file: path.relative(ROOT, file), line: i + 1, text: line.trim(), pattern: pattern.source });
-          break;
-        }
-      }
-    });
+  console.log("");
+  for (const r of results) {
+    console.log(`${r.ok ? "PASS" : "FAIL"}  ${r.name}`);
+    for (const p of r.problems) console.log(`        ${p}`);
   }
 
-  if (violations.length > 0) {
-    console.error(`\n✗ Found ${violations.length} hardcoded Vatsa plan price(s) outside src/data/plans*.ts:\n`);
-    for (const v of violations) {
-      console.error(`  ${v.file}:${v.line}  ${v.text}`);
-    }
-    console.error("\nImport the price from \"@/data/plans\" instead (getPlan, listPrice, periodPrice, formatPrice, ...).\n");
+  if (failures.length > 0) {
+    console.error(`\n✗ ${failures.length} problem(s). Prices belong in src/config/pricing.ts (and Backend/app/config/pricing.py) only.`);
     process.exit(1);
   }
-
-  console.log("✓ No hardcoded Vatsa plan prices found outside src/data/plans*.ts");
+  console.log("\n✓ Only $24 and $99 exist, defined once per codebase, with nothing else hardcoded.");
 }
 
 main();

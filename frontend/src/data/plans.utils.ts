@@ -1,68 +1,36 @@
-import {
-  DEFAULT_CURRENCY,
-  GST_PCT,
-  type BillingPeriod,
-  type Currency,
-  type Plan,
-} from "./plans.types";
+import { ACCESS_DAYS, USD_TO_INR } from "@/config/pricing";
+import { DEFAULT_CURRENCY, type Currency, type Plan } from "./plans.types";
 
 export function listPrice(plan: Plan, currency: Currency): number {
   return currency === "INR" ? plan.priceINR : plan.priceUSD;
 }
 
-/** Annual is billed once a year at 12 months less the annual discount. */
-export function annualPrice(plan: Plan, currency: Currency): number {
-  const monthly = listPrice(plan, currency);
-  return round2(monthly * 12 * (1 - plan.annualDiscountPct / 100));
-}
-
-export function annualSavings(plan: Plan, currency: Currency): number {
-  const monthly = listPrice(plan, currency);
-  return round2(monthly * 12 - annualPrice(plan, currency));
-}
-
-/** Price for the selected billing period, before GST. */
-export function periodPrice(plan: Plan, currency: Currency, period: BillingPeriod): number {
-  return period === "annual" ? annualPrice(plan, currency) : listPrice(plan, currency);
-}
-
-export function gstAmount(amount: number, gstPct: number = GST_PCT): number {
-  return round2(amount * (gstPct / 100));
-}
-
-export function totalWithGst(amount: number, gstPct: number = GST_PCT): number {
-  return round2(amount + gstAmount(amount, gstPct));
-}
-
-/** Half-up to 2dp so a displayed total always matches what is charged. */
-function round2(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
+/** Whole-unit amounts only: every price is a whole number, and the
+ * charged amount is exactly the displayed one. */
 export function formatPrice(amount: number, currency: Currency): string {
   return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 }
 
-export function periodLabel(period: BillingPeriod): string {
-  return period === "annual" ? "/year" : "/month";
+/** Price with a per-month suffix; USD is always the primary currency. */
+export function formatPlanPrice(plan: Plan, currency: Currency = DEFAULT_CURRENCY): string {
+  return `${formatPrice(listPrice(plan, currency), currency)} / month`;
 }
 
-export function periodNoun(period: BillingPeriod): string {
-  return period === "annual" ? "year" : "month";
+/** Both currencies together, USD first, INR in brackets. */
+export function formatBothPrices(plan: Plan): string {
+  return `${formatPrice(plan.priceUSD, "USD")} (${formatPrice(plan.priceINR, "INR")})`;
 }
 
-/** "+ 18% GST. Total $28.32 per month including GST." */
-export function gstNote(plan: Plan, currency: Currency, period: BillingPeriod): string | null {
-  const base = periodPrice(plan, currency, period);
-  if (base <= 0) return null;
-  const total = formatPrice(totalWithGst(base, plan.gstPct), currency);
-  return `+ ${plan.gstPct}% GST. Total ${total} per ${periodNoun(period)} including GST.`;
-}
+/** The one place the exchange rate is explained to customers. */
+export const RATE_NOTE = `INR prices use a fixed rate of ${formatPrice(1, "USD")} = ${formatPrice(USD_TO_INR, "INR")}.`;
+
+/** What one payment buys -- there is no auto-renewal. */
+export const ACCESS_NOTE = `Prices include all taxes. One payment gives ${ACCESS_DAYS} days of access; nothing renews automatically.`;
 
 /* ─── Currency by region ──────────────────────────────────────────── */
 

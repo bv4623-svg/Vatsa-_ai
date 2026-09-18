@@ -4,8 +4,9 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import { Menu, Command, Sparkles, Shield, Zap, Globe, Lock, ChevronRight } from "lucide-react";
+import { Menu, Command, Sparkles, Shield, Zap, Globe, Lock, ChevronRight, Mail } from "lucide-react";
 import { VatsaMark } from "@/components/pricing/VatsaMark";
+import { BusinessInfo } from "@/components/business/BusinessInfo";
 
 // ─── Background ──────────────────────────────────────────────────────
 const NOISE =
@@ -393,6 +394,12 @@ export default function AboutClient() {
                 <li><strong>Q1 2027:</strong> Multimodal capabilities (Image + Text).</li>
                 <li><strong>Q3 2027:</strong> On-premise deployments for government and defense sectors.</li>
               </ul>
+
+              <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
+                <Mail className="w-6 h-6 text-blue-400" />
+                Business Information
+              </h2>
+              <BusinessInfo className="not-prose mt-4" />
             </div>
           </div>
 

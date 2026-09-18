@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
+import { BusinessInfo } from '@/components/business/BusinessInfo';
 
 export const metadata: Metadata = {
   title: 'Cookie Policy | Vatsa AI',
@@ -148,10 +149,7 @@ export default function CookiesPage() {
             <p className="text-gray-300 leading-relaxed">
               If you have any questions about our use of cookies, please contact us at:
             </p>
-            <p className="text-gray-300 mt-2">
-              <strong>Email:</strong> privacy@vatsa.ai<br />
-              <strong>Address:</strong> Vatsa AI, 123 AI Avenue, San Francisco, CA 94105
-            </p>
+            <BusinessInfo className="mt-3 [&_dt]:text-gray-200 [&_dd]:text-gray-300" />
           </section>
         </div>
       </div>

@@ -5,13 +5,14 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useMemo } from "react";
 import { chat, type User } from "@/services/chat";
-import { getPlan, annualPrice } from "@/data/plans";
+import { getPlan } from "@/data/plans";
 import { loadWorkspace, makeChat, makeMessage, titleFromText, uid } from "@/utils/workspace";
 import type {
   Conversation, FocusMode, ModelOption, Message, RoutingInfo,
   Source, Toast, OrchestrationStep, PricingPlan, UserSubscription,
   FeatureFlags, AppSettings,
 } from "@/types";
+import { API_BASE } from "@/config/api";
 
 // ─── DEFAULT_SETTINGS inlined to avoid missing file dependency ─────────────
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -37,7 +38,6 @@ export const PRICING_PLANS: PricingPlan[] = (["free", "pro"] as const).map((id) 
     id,
     name: plan.name,
     price: plan.priceUSD,
-    annualPrice: annualPrice(plan, "USD"),
     cta: plan.cta,
     popular: plan.popular,
     features: [
@@ -53,14 +53,13 @@ export interface Workspace { id: number; name: string; }
 export interface ModelInfo { id: string; name: string; provider?: string; tier?: "free" | "pro"; }
 type ExtendedConversation = Conversation & { favorite?: boolean; isPrivate?: boolean; };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 const getInitialState = () => ({
   _hasHydrated: false,
   user: null as User | null,
   isAuthenticated: false,
   userId: null as string | null,
-  userTier: "free" as "free" | "pro" | "business" | "ultra",
+  userTier: "free" as "free" | "pro" | "business",
   subscription: null as UserSubscription | null,
   settings: DEFAULT_SETTINGS,
   sidebarCollapsed: false,
@@ -110,7 +109,7 @@ interface AppState extends ReturnType<typeof getInitialState> {
   get currentChat(): ExtendedConversation | undefined;
   setHasHydrated: (v: boolean) => void;
   setUserId: (id: string) => void;
-  setUserTier: (tier: "free" | "pro" | "business" | "ultra") => void;
+  setUserTier: (tier: "free" | "pro" | "business") => void;
   setUser: (user: User | null) => void;
   setSubscription: (sub: UserSubscription | null) => void;
   login: (email: string, password: string) => Promise<void>;

@@ -1,8 +1,9 @@
 import { useAuthStore, type User as AuthUser } from "@/stores/auth";
 import { useAppStore } from "@/stores/app-store";
 import { setToken, removeToken, getToken } from "@/lib/auth";
+import { API_BASE } from "@/config/api";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+export { API_BASE };
 
 /** Mirrors session presence into a cookie so proxy.ts can protect private
  * routes before React runs. The bearer token in localStorage stays the
@@ -22,10 +23,11 @@ function clearSessionCookie() {
   document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
-export function normalizeTier(raw: unknown): "free" | "pro" | "business" | "ultra" {
+export function normalizeTier(raw: unknown): "free" | "pro" | "business" {
   const t = String(raw ?? "free").toLowerCase();
-  if (t === "ultra") return "ultra";
-  if (t === "business") return "business";
+  // "ultra" was a third paid plan that no longer exists; anyone still
+  // carrying it keeps the highest tier we do sell (matches the backend).
+  if (t === "business" || t === "ultra") return "business";
   if (t === "pro" || t === "paid" || t === "premium") return "pro";
   return "free";
 }

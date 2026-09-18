@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useMotionValue, useSpring } from "framer-motion";
+import { BUSINESS } from "@/config/business";
 import { Menu, Command, Sparkles, Shield, Lock, Key, CreditCard, UserCheck, Mail, AlertTriangle } from "lucide-react";
 
 // ─── Background ──────────────────────────────────────────────────────
@@ -414,7 +415,7 @@ export default function SecurityClient() {
                 💳 Secure Payments
               </h2>
               <p>
-                All payment transactions are processed through <strong>PCI-DSS compliant gateways</strong> (Razorpay / Stripe). We do not store your full card details.
+                All payment transactions are processed through <strong>PCI-DSS compliant gateways</strong> (Razorpay). We do not store your full card details.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
@@ -431,7 +432,7 @@ export default function SecurityClient() {
               </h2>
               <p>
                 If you find a security vulnerability, please email us at{' '}
-                <a href="mailto:security@vatsaai.com" className="text-blue-500 hover:underline">security@vatsaai.com</a>.
+                <a href={`mailto:${BUSINESS.supportEmail}`} className="text-blue-500 hover:underline">{BUSINESS.supportEmail}</a>.
                 We appreciate responsible reporting.
               </p>
 

@@ -1,9 +1,8 @@
 "use client";
 
 import { X, Zap } from "lucide-react";
-import { useCurrency } from "@/hooks/useCurrency";
 import { useUpgrade } from "./UpgradeProvider";
-import { formatPrice, getPlan, listPrice } from "@/data/plans";
+import { formatBothPrices, getPlan } from "@/data/plans";
 
 interface UpgradeBannerProps {
   onDismiss: () => void;
@@ -14,9 +13,8 @@ interface UpgradeBannerProps {
  * not a one-time-forever dismiss. */
 export function UpgradeBanner({ onDismiss }: UpgradeBannerProps) {
   const { openUpgrade } = useUpgrade();
-  const [currency] = useCurrency();
   const pro = getPlan("pro");
-  const proPrice = pro ? formatPrice(listPrice(pro, currency), currency) : "";
+  const proPrice = pro ? formatBothPrices(pro) : "";
   return (
     <div className="mx-auto mb-2 flex w-full max-w-[760px] items-center justify-between gap-3 rounded-xl border border-accent/20 bg-gradient-to-r from-accent/10 to-purple-500/10 px-4 py-2.5 text-xs">
       <div className="flex items-center gap-2">
@@ -30,7 +28,7 @@ export function UpgradeBanner({ onDismiss }: UpgradeBannerProps) {
           onClick={() => openUpgrade({ source: "chat_footer", reason: "Unlock higher daily limits, Vision, Reasoning and Agents." })}
           className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 font-medium text-white"
         >
-          Upgrade to Pro — {proPrice}
+          Upgrade to Pro — {proPrice}/mo
         </button>
         <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground">
           <X className="h-3.5 w-3.5" />

@@ -1,12 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Star, Building2, PartyPopper } from "lucide-react";
+import { Star, Building2, PartyPopper } from "lucide-react";
 import { getPlan, type PlanId } from "@/data/plans";
 
 interface PaymentCelebrationProps {
   open: boolean;
-  tier: Extract<PlanId, "pro" | "business" | "ultra">;
+  tier: Extract<PlanId, "pro" | "business">;
   onContinue: () => void;
 }
 
@@ -79,16 +79,12 @@ export function PaymentCelebration({ open, tier, onContinue }: PaymentCelebratio
             <div
               className={
                 "flex h-16 w-16 items-center justify-center rounded-full " +
-                (tier === "ultra"
-                  ? "bg-gradient-to-br from-amber-400/30 to-orange-500/30"
-                  : tier === "business"
+                (tier === "business"
                   ? "bg-gradient-to-br from-cyan-500/30 to-blue-500/30"
                   : "bg-gradient-to-br from-purple-500/30 to-pink-500/30")
               }
             >
-              {tier === "ultra" ? (
-                <Crown className="h-8 w-8 text-amber-400" />
-              ) : tier === "business" ? (
+              {tier === "business" ? (
                 <Building2 className="h-8 w-8 text-cyan-400" />
               ) : (
                 <Star className="h-8 w-8 text-purple-400" />

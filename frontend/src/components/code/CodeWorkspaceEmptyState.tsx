@@ -30,7 +30,7 @@ function useSuggestionsCarousel(paused: boolean, active: boolean) {
       "Create a real-time chat app with Socket.io",
       "Design a modern dashboard with shadcn/ui",
       "Develop a REST API with FastAPI and PostgreSQL",
-      "Build a SaaS platform with Stripe payments",
+      "Build a SaaS platform with Razorpay payments",
       "Create an AI-powered chatbot with streaming",
       "Design a responsive e-commerce site with Next.js",
       "Build a mobile app with React Native and Firebase",

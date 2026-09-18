@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useMotionValue, useSpring } from "framer-motion";
+import { BUSINESS, legalName, postalAddress } from "@/config/business";
 import {
   Menu, Command, Sparkles, Shield, Lock, Eye, FileText, Users,
   Database, Trash2, Mail, Cookie, Zap, Cloud, CreditCard, UserCheck, Clock
@@ -297,7 +298,7 @@ export default function PrivacyClient() {
     6: {
       providers: [
         "Google Authentication – for sign‑in and identity verification",
-        "Payment Processors – for subscription billing (we do not store full payment card details)",
+        "Razorpay (payment processor) – takes payments on our behalf; card, UPI and bank details go to Razorpay and we do not store them",
         "Cloud Infrastructure – for hosting and data storage",
         "Analytics Providers – to understand user behaviour (anonymised)"
       ],
@@ -313,7 +314,7 @@ export default function PrivacyClient() {
       note: "To exercise these rights, please contact us."
     },
     8: "You may delete your account at any time from your account settings. Upon deletion, all your personal data, chat history, and uploaded files are permanently removed from our active systems within 30 days. Anonymised usage data may remain for analytical purposes.",
-    9: "If you have any questions or concerns about this Privacy Policy, please reach out to us at:\nEmail: privacy@vatsa.ai\nAddress: Vatsa AI, 123 AI Avenue, San Francisco, CA 94105"
+    9: `If you have any questions or concerns about this Privacy Policy, please reach out to us at:\nEmail: ${BUSINESS.supportEmail}\nAddress: ${legalName()}, ${postalAddress()}${BUSINESS.phone ? `\nPhone: ${BUSINESS.phone}` : ""}`
   };
 
   return (

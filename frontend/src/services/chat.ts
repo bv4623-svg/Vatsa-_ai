@@ -1,13 +1,14 @@
 // services/chat.ts
 import api from '@/lib/axios';
+import { API_BASE } from "@/config/api";
 
 export interface User {
   id?: string | number;
   email?: string;
   name?: string;
   full_name?: string;
-  // Free/pro/business/ultra tier gating (see backend app/services/feature_access.py).
-  tier?: "free" | "pro" | "business" | "ultra";
+  // Free/pro/business tier gating (see backend app/services/feature_access.py).
+  tier?: "free" | "pro" | "business";
   usage?: Record<string, { used: number; limit: number }>;
 }
 
@@ -122,7 +123,7 @@ export const chat = {
     signal?: AbortSignal
   ): Promise<{ response: string; files?: any[] }> => {
     const token = localStorage.getItem('access_token');
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/chat`, {
+    const response = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -6,7 +6,7 @@ from app.database import Base
 class ApiKey(Base):
     """A user-generated API key for external API access. Only a SHA-256
     hash of the key is ever stored -- the plaintext is shown to the user
-    exactly once, at creation, the same way GitHub/Stripe-style API keys
+    exactly once, at creation, the same way GitHub-style API keys
     work. See app.services.account.api_keys for generation/verification.
     """
     __tablename__ = "api_keys"

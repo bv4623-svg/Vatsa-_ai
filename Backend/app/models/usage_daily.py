@@ -4,7 +4,7 @@ from app.database import Base
 
 class UsageDaily(Base):
     """Per-user, per-feature, per-day usage counter backing the free/pro/
-    ultra daily limits in app.services.feature_access. One row per
+    business daily limits in app.services.feature_access. One row per
     (user, feature, date); incremented atomically at the SQL level."""
     __tablename__ = "usage_daily"
 

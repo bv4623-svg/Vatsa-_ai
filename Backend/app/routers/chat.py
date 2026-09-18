@@ -117,7 +117,7 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
 def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
     """
     Raises 429 (with the shape the frontend's upgrade UI expects) once a
-    user's free/pro/ultra daily cap for `feature` is hit, else records
+    user's free/pro/business daily cap for `feature` is hit, else records
     this call against today's count. Chat and Code share one endpoint
     (distinguished only by req.workspace in the body), so this can't be
     a route-level dependency the way vision's require_feature() is --

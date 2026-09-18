@@ -26,6 +26,7 @@ import {
   Monitor,
 } from "lucide-react";
 import { useAppStore, useSettings, useSettingsActions } from "@/stores/app-store";
+import { getPlan } from "@/data/plans";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
@@ -98,7 +99,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const { updateSettings, resetSettings } = useSettingsActions();
   const { toast } = useToast();
 
-  const isPremium = userTier === "pro";
+  const isPremium = userTier !== "free";
+  const currentPlanName = getPlan(userTier)?.name ?? "Free";
   const [section, setSection] = useState<"general" | "appearance" | "language" | "chat" | "memory" | "history" | "models" | "voice" | "notifications" | "account" | "billing" | "privacy" | "keyboard" | "about" | "legal">("general");
   const [memoryInput, setMemoryInput] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
@@ -544,7 +546,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <div className="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">{isPremium ? "Pro" : "Free"} plan</p>
+                    <p className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">{currentPlanName} plan</p>
                     <p className="text-[12px] text-zinc-500 dark:text-zinc-400">
                       {isPremium ? "Unlimited chats, priority models, longer context." : "Everyday chats with standard models."}
                     </p>

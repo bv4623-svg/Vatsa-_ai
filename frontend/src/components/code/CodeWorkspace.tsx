@@ -18,7 +18,7 @@ import { useCodeConversations } from "@/hooks/code/useCodeConversations";
 import { useCodeChat } from "@/hooks/code/useCodeChat";
 import { useWorkspaceTheme } from "@/hooks/code/useWorkspaceTheme";
 import { useUpgrade } from "@/components/billing/UpgradeProvider";
-import { clearSession } from "@/lib/session";
+import { clearSession, normalizeTier } from "@/lib/session";
 import type { UpgradeGateInfo } from "@/lib/billing/upgradeError";
 import type { ProjectFile, PreviewMode } from "@/types/code";
 
@@ -48,7 +48,7 @@ export function CodeWorkspace() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [model, setModel] = useState<string>("auto");
 
-  const tier: "free" | "pro" | "ultra" = (user?.tier as any) || "free";
+  const tier = normalizeTier(user?.tier);
   const isFree = tier === "free";
   const { openUpgrade } = useUpgrade();
 

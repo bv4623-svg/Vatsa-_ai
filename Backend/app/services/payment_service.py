@@ -30,7 +30,7 @@ _LIST_PRICES = {
 
 _PLAN_META = {
     "pro":      {"label": "Pro",      "tokens": 500000,  "tier": "pro"},
-    "business": {"label": "Business", "tokens": 2000000, "tier": "pro"},
+    "business": {"label": "Business", "tokens": 2000000, "tier": "business"},
     "ultra":    {"label": "Ultra",    "tokens": 5000000, "tier": "ultra"},
 }
 
@@ -72,73 +72,7 @@ def resolve_plan(plan_id: str, billing_period: str = "monthly", currency: str = 
     return PLANS.get(f"{plan_id}:{period}:{cur}") or PLANS.get(plan_id)
 
 
-PLANS: Dict[str, Dict[str, Any]] = {
-    "pro": {
-        "id": "pro",
-        "name": "Pro Monthly",
-        "amount_paise": _smallest_unit_with_gst(24.0),
-        "currency": "USD",
-        "tokens": 500000,
-        "tier": "pro",
-        "duration_days": 30,
-    },
-    "business": {
-        "id": "business",
-        "name": "Business Monthly",
-        "amount_paise": _smallest_unit_with_gst(99.0),
-        "currency": "USD",
-        "tokens": 2000000,
-        "tier": "pro",
-        "duration_days": 30,
-    },
-    "ultra": {
-        "id": "ultra",
-        "name": "Ultra Monthly",
-        "amount_paise": _smallest_unit_with_gst(49.0),
-        "currency": "USD",
-        "tokens": 5000000,
-        "tier": "ultra",
-        "duration_days": 30,
-    },
-    "pro_monthly": {
-        "id": "pro_monthly",
-        "name": "Pro Monthly",
-        "amount_paise": 79900,  # ₹799 in paise
-        "currency": "INR",
-        "tokens": 500000,
-        "tier": "pro",
-        "duration_days": 30
-    },
-    "pro_annual": {
-        "id": "pro_annual",
-        "name": "Pro Annual",
-        "amount_paise": 799900,  # ₹7,999 in paise
-        "currency": "INR",
-        "tokens": 6000000,
-        "tier": "pro",
-        "duration_days": 365
-    },
-    "tokens_150k": {
-        "id": "tokens_150k",
-        "name": "150,000 Tokens",
-        "amount_paise": 19900,  # ₹199 in paise
-        "currency": "INR",
-        "tokens": 150000,
-        "tier": "free",
-        "duration_days": None
-    },
-    "tokens_1m": {
-        "id": "tokens_1m",
-        "name": "1,000,000 Tokens",
-        "amount_paise": 99900,  # ₹999 in paise
-        "currency": "INR",
-        "tokens": 1000000,
-        "tier": "pro",
-        "duration_days": None
-    }
-}
-
-PLANS.update(_build_catalog())
+PLANS: Dict[str, Dict[str, Any]] = _build_catalog()
 
 
 class PaymentService:
@@ -156,11 +90,11 @@ class PaymentService:
     ) -> Dict[str, Any]:
         plan = resolve_plan(plan_id, billing_period, currency)
         if not plan:
-            # Fallback for generic 'monthly' or 'annual' IDs
-            if "annual" in plan_id.lower() or "year" in plan_id.lower():
-                plan = PLANS["pro_annual"]
-            else:
-                plan = PLANS["pro_monthly"]
+            # No silent fallback to a different plan's price: an unrecognized
+            # plan_id/period/currency combination must fail loudly rather
+            # than risk charging the wrong amount for whatever the caller
+            # actually asked to buy.
+            raise ValueError(f"Unknown plan: {plan_id!r} ({billing_period}, {currency})")
 
         key_id = os.getenv("RAZORPAY_KEY_ID")
         key_secret = os.getenv("RAZORPAY_KEY_SECRET")

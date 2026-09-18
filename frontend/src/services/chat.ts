@@ -6,8 +6,8 @@ export interface User {
   email?: string;
   name?: string;
   full_name?: string;
-  // Free/pro/ultra tier gating (see backend app/services/feature_access.py).
-  tier?: "free" | "pro" | "ultra";
+  // Free/pro/business/ultra tier gating (see backend app/services/feature_access.py).
+  tier?: "free" | "pro" | "business" | "ultra";
   usage?: Record<string, { used: number; limit: number }>;
 }
 

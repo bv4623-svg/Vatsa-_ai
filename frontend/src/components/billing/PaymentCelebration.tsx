@@ -1,11 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Star, PartyPopper } from "lucide-react";
+import { Crown, Star, Building2, PartyPopper } from "lucide-react";
+import { getPlan, type PlanId } from "@/data/plans";
 
 interface PaymentCelebrationProps {
   open: boolean;
-  tier: "pro" | "ultra";
+  tier: Extract<PlanId, "pro" | "business" | "ultra">;
   onContinue: () => void;
 }
 
@@ -44,6 +45,7 @@ const CONFETTI_PIECES: ConfettiPiece[] = Array.from({ length: 60 }, (_, i) => ({
  * already patched the tier into the store before rendering this. */
 export function PaymentCelebration({ open, tier, onContinue }: PaymentCelebrationProps) {
   const confetti = CONFETTI_PIECES;
+  const planName = getPlan(tier)?.name ?? "Pro";
 
   return (
     <AnimatePresence>
@@ -79,11 +81,15 @@ export function PaymentCelebration({ open, tier, onContinue }: PaymentCelebratio
                 "flex h-16 w-16 items-center justify-center rounded-full " +
                 (tier === "ultra"
                   ? "bg-gradient-to-br from-amber-400/30 to-orange-500/30"
+                  : tier === "business"
+                  ? "bg-gradient-to-br from-cyan-500/30 to-blue-500/30"
                   : "bg-gradient-to-br from-purple-500/30 to-pink-500/30")
               }
             >
               {tier === "ultra" ? (
                 <Crown className="h-8 w-8 text-amber-400" />
+              ) : tier === "business" ? (
+                <Building2 className="h-8 w-8 text-cyan-400" />
               ) : (
                 <Star className="h-8 w-8 text-purple-400" />
               )}
@@ -91,7 +97,7 @@ export function PaymentCelebration({ open, tier, onContinue }: PaymentCelebratio
             <div>
               <h2 className="flex items-center justify-center gap-2 text-xl font-semibold text-foreground">
                 <PartyPopper className="h-5 w-5 text-accent" />
-                Welcome to {tier === "ultra" ? "Ultra" : "Pro"}!
+                Welcome to {planName}!
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Your account is upgraded. Vision, reasoning, agents, and higher limits are unlocked now.

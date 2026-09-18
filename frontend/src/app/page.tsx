@@ -23,6 +23,7 @@ import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } 
 
 // ─── ✅ REAL AUTH IMPORT ──────────────────────────────────────────
 import { useAppStore } from "@/stores/app-store";
+import { getPlan, formatPrice, listPrice, annualPrice, annualSavings, DEFAULT_CURRENCY } from "@/data/plans";
 
 // ─────────────────────────────────────────────────────────────
 // 1. DATA (full – unchanged)
@@ -271,45 +272,31 @@ const FAQS = [
   },
 ];
 
-const TIERS = [
-  {
-    name: "Free",
-    monthly: 0,
-    annual: 0,
-    tagline: "Feel the router.",
-    features: ["50 credits / day", "2 active workspaces", "8192-token memory", "Community + open models", "Standard routing"],
-  },
-  {
-    name: "Pro",
-    monthly: 19,
-    annual: 15,
-    tagline: "Your full AI operating system.",
-    features: [
-      "2,000 credits / month",
-      "All 14 workspaces",
-      "All 437 frontier models",
-      "Deep Think + Agent mode",
-      "Persistent memory graph",
-      "Priority routing & fallbacks",
-    ],
-    popular: true,
-  },
-  {
-    name: "Business",
-    monthly: 49,
-    annual: 39,
-    tagline: "For teams that ship.",
-    features: [
-      "Everything in Pro",
-      "Shared team workspaces",
-      "Admin console & SSO",
-      "Usage analytics",
-      "API access + webhooks",
-      "Audit logs",
-    ],
-    perSeat: true,
-  },
-];
+// Real plan data from src/data/plans.ts -- the single source of truth also
+// used by /pricing and the upgrade modal, so this section can't drift into
+// showing different numbers than the rest of the app (it used to: this
+// tier list was previously a fabricated, hand-maintained array).
+const LANDING_TAGLINES: Record<"free" | "pro" | "business", string> = {
+  free: "Feel the router.",
+  pro: "Your full AI operating system.",
+  business: "For teams that ship.",
+};
+
+const TIERS = (["free", "pro", "business"] as const).map((id) => {
+  const plan = getPlan(id)!;
+  return {
+    id: plan.id,
+    name: plan.name,
+    tagline: LANDING_TAGLINES[id],
+    monthly: listPrice(plan, DEFAULT_CURRENCY),
+    annualTotal: annualPrice(plan, DEFAULT_CURRENCY),
+    annualSaving: annualSavings(plan, DEFAULT_CURRENCY),
+    features: plan.features,
+    cta: plan.cta,
+    popular: plan.popular,
+    perSeat: id === "business",
+  };
+});
 
 const REVIEWS = [
   { q: "I cancelled four AI subscriptions the week I found Vatsa. The router picks Claude for code and GPT for research without me thinking about it.", n: "Ananya Sharma", r: "Founding Engineer", c: "Proxima", hue: "#8b7bff" },
@@ -1309,7 +1296,7 @@ function Pricing() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 font-mono text-[10px] text-emerald-300"
               >
-                2 months free
+                Save {getPlan("pro")!.annualDiscountPct}%
               </motion.span>
             )}
           </AnimatePresence>
@@ -1317,7 +1304,7 @@ function Pricing() {
 
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {TIERS.map((t, i) => {
-            const price = annual ? t.annual : t.monthly;
+            const price = annual ? t.annualTotal : t.monthly;
             return (
               <motion.div
                 key={t.name}
@@ -1353,15 +1340,15 @@ function Pricing() {
                         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                         className="font-display text-5xl font-medium tracking-tight text-white"
                       >
-                        ${price}
+                        {price === 0 ? formatPrice(0, DEFAULT_CURRENCY) : formatPrice(price, DEFAULT_CURRENCY)}
                       </motion.span>
                     </AnimatePresence>
                     <span className="text-[12px] text-neutral-500">
-                      {price === 0 ? "forever" : `/ mo${t.perSeat ? " / seat" : ""}${annual && price > 0 ? "" : ""}`}
+                      {price === 0 ? "forever" : annual ? `/ yr${t.perSeat ? " / seat" : ""}` : `/ mo${t.perSeat ? " / seat" : ""}`}
                     </span>
                   </div>
                   <div className="h-4 text-[11px] text-emerald-300/80">
-                    {annual && price > 0 ? `billed annually — save $${(t.monthly - t.annual) * 12}/yr` : ""}
+                    {annual && price > 0 ? `billed annually — save ${formatPrice(t.annualSaving, DEFAULT_CURRENCY)}/yr` : ""}
                   </div>
 
                   <ul className="mt-5 flex flex-col gap-2.5 border-t border-white/[0.06] pt-5">
@@ -1381,7 +1368,7 @@ function Pricing() {
                         : "border border-white/12 text-white hover:border-white/30 hover:bg-white/[0.04]"
                     }`}
                   >
-                    {price === 0 ? "Start free" : "Start building"}
+                    {t.cta}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </a>
                 </div>

@@ -2,7 +2,7 @@
 
 import { Check, X as XIcon, Crown, Star, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FEATURE_MATRIX, type PlanId } from "@/data/plans";
+import { FEATURE_MATRIX, getPlan, type PlanId } from "@/data/plans";
 
 function Cell({ value }: { value: string | boolean }) {
   if (typeof value === "boolean") {
@@ -15,12 +15,16 @@ function Cell({ value }: { value: string | boolean }) {
   return <span>{value}</span>;
 }
 
-const COLUMNS: { id: PlanId; label: string; icon?: React.ReactNode }[] = [
-  { id: "free", label: "Free" },
-  { id: "pro", label: "Pro", icon: <Star className="h-3.5 w-3.5" /> },
-  { id: "business", label: "Business", icon: <Building2 className="h-3.5 w-3.5" /> },
-  { id: "ultra", label: "Ultra", icon: <Crown className="h-3.5 w-3.5" /> },
-];
+const COLUMN_ICONS: Partial<Record<PlanId, React.ReactNode>> = {
+  pro: <Star className="h-3.5 w-3.5" />,
+  business: <Building2 className="h-3.5 w-3.5" />,
+  ultra: <Crown className="h-3.5 w-3.5" />,
+};
+
+// Label always comes from plans.ts (getPlan(id).name), never re-typed here.
+const COLUMNS: { id: PlanId; label: string; icon?: React.ReactNode }[] = (
+  ["free", "pro", "business", "ultra"] as const
+).map((id) => ({ id, label: getPlan(id)?.name ?? id, icon: COLUMN_ICONS[id] }));
 
 /** Every cell for every plan comes from FEATURE_MATRIX, so the modal can
  * never show a blank column or disagree with the pricing page cards. */

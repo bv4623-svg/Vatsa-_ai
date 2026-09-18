@@ -1,8 +1,8 @@
 // Auth state slice — user, isAuthenticated, userId, userTier, subscription
 import type { User, UserSubscription } from "@/types";
 import type { StateCreator } from "zustand";
+import { API_BASE } from "@/config/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 export interface AuthSlice {
   _hasHydrated: boolean;

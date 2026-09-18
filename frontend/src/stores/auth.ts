@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { getToken, setToken, removeToken } from "@/lib/auth";
+import { API_BASE } from "@/config/api";
 
 export interface User {
   id: number | string;
@@ -74,7 +75,6 @@ export const useAuthStore = create<AuthState>()(
         }
 
         try {
-          const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
           const res = await fetch(`${API_BASE}/auth/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });

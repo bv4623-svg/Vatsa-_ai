@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 import Magnetic from "@/components/landing/Magnetic";
 import Background from "@/components/landing/Background";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE } from "@/config/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 // Mock login is disabled: it silently issued a fake session whenever the
 // backend was unreachable or returned a placeholder response, which is a

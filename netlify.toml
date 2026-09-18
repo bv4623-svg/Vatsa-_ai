@@ -1,0 +1,22 @@
+# Netlify hosts the Next.js frontend only. The FastAPI backend runs on a
+# separate host (see DEPLOYMENT.md), because Netlify Functions are
+# JavaScript/TypeScript and cannot run Python.
+#
+# Required site environment variables (Site configuration > Environment):
+#   NEXT_PUBLIC_API_URL   https origin of the deployed backend
+# Never add RAZORPAY_KEY_SECRET or RAZORPAY_WEBHOOK_SECRET here; they belong
+# on the backend host only.
+
+[build]
+  base = "frontend"
+  # The pricing gate fails the build if any price other than the two in
+  # src/config/pricing.ts appears in the source, or if the frontend and
+  # backend constants have drifted apart.
+  command = "npm run check:pricing && npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Netlify's Next.js adapter (@netlify/plugin-nextjs) is detected and
+# installed automatically; it is deliberately not pinned here so it keeps
+# up with Next.js releases.

@@ -1,49 +1,28 @@
 "use client";
 
-import { Info } from "lucide-react";
-import {
-  annualSavings,
-  formatPrice,
-  gstNote,
-  periodLabel,
-  periodPrice,
-  type BillingPeriod,
-  type Currency,
-  type Plan,
-} from "@/data/plans";
+import { formatPrice, type Plan } from "@/data/plans";
 
-interface PlanPriceProps {
-  plan: Plan;
-  currency: Currency;
-  period: BillingPeriod;
-}
-
-/** Price, annual saving and the GST line for one plan. All figures come
- * from data/plans.ts so the card and the upgrade modal cannot diverge. */
-export function PlanPrice({ plan, currency, period }: PlanPriceProps) {
-  const price = periodPrice(plan, currency, period);
-  const note = gstNote(plan, currency, period);
-  const savings = period === "annual" ? annualSavings(plan, currency) : 0;
+/** Price for one plan: USD is primary, INR always shown alongside. Both
+ * figures come from src/config/pricing.ts via data/plans.ts, so this card
+ * and the upgrade modal cannot disagree. */
+export function PlanPrice({ plan }: { plan: Plan }) {
+  if (plan.priceUSD === 0) {
+    return (
+      <div className="mt-3 flex items-baseline gap-1">
+        <span className="text-4xl font-bold">Free</span>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="mt-3 flex items-baseline gap-1">
-        <span className="text-4xl font-bold">{formatPrice(price, currency)}</span>
-        <span className="text-gray-500 dark:text-gray-400">{periodLabel(period)}</span>
+        <span className="text-4xl font-bold">{formatPrice(plan.priceUSD, "USD")}</span>
+        <span className="text-gray-500 dark:text-gray-400">/ month</span>
       </div>
-
-      {savings > 0 && (
-        <p className="mt-1 text-xs font-medium text-green-500">
-          Save {formatPrice(savings, currency)} a year
-        </p>
-      )}
-
-      {note && (
-        <p className="mt-1 flex items-start gap-1 text-xs text-gray-500 dark:text-gray-400">
-          <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-          {note}
-        </p>
-      )}
+      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+        or {formatPrice(plan.priceINR, "INR")} / month
+      </p>
     </>
   );
 }

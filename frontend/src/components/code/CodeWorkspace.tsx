@@ -53,7 +53,7 @@ export function CodeWorkspace() {
   const { openUpgrade } = useUpgrade();
 
   const openUpgradeModal = useCallback(
-    (reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
+    (reason: string, feature?: string, suggestedTier?: "pro" | "business", limitInfo?: { used: number; limit: number }) => {
       openUpgrade({ source: "feature_lock", reason, feature, suggestedTier, limitInfo });
     },
     [openUpgrade]

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { BUSINESS, legalName, phoneHref, postalAddress } from "@/config/business";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Menu, Command, Sparkles, Mail, MapPin, Clock } from "lucide-react";
 
@@ -261,10 +262,17 @@ export default function ContactPage() {
     return () => observer.disconnect();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // There is no mail-sending endpoint, so the form opens the visitor's own
+  // email app with the message pre-filled and addressed to support. That way
+  // nothing is reported as "sent" that we never received.
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Simulate submission
-    alert("Thank you! We'll get back to you shortly.");
+    const form = e.currentTarget;
+    const value = (id: string) =>
+      (form.elements.namedItem(id) as HTMLInputElement | null)?.value.trim() ?? "";
+    const subject = `[${value("model-interest")}] Message from ${value("name")}`;
+    const body = `${value("message")}\n\n${value("name")} <${value("email")}>`;
+    window.location.href = `mailto:${BUSINESS.supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
@@ -395,10 +403,10 @@ export default function ContactPage() {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 text-xs font-medium mb-4 backdrop-blur-sm">
               <Sparkles className="w-4 h-4" />
-              We're here to help
+              We&apos;re here to help
             </div>
             <h1 className="text-4xl md:text-5xl font-bold">
-              Let's <span className="gradient-text">Talk</span>
+              Let&apos;s <span className="gradient-text">Talk</span>
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-2xl mx-auto">
               Have questions about our AI models, enterprise solutions, or need support?
@@ -437,7 +445,7 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="model-interest" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">I'm interested in</label>
+                  <label htmlFor="model-interest" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">I&apos;m interested in</label>
                   <select
                     id="model-interest"
                     className="w-full px-4 py-3 rounded-lg input-dark focus:ring-2 focus:ring-blue-500 outline-none"
@@ -467,6 +475,9 @@ export default function ContactPage() {
                     Send Message
                   </button>
                 </Magnetic>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This opens your email app with the message addressed to {BUSINESS.supportEmail}.
+                </p>
               </form>
             </div>
 
@@ -477,28 +488,34 @@ export default function ContactPage() {
                   <MapPin className="w-5 h-5 text-blue-400" />
                   Location
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">Purnea, Bihar, India</p>
+                <p className="font-medium text-gray-900 dark:text-white">{legalName()}</p>
+                <p className="text-gray-600 dark:text-gray-400">{postalAddress()}</p>
                 <p className="text-gray-600 dark:text-gray-400">Asia/Kolkata (IST)</p>
                 <hr className="my-4 border-gray-200 dark:border-gray-700" />
                 <h3 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
                   <Mail className="w-5 h-5 text-blue-400" />
-                  Email Us
+                  Email &amp; Phone
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
                   <strong>Support:</strong>{" "}
-                  <a href="mailto:support@vatsaai.com" className="text-blue-500 hover:underline">support@vatsaai.com</a>
+                  <a href={`mailto:${BUSINESS.supportEmail}`} className="text-blue-500 hover:underline">{BUSINESS.supportEmail}</a>
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
                   <strong>Business / Enterprise:</strong>{" "}
-                  <a href="mailto:contact@vatsaai.com" className="text-blue-500 hover:underline">contact@vatsaai.com</a>
+                  <a href={`mailto:${BUSINESS.contactEmail}`} className="text-blue-500 hover:underline">{BUSINESS.contactEmail}</a>
                 </p>
+                {phoneHref() && (
+                  <p className="text-gray-600 dark:text-gray-400">
+                    <strong>Phone:</strong>{" "}
+                    <a href={phoneHref()!} className="text-blue-500 hover:underline">{BUSINESS.phone}</a>
+                  </p>
+                )}
                 <hr className="my-4 border-gray-200 dark:border-gray-700" />
                 <h3 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
                   <Clock className="w-5 h-5 text-blue-400" />
                   Business Hours
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">Monday - Friday</p>
-                <p className="text-gray-600 dark:text-gray-400">10:00 AM – 6:00 PM IST</p>
+                <p className="text-gray-600 dark:text-gray-400">{BUSINESS.hours}</p>
               </div>
 
               <div className="bg-blue-50/80 dark:bg-blue-950/30 backdrop-blur-sm p-6 rounded-2xl border border-blue-200 dark:border-blue-900">

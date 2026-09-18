@@ -5,20 +5,16 @@ import { cn } from "@/lib/utils";
 import { Magnetic } from "./Magnetic";
 import { PlanPrice } from "./PlanPrice";
 import { PlanFeatureList } from "./PlanFeatureList";
-import type { BillingPeriod, Currency, Plan } from "@/data/plans";
+import type { Plan } from "@/data/plans";
 
 interface PricingPlanCardProps {
   plan: Plan;
-  currency: Currency;
-  period: BillingPeriod;
   ctaLabel: string;
   isCurrent: boolean;
   onSelect: (plan: Plan) => void;
 }
 
-export function PricingPlanCard({
-  plan, currency, period, ctaLabel, isCurrent, onSelect,
-}: PricingPlanCardProps) {
+export function PricingPlanCard({ plan, ctaLabel, isCurrent, onSelect }: PricingPlanCardProps) {
   return (
     <div
       className={cn(
@@ -38,7 +34,7 @@ export function PricingPlanCard({
           {plan.popular && <Star className="h-4 w-4 fill-blue-500 text-blue-500" aria-hidden="true" />}
         </div>
 
-        <PlanPrice plan={plan} currency={currency} period={period} />
+        <PlanPrice plan={plan} />
 
         <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{plan.description}</p>
       </div>

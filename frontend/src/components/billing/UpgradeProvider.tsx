@@ -22,7 +22,7 @@ export interface OpenUpgradeArgs {
   source: UpgradeSource;
   reason?: string;
   feature?: string;
-  suggestedTier?: Extract<PlanId, "pro" | "ultra">;
+  suggestedTier?: Extract<PlanId, "pro" | "business">;
   limitInfo?: { used: number; limit: number };
 }
 

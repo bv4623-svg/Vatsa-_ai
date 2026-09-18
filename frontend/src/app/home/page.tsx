@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader, Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Crown, Building2 } from "lucide-react";
+import { Loader, Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Building2 } from "lucide-react";
 import { getPlan } from "@/data/plans";
 
 import { cn } from "@/lib/utils";
@@ -60,13 +60,13 @@ export default function HomePage() {
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
   const [showVoicePopover, setShowVoicePopover] = useState(false);
 
-  const tier: "free" | "pro" | "business" | "ultra" = user?.tier || "free";
+  const tier: "free" | "pro" | "business" = user?.tier || "free";
   const isFree = tier === "free";
   const { openUpgrade } = useUpgrade();
   const [bannerDismissedAtCount, setBannerDismissedAtCount] = useState<number | null>(null);
 
   const openUpgradeModal = useCallback(
-    (reason: string, feature?: string, suggestedTier?: "pro" | "ultra", limitInfo?: { used: number; limit: number }) => {
+    (reason: string, feature?: string, suggestedTier?: "pro" | "business", limitInfo?: { used: number; limit: number }) => {
       openUpgrade({ source: "feature_lock", reason, feature, suggestedTier, limitInfo });
     },
     [openUpgrade]
@@ -261,11 +261,7 @@ export default function HomePage() {
               {privateMode && (<div className="flex items-center gap-1 text-xs text-accent font-medium"><Lock className="w-3 h-3" /> Private</div>)}
             </div>
             <div className="flex items-center gap-1">
-              {tier === "ultra" ? (
-                <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-400">
-                  <Crown className="h-3 w-3" /> Ultra
-                </div>
-              ) : tier === "business" ? (
+              {tier === "business" ? (
                 <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 px-2.5 py-1 text-[11px] font-medium text-cyan-400">
                   <Building2 className="h-3 w-3" /> {getPlan("business")?.name ?? "Business"}
                 </div>

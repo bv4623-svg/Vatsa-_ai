@@ -7,7 +7,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "check:pricing": "node scripts/check-pricing-consistency.js"
+    "check:pricing": "node scripts/check-pricing-consistency.js",
+    "check:business": "node scripts/check-business-info.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

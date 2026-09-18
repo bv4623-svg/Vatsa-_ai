@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X as XIcon, Crown, Star, Building2 } from "lucide-react";
+import { Check, X as XIcon, Star, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FEATURE_MATRIX, getPlan, type PlanId } from "@/data/plans";
 
@@ -18,12 +18,11 @@ function Cell({ value }: { value: string | boolean }) {
 const COLUMN_ICONS: Partial<Record<PlanId, React.ReactNode>> = {
   pro: <Star className="h-3.5 w-3.5" />,
   business: <Building2 className="h-3.5 w-3.5" />,
-  ultra: <Crown className="h-3.5 w-3.5" />,
 };
 
 // Label always comes from plans.ts (getPlan(id).name), never re-typed here.
 const COLUMNS: { id: PlanId; label: string; icon?: React.ReactNode }[] = (
-  ["free", "pro", "business", "ultra"] as const
+  ["free", "pro", "business"] as const
 ).map((id) => ({ id, label: getPlan(id)?.name ?? id, icon: COLUMN_ICONS[id] }));
 
 /** Every cell for every plan comes from FEATURE_MATRIX, so the modal can

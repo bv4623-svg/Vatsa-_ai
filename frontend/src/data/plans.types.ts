@@ -3,17 +3,15 @@
  *
  * The pricing page, the in-app upgrade modal, the upgrade banner and the
  * sidebar card all read from here. Nothing in the UI may hardcode a price,
- * a plan name or a feature row -- that is what let /pricing advertise
- * "$24/month" while the upgrade modal advertised "₹499/mo" for the same
- * plan.
+ * a plan name or a feature row. The prices themselves live one level down
+ * in src/config/pricing.ts.
  */
 
-export type PlanId = "free" | "pro" | "business" | "ultra";
-export type Currency = "USD" | "INR";
-export type BillingPeriod = "monthly" | "annual";
+import type { PaidPlanId } from "@/config/pricing";
 
-export const GST_PCT = 18;
-export const ANNUAL_DISCOUNT_PCT = 20;
+export type PlanId = "free" | PaidPlanId;
+export type Currency = "USD" | "INR";
+
 export const DEFAULT_CURRENCY: Currency = "USD";
 
 export interface FeatureRow {
@@ -33,11 +31,11 @@ export interface DailyLimits {
 export interface Plan {
   id: PlanId;
   name: string;
-  /** Monthly list price, before GST. */
+  /** What the plan costs for one access period, tax included. */
   priceUSD: number;
   priceINR: number;
-  gstPct: number;
-  annualDiscountPct: number;
+  /** Days of access one payment buys. */
+  accessDays: number;
   description: string;
   popular: boolean;
   cta: string;
@@ -49,9 +47,6 @@ export interface Plan {
   storageLimitGB: number;
   dailyLimits: DailyLimits;
 }
-
-/** Shown as "Unlimited" rather than a number. */
-export const UNLIMITED = 999999;
 
 export interface FaqEntry {
   question: string;

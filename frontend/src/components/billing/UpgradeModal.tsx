@@ -1,21 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
-import { useCurrency } from "@/hooks/useCurrency";
 import { useAppStore } from "@/stores/app-store";
 import { FeatureComparisonTable } from "./FeatureComparisonTable";
 import { UpgradeModalActions } from "./UpgradeModalActions";
-import type { BillingPeriod, PlanId } from "@/data/plans";
+import type { PlanId } from "@/data/plans";
 
 export interface UpgradeModalProps {
   open: boolean;
   onClose: () => void;
   reason: string;
   feature?: string;
-  suggestedTier?: "pro" | "ultra";
+  suggestedTier?: "pro" | "business";
   showComparison?: boolean;
   limitInfo?: { used: number; limit: number };
   /** Analytics attribution for which surface opened this. */
@@ -26,15 +24,13 @@ export function UpgradeModal({
   open, onClose, reason, feature, suggestedTier = "pro", showComparison = true, limitInfo, source,
 }: UpgradeModalProps) {
   const router = useRouter();
-  const [currency] = useCurrency();
   const currentTier = useAppStore((state) => state.userTier);
-  const [period, setPeriod] = useState<BillingPeriod>("monthly");
 
   // Same destination the pricing page cards use, so a plan picked here and
   // a plan picked there land on an identically-priced checkout.
   const goToCheckout = (planId: PlanId) => {
     onClose();
-    const params = new URLSearchParams({ plan: planId, billing: period, currency });
+    const params = new URLSearchParams({ plan: planId });
     if (feature) params.set("from", feature);
     if (source) params.set("source", source);
     router.push(`/checkout?${params.toString()}`);
@@ -59,13 +55,7 @@ export function UpgradeModal({
 
       {showComparison && <FeatureComparisonTable highlight={suggestedTier} />}
 
-      <UpgradeModalActions
-        currency={currency}
-        period={period}
-        onPeriodChange={setPeriod}
-        onSelect={goToCheckout}
-        currentTier={currentTier}
-      />
+      <UpgradeModalActions onSelect={goToCheckout} currentTier={currentTier} />
     </Modal>
   );
 }

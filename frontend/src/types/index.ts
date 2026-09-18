@@ -99,8 +99,8 @@ export interface User {
   name: string;
   avatarUrl?: string;
   plan: Plan;
-  // Free/pro/ultra tier gating (see backend app/services/feature_access.py).
-  tier?: "free" | "pro" | "ultra";
+  // Free/pro/business tier gating (see backend app/services/feature_access.py).
+  tier?: "free" | "pro" | "business";
   usage?: Record<string, { used: number; limit: number }>;
 }
 
@@ -125,7 +125,6 @@ export interface PricingPlan {
   id: Plan;
   name: string;
   price: number;
-  annualPrice?: number;
   features: { label: string; included: boolean }[];
   cta: string;
   popular?: boolean;

@@ -1,147 +1,153 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { motion, useMotionValue, useSpring } from "framer-motion";
-import {
-  Menu, Command, Sparkles, CreditCard, RefreshCw, Receipt,
-  Shield, AlertTriangle, Lock, DollarSign, Ban,
-  ChevronDown, ChevronUp, HelpCircle
-} from "lucide-react";
-import type { FAQItem } from "@/types";
+import { CreditCard, Lock, Receipt, RefreshCw, ShieldCheck, AlertTriangle, Mail } from "lucide-react";
 
-// ─── Background (unchanged) ──────────────────────────────────────
-const NOISE =
-  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+import { VatsaMark } from "@/components/pricing/VatsaMark";
+import { BusinessInfo } from "@/components/business/BusinessInfo";
+import { ACCESS_DAYS } from "@/config/pricing";
+import { ACCESS_NOTE, PLANS, RATE_NOTE, formatBothPrices } from "@/data/plans";
 
-function Particles() { return null; }
-function Background() { return null; }
+const PAID_PLANS = PLANS.filter((p) => p.priceUSD > 0);
 
-// ─── Magnetic (unchanged) ──────────────────────────────────────────
-interface MagneticProps { children: React.ReactNode; strength?: number; className?: string; }
-function Magnetic({ children, strength = 0.32, className = "" }: MagneticProps) { return <div className={className}>{children}</div>; }
-
-// ─── Model Logos ──────────────────────────────────────────────────
-const modelLogos = [ /* same */ ];
-function ModelLogos() { return null; }
-
-// ─── VatsaMark ────────────────────────────────────────────────────
-function VatsaMark({ compact = false }: { compact?: boolean }) { return null; }
-
-// ─── FAQ data ─────────────────────────────────────────────────────
-const faqData: FAQItem[] = [
-  // Add your FAQ items here
+const FOOTER_LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/contact", label: "Contact" },
+  { href: "/refund", label: "Refund Policy" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
 ];
 
-// ─── Main Component ──────────────────────────────────────────────
+function Section({ icon: Icon, title, children }: { icon: typeof Lock; title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-8 first:mt-0">
+      <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
+        <Icon className="h-6 w-6 shrink-0 text-blue-400" />
+        {title}
+      </h2>
+      <div className="mt-3 space-y-3 text-gray-700 dark:text-gray-300">{children}</div>
+    </section>
+  );
+}
+
 export default function PaymentClient() {
-  // Scroll reveal (unchanged)
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("scroll-visible");
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -30px 0px" }
-    );
-    document.querySelectorAll(".scroll-reveal").forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
-
-  // FAQ state (unchanged)
-  const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-
-
   return (
     <main className="relative min-h-screen bg-transparent text-gray-900 dark:text-gray-100">
-      <Background />
-
-      <div className="relative z-10">
-        <style>{` ... your existing styles ... `}</style>
-
-        {/* ─── Navigation ─── */}
-        <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-          <div className="mx-auto flex h-[64px] max-w-7xl items-center justify-between px-5 lg:px-8">
-            <VatsaMark />
-            <nav className="hidden items-center gap-6 text-sm text-gray-600 dark:text-gray-400 lg:flex">
-              <Link href="/" className="hover:text-gray-900 dark:hover:text-white transition-colors">Home</Link>
-              <Link href="/pricing" className="hover:text-gray-900 dark:hover:text-white transition-colors">Pricing</Link>
-              <Link href="/home" className="hover:text-gray-900 dark:hover:text-white transition-colors">App</Link>
-            </nav>
-            <div className="flex items-center gap-2">
-              <button className="focus-ring hidden items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-xs text-gray-500 dark:text-gray-400 sm:flex hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
-                <Command size={13} /> K
-              </button>
-              <Link href="/login" className="focus-ring hidden rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white sm:block transition-colors">
-                Sign in
-              </Link>
-              <Magnetic strength={0.25}>
-                <Link href="/signup" className="focus-ring rounded-lg bg-black dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors inline-block">
-                  Start building
-                </Link>
-              </Magnetic>
-              <button className="focus-ring rounded-lg border border-gray-200 dark:border-gray-800 p-2 text-gray-600 dark:text-gray-400 lg:hidden hover:border-gray-300 dark:hover:border-gray-700 transition-colors" aria-label="Open menu">
-                <Menu size={18} />
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {/* ─── Breadcrumb ─── */}
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            <Link href="/" className="hover:underline">Home</Link>
-            <span className="mx-2">/</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium">Payments &amp; Billing</span>
-          </div>
+      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/80">
+        <div className="mx-auto flex h-[64px] max-w-7xl items-center justify-between px-5 lg:px-8">
+          <VatsaMark />
+          <nav className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 sm:gap-6">
+            <Link href="/" className="transition-colors hover:text-gray-900 dark:hover:text-white">Home</Link>
+            <Link href="/pricing" className="transition-colors hover:text-gray-900 dark:hover:text-white">Pricing</Link>
+            <Link href="/contact" className="transition-colors hover:text-gray-900 dark:hover:text-white">Contact</Link>
+          </nav>
         </div>
+      </header>
 
-        {/* ─── Hero ─── */}
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-6 scroll-reveal">
-          <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 text-xs font-medium mb-4 backdrop-blur-sm">
-              <CreditCard className="w-4 h-4 text-blue-400" />
-              Secure Transactions
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold">
-              <span className="gradient-text">Payments</span> &amp; Billing
-            </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-2xl mx-auto">
-              Payment methods, subscription billing, taxes, chargebacks, and fraud protection.
-            </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 2, 2026
-            </p>
-
-            {/* Purchases happen on the pricing page, not on this policy page. */}
-            <div className="mt-6 flex justify-center">
-              <Link
-                href="/pricing"
-                className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3 text-lg font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-700"
-              >
-                <CreditCard className="h-5 w-5" /> View plans &amp; pricing
-              </Link>
-            </div>
-          </div>
+      <div className="mx-auto max-w-7xl px-5 pt-6 lg:px-8">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          <Link href="/" className="hover:underline">Home</Link>
+          <span className="mx-2">/</span>
+          <span className="font-medium text-gray-700 dark:text-gray-300">Payments &amp; Billing</span>
         </div>
-
-        {/* ─── Content (policies, FAQ) unchanged ─── */}
-        <div className="max-w-4xl mx-auto px-5 lg:px-8 pb-12">
-          <div className="glass-card rounded-2xl p-8 md:p-12 scroll-reveal">
-            {/* ... existing policy content ... */}
-          </div>
-
-          {/* Quick links, FAQ, etc. – unchanged */}
-        </div>
-
-        {/* Model Logos & Footer – unchanged */}
-        <ModelLogos />
-        <footer className="...">...</footer>
       </div>
+
+      <div className="mx-auto max-w-7xl px-5 pb-6 pt-8 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50/70 px-3 py-1 text-xs font-medium text-gray-600 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <CreditCard className="h-4 w-4 text-blue-400" />
+            Secure payments via Razorpay
+          </div>
+          <h1 className="text-4xl font-bold md:text-5xl">Payments &amp; Billing</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600 dark:text-gray-400">
+            What you pay, how you pay, and what happens if something goes wrong.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3 text-lg font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-700"
+            >
+              <CreditCard className="h-5 w-5" /> View plans &amp; pricing
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-4xl px-5 pb-12 lg:px-8">
+        <div className="rounded-2xl border border-gray-200 bg-white/60 p-6 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.04] md:p-12">
+          <Section icon={Receipt} title="1. Plans and prices">
+            <p>Vatsa AI has one free plan and two paid plans. Each paid plan is a single payment:</p>
+            <ul className="list-disc space-y-1 pl-6">
+              {PAID_PLANS.map((plan) => (
+                <li key={plan.id}>
+                  <strong>{plan.name}</strong>: {formatBothPrices(plan)} for {ACCESS_DAYS} days of access
+                </li>
+              ))}
+            </ul>
+            <p>
+              {ACCESS_NOTE} {RATE_NOTE} The amount shown at checkout is exactly the amount charged.
+            </p>
+          </Section>
+
+          <Section icon={Lock} title="2. Payment processor">
+            <p>
+              All payments are processed by <strong>Razorpay</strong>. Card, UPI, netbanking and wallet details
+              are entered in Razorpay&apos;s secure checkout window and go to Razorpay, not to Vatsa AI. We never
+              see or store your full card number. We only receive confirmation that a payment succeeded, along
+              with its payment id.
+            </p>
+            <p>
+              The payment methods on offer are the ones enabled on our Razorpay account and can vary with the
+              currency you choose and your country.
+            </p>
+          </Section>
+
+          <Section icon={RefreshCw} title="3. Access period and renewal">
+            <p>
+              A successful payment upgrades your account immediately for {ACCESS_DAYS} days. Nothing renews
+              automatically and we never charge you again without you starting a new checkout. When the period
+              ends, your account returns to the Free plan, and your account and chat history are kept.
+            </p>
+          </Section>
+
+          <Section icon={AlertTriangle} title="4. Failed payments and disputes">
+            <p>
+              If a payment fails, you are not charged and can retry from the checkout page. If money leaves your
+              account but your plan does not upgrade within a few minutes, contact us with your Razorpay payment
+              id and we will fix it or refund you.
+            </p>
+            <p>
+              Please contact us before raising a chargeback with your bank so we can resolve the problem faster.
+            </p>
+          </Section>
+
+          <Section icon={ShieldCheck} title="5. Refunds">
+            <p>
+              Refund eligibility and timing are set out in our <Link href="/refund" className="text-blue-500 hover:underline">Refund Policy</Link>.
+              Approved refunds go back to the original payment method.
+            </p>
+          </Section>
+
+          <Section icon={Mail} title="6. Who to contact">
+            <BusinessInfo />
+          </Section>
+        </div>
+      </div>
+
+      <footer className="border-t border-gray-200 bg-white/60 py-6 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/60">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <VatsaMark compact />
+            <p className="text-xs text-gray-400 dark:text-gray-500">© 2026 Vatsa AI. Intelligence, orchestrated.</p>
+            <div className="flex flex-wrap gap-4">
+              {FOOTER_LINKS.map((l) => (
+                <Link key={l.href} href={l.href} className="text-[0.8rem] text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-100">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

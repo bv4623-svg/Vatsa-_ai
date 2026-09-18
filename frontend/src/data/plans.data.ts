@@ -1,10 +1,6 @@
+import { ACCESS_DAYS, PRICES_INR, PRICES_USD } from "@/config/pricing";
 import { FEATURE_MATRIX } from "./plans.matrix";
-import {
-  ANNUAL_DISCOUNT_PCT,
-  GST_PCT,
-  type Plan,
-  type PlanId,
-} from "./plans.types";
+import type { Plan, PlanId } from "./plans.types";
 import { DAILY_LIMITS, STORAGE_LIMIT_GB } from "./plans.limits";
 
 function buildFeatureLists(id: PlanId): { features: string[]; notIncluded: string[] } {
@@ -32,7 +28,7 @@ interface PlanSeed {
   note: string | null;
 }
 
-// Card order on /pricing: Free | Pro (Most Popular) | Business | Ultra.
+// Card order on /pricing: Free | Pro (Most Popular) | Business.
 const PLAN_SEEDS: PlanSeed[] = [
   {
     id: "free",
@@ -47,8 +43,8 @@ const PLAN_SEEDS: PlanSeed[] = [
   {
     id: "pro",
     name: "Pro",
-    priceUSD: 24,
-    priceINR: 499,
+    priceUSD: PRICES_USD.pro,
+    priceINR: PRICES_INR.pro,
     description: "Unleash the full power of AI",
     popular: true,
     cta: "Get Started",
@@ -57,29 +53,18 @@ const PLAN_SEEDS: PlanSeed[] = [
   {
     id: "business",
     name: "Business",
-    priceUSD: 99,
-    priceINR: 1999,
+    priceUSD: PRICES_USD.business,
+    priceINR: PRICES_INR.business,
     description: "Enterprise-grade AI for teams",
     popular: false,
     cta: "Get Started",
-    note: "Secure payment via Razorpay",
-  },
-  {
-    id: "ultra",
-    name: "Ultra",
-    priceUSD: 49,
-    priceINR: 1499,
-    description: "Maximum limits and the Vatsa Ultra model",
-    popular: false,
-    cta: "Go Ultra",
     note: "Secure payment via Razorpay",
   },
 ];
 
 export const PLANS: Plan[] = PLAN_SEEDS.map((seed) => ({
   ...seed,
-  gstPct: GST_PCT,
-  annualDiscountPct: ANNUAL_DISCOUNT_PCT,
+  accessDays: ACCESS_DAYS,
   storageLimitGB: STORAGE_LIMIT_GB[seed.id],
   dailyLimits: DAILY_LIMITS[seed.id],
   ...buildFeatureLists(seed.id),

@@ -6,6 +6,8 @@ import Image from "next/image";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Menu, Command, Info, CheckCircle2, XCircle, DollarSign, Calendar, Mail, RefreshCcw, AlertTriangle } from "lucide-react";
 import { VatsaMark } from "@/components/pricing/VatsaMark";
+import { BusinessInfo } from "@/components/business/BusinessInfo";
+import { BUSINESS } from "@/config/business";
 
 // ─── Background ──────────────────────────────────────────────────────
 const NOISE =
@@ -344,7 +346,7 @@ export default function RefundClient() {
               <span className="text-blue-500 dark:text-blue-400">Refund</span> Policy
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-2xl mx-auto">
-              Monthly plans: 7-day refund window if unused. Annual plans: 14-day refund window.
+              7-day refund window if the paid features are unused.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
               <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 18, 2026
@@ -363,7 +365,7 @@ export default function RefundClient() {
                   Real refund windows
                 </h2>
                 <p className="text-lg font-semibold mt-2 text-emerald-700 dark:text-emerald-300">
-                  Monthly plans: 7 days if unused. Annual plans: 14 days.
+                  7 days from the charge, if unused.
                 </p>
               </div>
 
@@ -380,13 +382,10 @@ export default function RefundClient() {
                 2. Subscription Payments
               </h2>
               <p>
-                <strong>Monthly plans</strong> can be refunded in full within 7 days of the charge, provided the account has not sent chat messages, generated images, or used any other paid feature during that billing period (&ldquo;unused&rdquo;).
+                Any plan can be refunded in full within 7 days of the charge, provided the account has not sent chat messages, generated images, or used any other paid feature since the payment (&ldquo;unused&rdquo;).
               </p>
               <p>
-                <strong>Annual plans</strong> can be refunded in full within 14 days of the charge, no usage condition attached.
-              </p>
-              <p>
-                Outside these windows, subscription fees are non-refundable and we do not offer prorated refunds for the unused remainder of a billing period.
+                Outside this window, payments are non-refundable and we do not offer prorated refunds for the unused remainder of the 30-day access period.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
@@ -394,7 +393,7 @@ export default function RefundClient() {
                 3. Cancellations
               </h2>
               <p>
-                You may cancel your subscription at any time to prevent future charges. Cancelling does not by itself trigger a refund -- if you&apos;re still inside your plan&apos;s refund window, request the refund separately using the contact details below; otherwise the current billing cycle is not refunded.
+                Plans do not renew automatically, so there is nothing to cancel and you will not be charged again unless you start a new checkout. Access simply ends when the 30 days are up. If you are still inside the refund window, request a refund using the contact details below.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">
@@ -411,9 +410,10 @@ export default function RefundClient() {
               </h2>
               <p>
                 If you have questions about this policy, contact us at{' '}
-                <a href="mailto:support@vatsaai.com" className="text-blue-500 hover:underline">support@vatsaai.com</a>.
-                Located in Purnea, Bihar, India.
+                <a href={`mailto:${BUSINESS.supportEmail}`} className="text-blue-500 hover:underline">{BUSINESS.supportEmail}</a>.
+                Include the email on your account and your Razorpay payment id.
               </p>
+              <BusinessInfo className="not-prose mt-4" />
 
               {/* Location badge */}
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mt-6">

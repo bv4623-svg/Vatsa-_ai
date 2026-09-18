@@ -23,7 +23,8 @@ import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } 
 
 // ─── ✅ REAL AUTH IMPORT ──────────────────────────────────────────
 import { useAppStore } from "@/stores/app-store";
-import { getPlan, formatPrice, listPrice, annualPrice, annualSavings, DEFAULT_CURRENCY } from "@/data/plans";
+import { PRICES_USD } from "@/config/pricing";
+import { ACCESS_NOTE, RATE_NOTE, formatPrice, getPlan, listPrice, DEFAULT_CURRENCY } from "@/data/plans";
 import { AIIcon } from "@/components/brand/AIIcon";
 
 // ─────────────────────────────────────────────────────────────
@@ -173,14 +174,14 @@ const workspaces: Workspace[] = [
 ];
 
 const modelsMarquee = [
-  { name: "Claude Opus 5", provider: "Anthropic", color: "#e29a6c", speed: 82, reason: 99, code: 98, latency: "0.82s", price: "$15 / MTok", up: "99.99%", tags: ["Reasoning", "Coding", "Vision"] },
-  { name: "GPT-5.6", provider: "OpenAI", color: "#7ddba8", speed: 91, reason: 95, code: 93, latency: "0.64s", price: "$12 / MTok", up: "99.98%", tags: ["Deep Research", "Agents", "Vision"] },
-  { name: "Gemini 3 Pro", provider: "Google", color: "#7db8f5", speed: 95, reason: 93, code: 90, latency: "0.51s", price: "$9 / MTok", up: "99.99%", tags: ["Multimodal", "1M ctx", "Video"] },
-  { name: "DeepSeek V4", provider: "DeepSeek", color: "#9f8bff", speed: 88, reason: 94, code: 96, latency: "0.58s", price: "$0.9 / MTok", up: "99.97%", tags: ["Math", "Coding", "Open"] },
-  { name: "Grok 4", provider: "xAI", color: "#e8e8ee", speed: 93, reason: 91, code: 89, latency: "0.47s", price: "$6 / MTok", up: "99.95%", tags: ["Realtime", "X Data", "Vision"] },
-  { name: "Qwen 3 Max", provider: "Alibaba", color: "#8b7bff", speed: 90, reason: 90, code: 92, latency: "0.55s", price: "$1.2 / MTok", up: "99.96%", tags: ["Multilingual", "Coding", "Open"] },
-  { name: "Mistral Large 3", provider: "Mistral", color: "#f5a45b", speed: 94, reason: 88, code: 87, latency: "0.42s", price: "$2 / MTok", up: "99.98%", tags: ["Fast", "EU Hosted", "Open"] },
-  { name: "Llama 4 Maverick", provider: "Meta", color: "#7dc9f5", speed: 96, reason: 85, code: 84, latency: "0.38s", price: "$0.4 / MTok", up: "99.99%", tags: ["Open Weights", "Fast", "Cheap"] },
+  { name: "Claude Opus 5", provider: "Anthropic", color: "#e29a6c", speed: 82, reason: 99, code: 98, latency: "0.82s", up: "99.99%", tags: ["Reasoning", "Coding", "Vision"] },
+  { name: "GPT-5.6", provider: "OpenAI", color: "#7ddba8", speed: 91, reason: 95, code: 93, latency: "0.64s", up: "99.98%", tags: ["Deep Research", "Agents", "Vision"] },
+  { name: "Gemini 3 Pro", provider: "Google", color: "#7db8f5", speed: 95, reason: 93, code: 90, latency: "0.51s", up: "99.99%", tags: ["Multimodal", "1M ctx", "Video"] },
+  { name: "DeepSeek V4", provider: "DeepSeek", color: "#9f8bff", speed: 88, reason: 94, code: 96, latency: "0.58s", up: "99.97%", tags: ["Math", "Coding", "Open"] },
+  { name: "Grok 4", provider: "xAI", color: "#e8e8ee", speed: 93, reason: 91, code: 89, latency: "0.47s", up: "99.95%", tags: ["Realtime", "X Data", "Vision"] },
+  { name: "Qwen 3 Max", provider: "Alibaba", color: "#8b7bff", speed: 90, reason: 90, code: 92, latency: "0.55s", up: "99.96%", tags: ["Multilingual", "Coding", "Open"] },
+  { name: "Mistral Large 3", provider: "Mistral", color: "#f5a45b", speed: 94, reason: 88, code: 87, latency: "0.42s", up: "99.98%", tags: ["Fast", "EU Hosted", "Open"] },
+  { name: "Llama 4 Maverick", provider: "Meta", color: "#7dc9f5", speed: 96, reason: 85, code: 84, latency: "0.38s", up: "99.99%", tags: ["Open Weights", "Fast", "Cheap"] },
 ];
 
 const PROVIDER_LOGOS: Record<string, string> = {
@@ -244,7 +245,7 @@ const TOOLS = [
   { name: "Grok Premium+", price: 16 },
   { name: "Poe", price: 20 },
 ];
-const VATSA = 19;
+const VATSA = PRICES_USD.pro;
 
 const FAQS = [
   {
@@ -290,12 +291,10 @@ const TIERS = (["free", "pro", "business"] as const).map((id) => {
     name: plan.name,
     tagline: LANDING_TAGLINES[id],
     monthly: listPrice(plan, DEFAULT_CURRENCY),
-    annualTotal: annualPrice(plan, DEFAULT_CURRENCY),
-    annualSaving: annualSavings(plan, DEFAULT_CURRENCY),
+    monthlyINR: plan.priceINR,
     features: plan.features,
     cta: plan.cta,
     popular: plan.popular,
-    perSeat: id === "business",
   };
 });
 
@@ -342,7 +341,7 @@ const REPLAY = [
   { t: "00:00.122", tag: "router.score", line: "claude-5 0.97 · gpt-5.6 0.91 · gemini-3 0.88", c: "#f5cd5b" },
   { t: "00:00.158", tag: "router.select", line: "→ claude-opus-5 (SWE-bench leader)", c: "#4ade9c" },
   { t: "00:00.174", tag: "fallback.arm", line: "gpt-5.6 standby · region iad-1", c: "#8892b0" },
-  { t: "00:00.201", tag: "stream.begin", line: "TTFB 380ms · est. cost $0.041", c: "#e7e9f2" },
+  { t: "00:00.201", tag: "stream.begin", line: "TTFB 380ms · stream open", c: "#e7e9f2" },
 ];
 
 const STAGES = [
@@ -734,7 +733,6 @@ interface Analysis {
   reason: string;
   fallback: string;
   latency: number;
-  cost: string;
   tokens: string;
   hits: number;
   complexity: number;
@@ -752,7 +750,6 @@ function analyze(q: string): Analysis {
   const h = hashString(q || "idle");
   const base = {
     latency: 340 + (h % 420),
-    cost: (0.031 + ((h % 40) / 1000)).toFixed(3),
     tokens: ((h % 9200) + 1200).toLocaleString("en-US"),
     hits: (h % 4) + 1,
     complexity: Math.min(96, Math.round(18 + q.length * 1.35 + (h % 15))),
@@ -820,7 +817,7 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
 
   return (
     <div className="relative w-full">
-      <div className="absolute -inset-6 rounded-[40px] bg-[radial-gradient(60%_60%_at_60%_30%,rgba(139,124,246,0.16),transparent_70%)] blur-2xl" aria-hidden="true" />
+      <div className="absolute -inset-y-6 -inset-x-2 sm:-inset-6 rounded-[40px] bg-[radial-gradient(60%_60%_at_60%_30%,rgba(139,124,246,0.16),transparent_70%)] blur-2xl" aria-hidden="true" />
 
       <div className="glass relative overflow-hidden rounded-[26px] shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]">
         <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-violet-300/50 to-transparent" />
@@ -954,7 +951,7 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
 
           <div className="grid grid-cols-3 gap-2">
             <Metric label="Latency" value={`${a.latency + jitter}ms`} />
-            <Metric label="Est. cost" value={`$${a.cost}`} />
+            <Metric label="Fallback" value="Armed" mono={false} />
             <Metric label="Complexity" value={a.complexityLabel} mono={false} />
             <Metric label="Context" value={`${a.tokens} tok`} />
             <Metric label="Memory hits" value={`${a.hits}`} />
@@ -1074,7 +1071,7 @@ function ModelsSection() {
 
                 <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-3 font-mono text-[9.5px] text-neutral-500">
                   <span>TTFB <span className="text-neutral-300">{m.latency}</span></span>
-                  <span className="text-neutral-300">{m.price}</span>
+                  <span className="text-neutral-300">{m.up} uptime</span>
                 </div>
               </div>
             );
@@ -1096,8 +1093,8 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
 
   const total = TOOLS.reduce((s, t, i) => s + (on[i] ? t.price : 0), 0);
   const springTotal = useSpring(total, { stiffness: 90, damping: 18 });
-  const displayTotal = useTransform(springTotal, (v) => `$${Math.round(v)}`);
-  const saved = useTransform(springTotal, (v) => `$${Math.max(0, Math.round(v) - VATSA) * 12}`);
+  const displayTotal = useTransform(springTotal, (v) => formatPrice(Math.round(v), "USD"));
+  const saved = useTransform(springTotal, (v) => formatPrice(Math.max(0, Math.round(v) - VATSA) * 12, "USD"));
 
   function ToolIcon({ name }: { name: string }) {
     const logo = TOOL_LOGOS[name];
@@ -1169,7 +1166,7 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
                   </span>
                   <ToolIcon name={t.name} />
                   <span className="flex-1 text-[13px] text-neutral-200">{t.name}</span>
-                  <span className="font-mono text-[12px] text-neutral-400">${t.price}/mo</span>
+                  <span className="font-mono text-[12px] text-neutral-400">{formatPrice(t.price, "USD")}/mo</span>
                   <AnimatePresence>
                     {isHover && isOn && (
                       <motion.div
@@ -1213,7 +1210,7 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
                 <span className="flex items-center gap-2 text-[13.5px] font-medium text-white">
                   <Sparkles className="h-3.5 w-3.5 text-violet-300" /> Vatsa Pro — all 437 models
                 </span>
-                <span className="font-mono text-[15px] text-white">${VATSA}/mo</span>
+                <span className="font-mono text-[15px] text-white">{formatPrice(VATSA, "USD")}/mo</span>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {["Claude", "GPT", "Gemini", "DeepSeek", "Grok", "Llama", "Mistral", "Qwen"].map((m) => (
@@ -1260,8 +1257,6 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
 
 // ─── Pricing ─────────────────────────────────────────────
 function Pricing() {
-  const [annual, setAnnual] = useState(true);
-
   return (
     <section id="pricing" className="relative z-10 scroll-mt-28 px-4 py-28 sm:px-6">
       <div className="mx-auto max-w-6xl">
@@ -1275,46 +1270,13 @@ function Pricing() {
           sub="One workspace, every model, no seat-of-the-pants pricing. Cancel anytime."
         />
 
-        <div className="mt-10 flex items-center justify-center gap-3">
-          <div className="glass flex rounded-full p-1">
-            {(["Monthly", "Annual"] as const).map((m) => {
-              const isAnnual = m === "Annual";
-              const active = annual === isAnnual;
-              return (
-                <button
-                  key={m}
-                  onClick={() => setAnnual(isAnnual)}
-                  className={`relative rounded-full px-5 py-2 text-[12.5px] font-medium transition-colors ${active ? "text-black" : "text-neutral-400 hover:text-white"}`}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="billing-pill"
-                      className="absolute inset-0 rounded-full bg-white"
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative">{m}</span>
-                </button>
-              );
-            })}
-          </div>
-          <AnimatePresence>
-            {annual && (
-              <motion.span
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 font-mono text-[10px] text-emerald-300"
-              >
-                Save {getPlan("pro")!.annualDiscountPct}%
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </div>
+        <p className="mx-auto mt-6 max-w-xl text-center text-[12.5px] text-neutral-500">
+          {ACCESS_NOTE} {RATE_NOTE}
+        </p>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {TIERS.map((t, i) => {
-            const price = annual ? t.annualTotal : t.monthly;
+            const price = t.monthly;
             return (
               <motion.div
                 key={t.name}
@@ -1341,24 +1303,13 @@ function Pricing() {
                   <p className="mt-1 text-[12.5px] text-neutral-500">{t.tagline}</p>
 
                   <div className="mt-5 flex h-14 items-baseline gap-1.5 overflow-hidden">
-                    <AnimatePresence mode="popLayout">
-                      <motion.span
-                        key={price}
-                        initial={{ y: 18, opacity: 0, filter: "blur(6px)" }}
-                        animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-                        exit={{ y: -18, opacity: 0, filter: "blur(6px)" }}
-                        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                        className="font-display text-5xl font-medium tracking-tight text-white"
-                      >
-                        {price === 0 ? formatPrice(0, DEFAULT_CURRENCY) : formatPrice(price, DEFAULT_CURRENCY)}
-                      </motion.span>
-                    </AnimatePresence>
-                    <span className="text-[12px] text-neutral-500">
-                      {price === 0 ? "forever" : annual ? `/ yr${t.perSeat ? " / seat" : ""}` : `/ mo${t.perSeat ? " / seat" : ""}`}
+                    <span className="font-display text-5xl font-medium tracking-tight text-white">
+                      {formatPrice(price, DEFAULT_CURRENCY)}
                     </span>
+                    <span className="text-[12px] text-neutral-500">{price === 0 ? "forever" : "/ month"}</span>
                   </div>
-                  <div className="h-4 text-[11px] text-emerald-300/80">
-                    {annual && price > 0 ? `billed annually — save ${formatPrice(t.annualSaving, DEFAULT_CURRENCY)}/yr` : ""}
+                  <div className="h-4 text-[11px] text-neutral-500">
+                    {price > 0 ? `or ${formatPrice(t.monthlyINR, "INR")} / month` : ""}
                   </div>
 
                   <ul className="mt-5 flex flex-col gap-2.5 border-t border-white/[0.06] pt-5">

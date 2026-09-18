@@ -2,7 +2,7 @@ export interface UpgradeGateInfo {
   error: "upgrade_required" | "daily_limit_reached";
   feature: string;
   currentTier?: string;
-  suggestedTier?: "pro" | "ultra";
+  suggestedTier?: "pro" | "business";
   used?: number;
   limit?: number;
 }

@@ -6,6 +6,15 @@ export interface RazorpayHandlerResponse {
   razorpay_signature: string;
 }
 
+export interface RazorpayFailedResponse {
+  error?: {
+    code?: string;
+    description?: string;
+    reason?: string;
+    metadata?: { order_id?: string; payment_id?: string };
+  };
+}
+
 export interface RazorpayOptions {
   key: string;
   amount: number;
@@ -22,7 +31,7 @@ export interface RazorpayOptions {
 
 export interface RazorpayInstance {
   open: () => void;
-  on?: (event: string, cb: (payload: unknown) => void) => void;
+  on?: (event: "payment.failed", cb: (payload: RazorpayFailedResponse) => void) => void;
 }
 
 declare global {

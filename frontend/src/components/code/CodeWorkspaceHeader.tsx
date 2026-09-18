@@ -1,7 +1,8 @@
 "use client";
 
-import { Command as CommandIcon, Sun, Moon, Sparkles, Star, Crown } from "lucide-react";
+import { Command as CommandIcon, Sun, Moon, Sparkles, Star, Crown, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getPlan } from "@/data/plans";
 import type { ThemeMode } from "@/types/code";
 
 interface CodeWorkspaceHeaderProps {
@@ -12,7 +13,7 @@ interface CodeWorkspaceHeaderProps {
   onNavigateCode: () => void;
   onOpenCommandPalette: () => void;
   onToggleTheme: () => void;
-  tier?: "free" | "pro" | "ultra";
+  tier?: "free" | "pro" | "business" | "ultra";
   onUpgradeClick?: () => void;
 }
 
@@ -47,6 +48,10 @@ export function CodeWorkspaceHeader({
         {tier === "ultra" ? (
           <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-400">
             <Crown className="h-3 w-3" /> Ultra
+          </div>
+        ) : tier === "business" ? (
+          <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 px-2.5 py-1 text-[11px] font-medium text-cyan-400">
+            <Building2 className="h-3 w-3" /> {getPlan("business")?.name ?? "Business"}
           </div>
         ) : tier === "pro" ? (
           <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-2.5 py-1 text-[11px] font-medium text-purple-400">

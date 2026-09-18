@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useMemo } from "react";
 import { chat, type User } from "@/services/chat";
+import { getPlan, annualPrice } from "@/data/plans";
 import { loadWorkspace, makeChat, makeMessage, titleFromText, uid } from "@/utils/workspace";
 import type {
   Conversation, FocusMode, ModelOption, Message, RoutingInfo,
@@ -26,24 +27,26 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 // ─── Pricing Plans (public constant) ─────────────────────────────────────────
-export const PRICING_PLANS: PricingPlan[] = [
-  {
-    id: "free", name: "Free", price: 0, cta: "Start free",
-    features: [
-      { label: "Basic chat", included: true },
-      { label: "Web search", included: false },
-      { label: "Custom models", included: false },
-    ],
-  },
-  {
-    id: "pro", name: "Pro", price: 19.99, cta: "Upgrade to Pro",
+// Derived from src/data/plans.ts -- the single source of truth for prices
+// and feature claims -- rather than a separately hand-maintained list that
+// can silently drift (this one used to advertise a Pro price that didn't
+// match what checkout actually charged).
+export const PRICING_PLANS: PricingPlan[] = (["free", "pro"] as const).map((id) => {
+  const plan = getPlan(id)!;
+  return {
+    id,
+    name: plan.name,
+    price: plan.priceUSD,
+    annualPrice: annualPrice(plan, "USD"),
+    cta: plan.cta,
+    popular: plan.popular,
     features: [
       { label: "Basic chat", included: true },
       { label: "Web search", included: true },
-      { label: "Custom models", included: true },
+      { label: "Custom models", included: id !== "free" },
     ],
-  },
-];
+  };
+});
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 export interface Workspace { id: number; name: string; }
@@ -57,7 +60,7 @@ const getInitialState = () => ({
   user: null as User | null,
   isAuthenticated: false,
   userId: null as string | null,
-  userTier: "free" as "free" | "pro" | "ultra",
+  userTier: "free" as "free" | "pro" | "business" | "ultra",
   subscription: null as UserSubscription | null,
   settings: DEFAULT_SETTINGS,
   sidebarCollapsed: false,
@@ -107,7 +110,7 @@ interface AppState extends ReturnType<typeof getInitialState> {
   get currentChat(): ExtendedConversation | undefined;
   setHasHydrated: (v: boolean) => void;
   setUserId: (id: string) => void;
-  setUserTier: (tier: "free" | "pro" | "ultra") => void;
+  setUserTier: (tier: "free" | "pro" | "business" | "ultra") => void;
   setUser: (user: User | null) => void;
   setSubscription: (sub: UserSubscription | null) => void;
   login: (email: string, password: string) => Promise<void>;

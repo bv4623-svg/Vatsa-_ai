@@ -22,9 +22,10 @@ function clearSessionCookie() {
   document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
-function normalizeTier(raw: unknown): "free" | "pro" | "ultra" {
+export function normalizeTier(raw: unknown): "free" | "pro" | "business" | "ultra" {
   const t = String(raw ?? "free").toLowerCase();
   if (t === "ultra") return "ultra";
+  if (t === "business") return "business";
   if (t === "pro" || t === "paid" || t === "premium") return "pro";
   return "free";
 }

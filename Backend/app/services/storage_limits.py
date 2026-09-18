@@ -17,12 +17,6 @@ STORAGE_LIMIT_GB = {
 
 
 def storage_limit_bytes(user: User) -> int:
-    # Pre-existing gap, not introduced here: buying "business" grants
-    # user.tier = "pro" (see payment_service.py PLAN_META), so a business
-    # customer's real ceiling today is Pro's 50GB, not the 500GB advertised
-    # on /pricing. user_tier() only ever returns free/pro/ultra; this
-    # mirrors that truthfully rather than pretending a "business" tier
-    # value exists on the row.
     tier = user_tier(user)
     gb = STORAGE_LIMIT_GB.get(tier, STORAGE_LIMIT_GB["pro"])
     return gb * GIB

@@ -18,7 +18,7 @@ import {
   type Currency,
 } from "@/data/plans";
 import { useCurrency } from "@/hooks/useCurrency";
-import { API_BASE, establishSession } from "@/lib/session";
+import { API_BASE, establishSession, normalizeTier } from "@/lib/session";
 import { getToken } from "@/lib/auth";
 import type { RazorpayHandlerResponse } from "@/types/razorpay";
 
@@ -170,7 +170,7 @@ function CheckoutInner() {
 
             // Reflect the new tier immediately, then re-read the profile so
             // limits and usage come from the server rather than a guess.
-            const newTier = result.tier === "ultra" ? "ultra" : "pro";
+            const newTier = normalizeTier(result.tier);
             setUserTier(newTier);
             const me = await fetch(`${API_BASE}/auth/me`, {
               headers: { Authorization: `Bearer ${token}` },
@@ -312,7 +312,7 @@ function CheckoutInner() {
         </p>
       </Frame>
 
-      <PaymentCelebration open={celebrate} tier="pro" onContinue={() => router.push("/home")} />
+      <PaymentCelebration open={celebrate} tier={plan && plan.id !== "free" ? plan.id : "pro"} onContinue={() => router.push("/home")} />
     </>
   );
 }

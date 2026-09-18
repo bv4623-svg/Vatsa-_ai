@@ -3,16 +3,36 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-const nextConfig: NextConfig = {
-  /* existing config options (अगर पहले से कुछ है तो उसे हटाओ मत) */
+// Same resolution as src/config/api.ts: the deployed API origin, with the
+// local server as the development default.
+const backendOrigin = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
 
+// No Content-Security-Policy on purpose: Razorpay's checkout script, iframe
+// and analytics endpoints make a strict policy easy to get subtly wrong,
+// and a broken checkout costs more than the policy would protect.
+const securityHeaders = [
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+];
+
+const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/:path*',
+        source: "/api/:path*",
+        destination: `${backendOrigin}/:path*`,
       },
     ];
+  },
+
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 

@@ -4,8 +4,8 @@ import type { ProjectFile } from "@/types/code";
 import { uid, normalizeResponse } from "@/lib/code/parsing";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { parseUpgradeGate, UpgradeRequiredError, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
+import { API_BASE } from "@/config/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 interface UseCodeChatParams {
   accessToken: string | null;

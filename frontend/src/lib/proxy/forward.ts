@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { resolveCorsOrigin } from "@/lib/proxy/cors";
+import { API_BASE } from "@/config/api";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BACKEND_URL = API_BASE;
 
 /** Forwards one request to the FastAPI backend and relays its response,
  * only ever echoing CORS headers back for an allowlisted Origin (see

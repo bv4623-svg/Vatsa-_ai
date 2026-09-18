@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { NextIntlClientProvider, type AbstractIntlMessages } from "next-intl";
 import { LOCALE_COOKIE, isSupportedLocale, localeDir } from "@/i18n/locales";
+import { API_BASE } from "@/config/api";
 
 interface LocaleContextValue {
   locale: string;
@@ -44,7 +45,6 @@ export function LocaleProvider({ initialLocale, initialMessages, children }: Loc
     const { getToken } = await import("@/lib/auth");
     const token = getToken();
     if (token) {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       fetch(`${API_BASE}/auth/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

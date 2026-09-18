@@ -414,7 +414,7 @@ export default function ReturnClient() {
               </h2>
               <p>
                 This Return Policy works in conjunction with our{' '}
-                <Link href="/refund" className="text-blue-500 hover:underline">Strict No Refund Policy</Link>.
+                <Link href="/refund" className="text-blue-500 hover:underline">Refund Policy</Link>.
               </p>
 
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mt-6">

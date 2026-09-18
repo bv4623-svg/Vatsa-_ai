@@ -16,11 +16,15 @@ from dotenv import load_dotenv
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(env_path if env_path.exists() else None)
 
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field
 from typing import List, Optional
+
+from app.middleware import SecurityHeadersMiddleware
 
 from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, tokens, upload, files, vision
@@ -49,9 +53,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Vatsa AI Backend", lifespan=lifespan)
 
+app.add_middleware(SecurityHeadersMiddleware)
+
+_DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+_allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

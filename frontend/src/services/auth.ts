@@ -53,8 +53,8 @@ export async function verifyLogin2FA(pendingToken: string, code: string): Promis
 export async function register(
   email: string,
   password: string,
-  full_name?: string,
-  verification_token?: string
+  full_name: string | undefined,
+  verification_token: string
 ): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",

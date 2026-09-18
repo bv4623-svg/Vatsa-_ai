@@ -125,7 +125,7 @@ export default function ResetPasswordPage() {
           id="password"
           label="New password"
           error={errors.password}
-          hint="At least 8 characters, with a letter and a number."
+          hint="At least 12 characters, with a letter and a number."
         >
           <div className="relative">
             <TextInput

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import os
@@ -9,6 +9,8 @@ from app.models.user import User
 from app.models.otp import OTP
 from app.auth.jwt import get_password_hash, create_access_token, decode_access_token
 from app.utils.email import send_otp_email
+from app.utils.rate_limit import client_ip, enforce_rate_limit
+from app.services.password_policy import validate_password_strength
 from app.routers.auth.schemas import OtpSendRequest, OtpVerifyRequest, ResetPasswordRequest
 
 router = APIRouter(tags=["authentication"])
@@ -19,9 +21,13 @@ router = APIRouter(tags=["authentication"])
 # ═══════════════════════════════════════════════════════════
 @router.post("/auth/otp/send")
 @router.post("/api/auth/otp/send")
-def send_otp(req: OtpSendRequest, db: Session = Depends(get_db)):
+def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
     purpose = req.purpose or "signup"
+
+    # Per-IP cap on top of the per-email one below, so one source can't
+    # spray OTP requests (and outbound emails) across many target addresses.
+    enforce_rate_limit(f"otp-send:ip:{client_ip(request)}", limit=20, window_seconds=600)
 
     # Rate limit — max 5 in 10 min
     recent = (
@@ -72,8 +78,8 @@ def send_otp(req: OtpSendRequest, db: Session = Depends(get_db)):
 
 @router.post("/auth/otp/resend")
 @router.post("/api/auth/otp/resend")
-def resend_otp(req: OtpSendRequest, db: Session = Depends(get_db)):
-    return send_otp(req, db)
+def resend_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db)):
+    return send_otp(req, request, db)
 
 
 @router.post("/auth/otp/verify")
@@ -165,7 +171,12 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(404, "User not found")
 
+    validate_password_strength(req.password)
     user.hashed_password = get_password_hash(req.password)
+    # Every access token issued before this point -- including one an
+    # attacker who triggered the reset might already hold -- stops working
+    # on its next request (see get_current_user's token_version check).
+    user.token_version = (user.token_version or 0) + 1
     db.commit()
     return {"success": True, "message": "Password reset successfully"}
 

@@ -1,0 +1,64 @@
+# Render Blueprint for the Vatsa AI backend (FastAPI).
+#
+# Render builds from a Git repository, not from an uploaded zip. Put the files
+# of this folder at the ROOT of the repository you connect, so this file sits
+# at the top level. Then: Render dashboard -> New -> Blueprint -> pick the repo.
+#
+# This file has NOT been run on Render itself. Read the values before applying.
+# Variables marked `sync: false` are asked for in the dashboard and are never
+# stored in this file: no secret belongs in Git.
+services:
+  - type: web
+    name: vatsaai-backend
+    runtime: python
+    # Singapore is the closest Render region to India. Change it if you like.
+    region: singapore
+    # The database, uploads and generated images live on the disk below, and
+    # Render only offers persistent disks on paid instance types. On a free
+    # instance every deploy or restart would erase all users, payments and files.
+    plan: starter
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    # --proxy-headers matters behind Render's HTTPS proxy: cookies are marked
+    # `secure` from the request scheme.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /health
+    disk:
+      name: vatsa-data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      # Development used Python 3.14. 3.13 is used here because more hosts and
+      # wheels support it; it has not been tested against this app.
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      # One directory for the SQLite database, uploads and generated images.
+      - key: DATA_DIR
+        value: /data
+      # Generated once by Render. Rotating it signs every user out.
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      # https origin(s) of the Netlify site, e.g. https://vatsaai.netlify.app
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: FRONTEND_REDIRECT_URL
+        sync: false
+      # This service's own https URL, e.g. https://vatsaai-backend.onrender.com
+      - key: BACKEND_PUBLIC_URL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      # Comma-separated emails allowed to use /api/admin/*. Empty disables it.
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: EMAIL_USERNAME
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false

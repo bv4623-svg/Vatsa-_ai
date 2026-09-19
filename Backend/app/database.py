@@ -6,7 +6,10 @@ import os
 from typing import Generator
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_DB_PATH = BACKEND_DIR / "vatsa.db"
+# DATA_DIR moves everything this app writes (database, uploads, generated
+# images) onto one directory, so a single persistent disk can hold it all.
+DATA_DIR = Path(os.getenv("DATA_DIR") or BACKEND_DIR)
+DEFAULT_DB_PATH = DATA_DIR / "vatsa.db"
 raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 
 if "sqlite+aiosqlite" in raw_db_url:

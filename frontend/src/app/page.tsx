@@ -237,13 +237,13 @@ const TOOL_DESCS: Record<string, string> = {
 };
 
 const TOOLS = [
-  { name: "ChatGPT Plus", price: 20 },
-  { name: "Claude Pro", price: 20 },
-  { name: "Gemini Advanced", price: 20 },
-  { name: "Perplexity Pro", price: 20 },
-  { name: "Midjourney", price: 30 },
-  { name: "Grok Premium+", price: 16 },
-  { name: "Poe", price: 20 },
+  { name: "ChatGPT Plus" },
+  { name: "Claude Pro" },
+  { name: "Gemini Advanced" },
+  { name: "Perplexity Pro" },
+  { name: "Midjourney" },
+  { name: "Grok Premium+" },
+  { name: "Poe" },
 ];
 const VATSA = PRICES_USD.pro;
 
@@ -1091,10 +1091,7 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
   const [on, setOn] = useState<boolean[]>([true, true, true, true, true, true, true]);
   const [hovered, setHovered] = useState<number | null>(null);
 
-  const total = TOOLS.reduce((s, t, i) => s + (on[i] ? t.price : 0), 0);
-  const springTotal = useSpring(total, { stiffness: 90, damping: 18 });
-  const displayTotal = useTransform(springTotal, (v) => formatPrice(Math.round(v), "USD"));
-  const saved = useTransform(springTotal, (v) => formatPrice(Math.max(0, Math.round(v) - VATSA) * 12, "USD"));
+  const count = on.filter(Boolean).length;
 
   function ToolIcon({ name }: { name: string }) {
     const logo = TOOL_LOGOS[name];
@@ -1125,7 +1122,7 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
               Stop paying for <span className="text-gradient">five subscriptions.</span>
             </>
           }
-          sub="Toggle what you pay for today. Watch what Vatsa gives back."
+          sub="Toggle the subscriptions you have today. See what one Vatsa plan replaces."
         />
 
         <div className="mx-auto mt-16 grid max-w-4xl gap-6 lg:grid-cols-[1fr_0.9fr]">
@@ -1166,7 +1163,6 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
                   </span>
                   <ToolIcon name={t.name} />
                   <span className="flex-1 text-[13px] text-neutral-200">{t.name}</span>
-                  <span className="font-mono text-[12px] text-neutral-400">{formatPrice(t.price, "USD")}/mo</span>
                   <AnimatePresence>
                     {isHover && isOn && (
                       <motion.div
@@ -1193,10 +1189,10 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
           >
             <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-violet-300/50 to-transparent" />
 
-            <div className="font-mono text-[9.5px] uppercase tracking-[0.22em] text-neutral-500">Monthly total</div>
+            <div className="font-mono text-[9.5px] uppercase tracking-[0.22em] text-neutral-500">Subscriptions today</div>
             <div className="mt-1 flex items-baseline gap-2">
-              <motion.span className="font-display text-4xl font-medium text-white">{displayTotal}</motion.span>
-              <span className="text-[13px] text-neutral-500">/mo across {on.filter(Boolean).length} tools</span>
+              <span className="font-display text-4xl font-medium text-white">{count}</span>
+              <span className="text-[13px] text-neutral-500">{count === 1 ? "tool" : "tools"}, billed separately</span>
             </div>
 
             <div className="my-4 flex items-center gap-3">
@@ -1224,11 +1220,11 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
             <div className="mt-5 flex items-end justify-between">
               <div>
                 <div className="flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.2em] text-emerald-300/90">
-                  <BriefcaseIcon className="h-3.5 w-3.5" /> You save / year
+                  <BriefcaseIcon className="h-3.5 w-3.5" /> One plan instead of
                 </div>
-                <motion.span className="text-gradient mt-1 block font-display text-[38px] font-semibold leading-none">
-                  {saved}
-                </motion.span>
+                <span className="text-gradient mt-1 block font-display text-[38px] font-semibold leading-none">
+                  {count} {count === 1 ? "subscription" : "subscriptions"}
+                </span>
               </div>
               <button
                 onClick={() => {
@@ -1237,13 +1233,13 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
                 className="group relative overflow-hidden rounded-xl bg-white px-4 py-2.5 text-[12.5px] font-semibold text-black transition-all hover:scale-[1.04] hover:shadow-[0_8px_30px_-6px_rgba(255,255,255,0.3)]"
               >
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-black/[0.06] to-transparent transition-transform duration-500 group-hover:translate-x-full" />
-                Switch & Save
+                Switch to Vatsa Pro
               </button>
             </div>
 
             <div className="mt-4 text-center text-[10px] text-neutral-500">
-              {on.filter(Boolean).length === 0 ? (
-                <span className="text-amber-300/80">Select tools to see the savings ✨</span>
+              {count === 0 ? (
+                <span className="text-amber-300/80">Select the tools you pay for today ✨</span>
               ) : (
                 <span>All 437 models, unlimited chats, memory graph, and fallback routing included.</span>
               )}

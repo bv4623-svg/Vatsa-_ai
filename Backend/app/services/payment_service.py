@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.config.pricing import PRICES_USD, PRICES_INR, ACCESS_DAYS
 from app.models.user import User
+from app.models.payment import Payment
 from app.models.subscription import Subscription
+from app.services import payment_ledger as ledger
 from app.services.token_service import TokenService
 
 logger = logging.getLogger("PaymentService")
@@ -70,7 +72,9 @@ def _razorpay_credentials() -> tuple[str, str]:
     return key_id, key_secret
 
 
-def _create_razorpay_order(key_id: str, key_secret: str, amount: int, currency: str, receipt: str, notes: Dict[str, str]) -> str:
+def _create_razorpay_order(key_id: str, key_secret: str, amount: int, currency: str, receipt: str, notes: Dict[str, str]) -> Dict[str, Any]:
+    """Creates the order and returns Razorpay's full response (its `id` is
+    the order id); the whole response is kept in the ledger for audit."""
     try:
         res = httpx.post(
             RAZORPAY_ORDERS_URL,
@@ -79,7 +83,10 @@ def _create_razorpay_order(key_id: str, key_secret: str, amount: int, currency: 
             timeout=10,
         )
         res.raise_for_status()
-        return res.json()["id"]
+        order = res.json()
+        if not order.get("id"):
+            raise ValueError("Razorpay response had no order id")
+        return order
     except Exception as e:
         logger.error("Razorpay order creation failed: %s", e)
         raise PaymentProviderError("The payment provider could not create the order. Try again shortly.") from e
@@ -101,12 +108,39 @@ class PaymentService:
         amount_paise = plan["amount_paise"]
         stamp = int(datetime.utcnow().timestamp())
 
-        order_id = _create_razorpay_order(
-            key_id, key_secret, amount_paise, plan["currency"],
-            receipt=f"rcpt_{user.id}_{stamp}",
-            notes={"user_id": str(user.id), "plan_id": plan["id"]},
+        # The ledger row is committed BEFORE Razorpay is called, so an order
+        # that dies mid-request still leaves a trace. The email is a snapshot.
+        payment = Payment(
+            user_id=user.id,
+            email=user.email,
+            razorpay_order_id=None,
+            amount=amount_paise,
+            currency=plan["currency"],
+            plan=plan["id"],
+            status=ledger.CREATED,
+            raw_payload={},
         )
+        db.add(payment)
+        db.commit()
 
+        try:
+            order = _create_razorpay_order(
+                key_id, key_secret, amount_paise, plan["currency"],
+                receipt=f"rcpt_{user.id}_{stamp}",
+                notes={"user_id": str(user.id), "email": user.email, "plan": plan["id"]},
+            )
+        except PaymentProviderError:
+            ledger.advance_status(payment, ledger.FAILED)
+            ledger.add_event(db, payment, "order.failed", {"reason": "provider_error"})
+            db.commit()
+            raise
+
+        order_id = order["id"]
+        payment.razorpay_order_id = order_id
+        ledger.merge_raw(payment, "order", order)
+        ledger.add_event(db, payment, "order.created", {
+            "order_id": order_id, "amount": amount_paise, "currency": plan["currency"], "plan": plan["id"],
+        })
         db.add(Subscription(
             user_id=user.id,
             plan=plan["id"],
@@ -148,15 +182,40 @@ class PaymentService:
         message = f"{order_id}|{payment_id}".encode("utf-8")
         expected_sig = hmac.new(key_secret.encode("utf-8"), message, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected_sig, signature or ""):
+            # Recorded, never applied. The unverified payment id and the
+            # signature stay out of the row: only a valid check may write them.
+            payment = ledger.ledger_for_subscription(db, user, sub)
+            ledger.advance_status(payment, ledger.FAILED)
+            ledger.add_event(db, payment, "verify.failed", {
+                "razorpay_order_id": order_id, "razorpay_payment_id": payment_id,
+            })
+            db.commit()
             return {"success": False, "message": "Invalid payment signature"}
 
-        return PaymentService._apply_verified_payment(db, user, sub, payment_id)
+        return PaymentService._apply_verified_payment(
+            db, user, sub, payment_id,
+            signature=signature,
+            raw_key="verify",
+            raw={"razorpay_order_id": order_id, "razorpay_payment_id": payment_id},
+            event_type="verify.succeeded",
+        )
 
     @staticmethod
-    def _apply_verified_payment(db: Session, user: User, sub: Subscription, payment_id: str) -> Dict[str, Any]:
+    def _apply_verified_payment(
+        db: Session,
+        user: User,
+        sub: Subscription,
+        payment_id: str,
+        signature: Optional[str] = None,
+        raw_key: str = "verify",
+        raw: Optional[Dict[str, Any]] = None,
+        event_type: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Grants the plan for a payment whose authenticity the caller has
         already established (client signature check or webhook signature
-        check). Idempotent on Subscription.verified."""
+        check) and marks the ledger row captured in the same commit.
+        Idempotent on Subscription.verified. `event_type` is only set by
+        callers that do not already log their own event (the webhook does)."""
         if sub.verified:
             return {"success": True, "message": "Payment already verified", "tier": user.tier, "plan": sub.plan}
 
@@ -184,6 +243,18 @@ class PaymentService:
         sub.updated_at = now
         user.tier = plan["tier"]
 
+        payment = ledger.ledger_for_subscription(db, user, sub)
+        payment.razorpay_payment_id = payment_id
+        if signature:
+            payment.razorpay_signature = signature
+        ledger.advance_status(payment, ledger.CAPTURED)
+        if raw is not None:
+            ledger.merge_raw(payment, raw_key, raw)
+        if event_type:
+            ledger.add_event(db, payment, event_type, {
+                "razorpay_order_id": sub.order_id, "razorpay_payment_id": payment_id,
+            })
+
         TokenService.credit_tokens(
             db=db,
             user_id=user.id,
@@ -205,6 +276,42 @@ class PaymentService:
         }
 
     @staticmethod
+    def record_webhook_event(
+        db: Session,
+        event_type: str,
+        body: Dict[str, Any],
+        razorpay_event_id: Optional[str] = None,
+    ) -> Optional[Payment]:
+        """Appends a payment_events row for a webhook whose signature the
+        caller has already verified, and commits it before any processing so
+        history survives a failure in that processing. Duplicate deliveries
+        each get their own row. Returns the ledger row the event belongs to,
+        or None when it is about an order we have no record of."""
+        entities = body.get("payload") or {}
+        payment_entity = (entities.get("payment") or {}).get("entity") or {}
+        refund_entity = (entities.get("refund") or {}).get("entity") or {}
+
+        order_id = payment_entity.get("order_id")
+        payment_id = payment_entity.get("id") or refund_entity.get("payment_id")
+
+        payment: Optional[Payment] = None
+        if order_id:
+            payment = ledger.ledger_for_order(db, order_id)
+            if payment is None:
+                # An order made before the ledger existed: build its row from
+                # our own Subscription record, never from webhook data.
+                sub = db.query(Subscription).filter_by(order_id=order_id).first()
+                user = db.get(User, sub.user_id) if sub else None
+                if sub and user:
+                    payment = ledger.ledger_for_subscription(db, user, sub)
+        if payment is None and payment_id:
+            payment = db.query(Payment).filter(Payment.razorpay_payment_id == payment_id).first()
+
+        ledger.add_event(db, payment, event_type, body, razorpay_event_id)
+        db.commit()
+        return payment
+
+    @staticmethod
     def apply_webhook_payment(
         db: Session,
         user: User,
@@ -212,6 +319,7 @@ class PaymentService:
         payment_id: str,
         paid_amount: Optional[int] = None,
         paid_currency: Optional[str] = None,
+        raw: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Server-to-server backup for payment.captured. The caller has
         already verified the webhook signature; this additionally requires
@@ -228,15 +336,30 @@ class PaymentService:
             logger.error("Webhook currency mismatch for %s: paid %s, expected %s", order_id, paid_currency, sub.currency)
             return {"success": False, "message": "Paid currency does not match the order."}
 
-        return PaymentService._apply_verified_payment(db, user, sub, payment_id)
+        if sub.verified:
+            # The browser got there first. Still keep Razorpay's own record.
+            if raw is not None:
+                payment = ledger.ledger_for_subscription(db, user, sub)
+                ledger.merge_raw(payment, "webhook_payment_captured", raw)
+                db.commit()
+            return {"success": True, "message": "Payment already verified", "tier": user.tier, "plan": sub.plan}
+
+        return PaymentService._apply_verified_payment(
+            db, user, sub, payment_id, raw_key="webhook_payment_captured", raw=raw,
+        )
 
     @staticmethod
-    def apply_refund(db: Session, payment_id: str, refunded_amount: Optional[int] = None) -> Dict[str, Any]:
-        """A full refund ends the access that payment bought. The caller has
-        already verified the webhook signature. Partial refunds are left
-        alone: the refund policy only issues full refunds, so a partial one
-        is a manual goodwill decision that should not silently cut access.
-        Safe to call twice for the same refund."""
+    def apply_refund(
+        db: Session,
+        payment_id: str,
+        refunded_amount: Optional[int] = None,
+        raw: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """A full refund ends the access that payment bought and marks the
+        ledger row refunded. The caller has already verified the webhook
+        signature. Partial refunds are left alone: the refund policy only
+        issues full refunds, so a partial one is a manual goodwill decision
+        that should not silently cut access. Safe to call twice."""
         sub = db.query(Subscription).filter_by(payment_id=payment_id).first()
         if not sub:
             return {"success": False, "message": "Unknown payment."}
@@ -252,6 +375,13 @@ class PaymentService:
         sub.status = "refunded"
         sub.expires_at = now
 
+        user = db.get(User, sub.user_id)
+        if user:
+            payment = ledger.ledger_for_subscription(db, user, sub)
+            ledger.advance_status(payment, ledger.REFUNDED)
+            if raw is not None:
+                ledger.merge_raw(payment, "webhook_refund_processed", raw)
+
         still_covered = (
             db.query(Subscription.id)
             .filter(
@@ -263,7 +393,6 @@ class PaymentService:
             )
             .first()
         )
-        user = db.get(User, sub.user_id)
         downgraded = False
         if user and not still_covered and (user.tier or "free") != "free":
             user.tier = "free"
@@ -271,4 +400,3 @@ class PaymentService:
         db.commit()
         logger.info("Refund applied to %s (user %s, downgraded=%s)", payment_id, sub.user_id, downgraded)
         return {"success": True, "downgraded": downgraded}
-

@@ -27,7 +27,7 @@ from typing import List, Optional
 from app.middleware import SecurityHeadersMiddleware
 
 from app.routers import chat, profile, conversations, auth as auth_router
-from app.routers import memory, payment, tokens, upload, files, vision
+from app.routers import memory, payment, payment_history, tokens, upload, files, vision
 from app.routers import library as library_router
 from app.routers import scheduled_tasks as scheduled_tasks_router
 from app.routers import chat_projects as chat_projects_router
@@ -73,6 +73,7 @@ app.include_router(auth_router.router)
 app.include_router(conversations.router)
 app.include_router(memory.router)
 app.include_router(payment.router)
+app.include_router(payment_history.router)
 app.include_router(tokens.router)
 app.include_router(upload.router)
 app.include_router(files.router)

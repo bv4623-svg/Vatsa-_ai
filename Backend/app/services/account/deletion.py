@@ -11,6 +11,9 @@ logger = logging.getLogger("AccountDeletion")
 
 HARD_DELETE_GRACE_DAYS = 30
 
+# Tables whose rows outlive the account (see models/payment.py).
+RETAINED_TABLES = {"payments"}
+
 
 def soft_delete_account(db: Session, user: User) -> None:
     """Blocks login immediately (is_active=False is already checked by
@@ -42,6 +45,11 @@ def _cascade_delete_user(db: Session, user_id: int) -> None:
     api_keys, ...) would otherwise be left orphaned."""
     for table in _tables_with_user_id(db):
         if table == "users":
+            continue
+        if table in RETAINED_TABLES:
+            # Financial records are never deleted. They stop pointing at the
+            # account; the email snapshot on the row is what remains.
+            db.execute(text(f"UPDATE {table} SET user_id = NULL WHERE user_id = :uid"), {"uid": user_id})
             continue
         db.execute(text(f"DELETE FROM {table} WHERE user_id = :uid"), {"uid": user_id})
 

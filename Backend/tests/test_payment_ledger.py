@@ -285,3 +285,31 @@ def test_partial_refund_is_logged_but_changes_neither_status_nor_access(client, 
     assert row.status == "captured"
     assert len(events_for(db, row, "refund.processed")) == 1
     assert refresh_tier(db, user) == "pro"
+
+
+# ── retention ────────────────────────────────────────────────────────
+
+def test_hard_deleting_an_account_keeps_its_payment_history(client, make_user, db, fake_razorpay):
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.account.deletion import hard_delete_expired_accounts
+
+    user, headers = make_user()
+    order_id = create_order(client, headers, "pro").json()["order_id"]
+    assert verify(client, headers, order_id, "pay_LD1").status_code == 200
+    email, user_id = user.email, user.id
+
+    db.expire_all()
+    account = db.get(User, user_id)
+    account.is_deleted = True
+    account.is_active = False
+    account.deleted_at = datetime.now(timezone.utc) - timedelta(days=31)
+    db.commit()
+
+    assert hard_delete_expired_accounts() >= 1
+
+    db.expire_all()
+    assert db.query(User).filter_by(id=user_id).count() == 0
+    row = payment_for(db, order_id)
+    assert (row.user_id, row.email, row.status, row.razorpay_payment_id) == (None, email, "captured", "pay_LD1")
+    assert [e.event_type for e in events_for(db, row)] == ["order.created", "verify.succeeded"]

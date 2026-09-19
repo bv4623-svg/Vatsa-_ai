@@ -313,7 +313,7 @@ export default function PrivacyClient() {
       ],
       note: "To exercise these rights, please contact us."
     },
-    8: "You may delete your account at any time from your account settings. Upon deletion, all your personal data, chat history, and uploaded files are permanently removed from our active systems within 30 days. Anonymised usage data may remain for analytical purposes.",
+    8: "You may delete your account at any time from your account settings. Upon deletion, all your personal data, chat history, and uploaded files are permanently removed from our active systems within 30 days. Anonymised usage data may remain for analytical purposes. Payment records (order and payment ids, amount, plan, status and the email address used at the time of payment) are kept after deletion for accounting and legal obligations; they are no longer linked to an account.",
     9: `If you have any questions or concerns about this Privacy Policy, please reach out to us at:\nEmail: ${BUSINESS.supportEmail}\nAddress: ${legalName()}, ${postalAddress()}${BUSINESS.phone ? `\nPhone: ${BUSINESS.phone}` : ""}`
   };
 

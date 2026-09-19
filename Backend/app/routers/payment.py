@@ -115,7 +115,11 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
     network drops) right after paying but before the client handler runs.
     refund.processed ends the access a refunded payment bought.
     Configure this URL + RAZORPAY_WEBHOOK_SECRET in the Razorpay dashboard,
-    subscribed to both events."""
+    subscribed to both events.
+
+    Every call with a valid signature is appended to payment_events first
+    (duplicates included) and committed before anything is processed. A call
+    with a bad signature is rejected and not stored."""
     webhook_secret = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
     body = await request.body()
 
@@ -126,31 +130,50 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
     signature = request.headers.get("X-Razorpay-Signature", "")
     expected_sig = hmac.new(webhook_secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected_sig, signature):
+        logger.warning("Razorpay webhook rejected: bad signature")
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
-    payload = json.loads(body)
-    event = payload.get("event")
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Webhook body is not valid JSON")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Webhook body must be a JSON object")
+
+    event = str(payload.get("event") or "unknown")
+    payment = PaymentService.record_webhook_event(
+        db, event, payload, request.headers.get("X-Razorpay-Event-Id"),
+    )
+
+    entities = payload.get("payload") or {}
 
     if event == "refund.processed":
-        refund = payload.get("payload", {}).get("refund", {}).get("entity", {})
+        refund = (entities.get("refund") or {}).get("entity") or {}
         payment_id = refund.get("payment_id")
         if not payment_id:
             return {"status": "ignored", "reason": "missing payment_id"}
-        result = PaymentService.apply_refund(db, payment_id, refund.get("amount"))
+        result = PaymentService.apply_refund(db, payment_id, refund.get("amount"), raw=payload)
         return {"status": "processed" if result.get("success") else "rejected", "result": result}
 
     if event != "payment.captured":
         return {"status": "ignored", "event": event}
 
-    payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+    payment_entity = (entities.get("payment") or {}).get("entity") or {}
     order_id = payment_entity.get("order_id")
     payment_id = payment_entity.get("id")
-    user_id = (payment_entity.get("notes") or {}).get("user_id")
+    if not order_id or not payment_id:
+        return {"status": "ignored", "reason": "missing order_id/payment_id"}
 
-    if not order_id or not payment_id or not user_id:
-        return {"status": "ignored", "reason": "missing order_id/payment_id/user_id"}
+    # The order must be one we created; the user comes from our own record,
+    # and the user id Razorpay echoes back in the order notes has to agree.
+    if payment is None or payment.user_id is None:
+        return {"status": "rejected", "result": {"success": False, "message": "Unknown order."}}
+    noted_user = (payment_entity.get("notes") or {}).get("user_id")
+    if noted_user is not None and str(noted_user) != str(payment.user_id):
+        logger.error("Webhook for order %s names user %s but the order belongs to %s", order_id, noted_user, payment.user_id)
+        return {"status": "rejected", "result": {"success": False, "message": "Order does not belong to the named user."}}
 
-    user = db.query(User).filter_by(id=int(user_id)).first()
+    user = db.query(User).filter_by(id=payment.user_id).first()
     if not user:
         return {"status": "ignored", "reason": "user not found"}
 
@@ -158,6 +181,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         db, user, order_id, payment_id,
         paid_amount=payment_entity.get("amount"),
         paid_currency=payment_entity.get("currency"),
+        raw=payload,
     )
     return {"status": "processed" if result.get("success") else "rejected", "result": result}
 

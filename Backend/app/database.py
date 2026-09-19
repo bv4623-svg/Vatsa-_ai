@@ -60,6 +60,7 @@ def init_db():
     import app.models.conversation
     import app.models.memory
     import app.models.subscription
+    import app.models.payment
     import app.models.token
     import app.models.project
     import app.models.file

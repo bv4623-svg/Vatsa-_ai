@@ -15,9 +15,11 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database import SessionLocal
-from app.auth.jwt import create_access_token, get_password_hash
+from app.auth.jwt import get_password_hash
 from app.models.user import User
 from app.services import payment_service
+
+TEST_PASSWORD = "a-long-test-password-1"
 
 
 @pytest.fixture(scope="session")
@@ -39,14 +41,18 @@ _counter = {"n": 0}
 
 
 @pytest.fixture()
-def make_user(db):
-    def _make(tier="free"):
+def make_user(db, client):
+    """Creates a throwaway user in the test database and signs in through the
+    real POST /auth/login (password check, rate limiter, token issue) -- no
+    token is ever minted by the tests themselves."""
+
+    def _make(tier="free", email=None):
         _counter["n"] += 1
         user = User(
-            email=f"user{_counter['n']}@example.com",
+            email=email or f"user{_counter['n']}@example.com",
             username=f"user{_counter['n']}",
             full_name="Test User",
-            hashed_password=get_password_hash("a-long-test-password-1"),
+            hashed_password=get_password_hash(TEST_PASSWORD),
             is_active=True,
             is_verified=True,
             tier=tier,
@@ -54,15 +60,19 @@ def make_user(db):
         db.add(user)
         db.commit()
         db.refresh(user)
-        token = create_access_token({"sub": str(user.id), "email": user.email, "tv": user.token_version})
-        return user, {"Authorization": f"Bearer {token}"}
+
+        res = client.post("/auth/login", json={"email": user.email, "password": TEST_PASSWORD})
+        assert res.status_code == 200, res.text
+        return user, {"Authorization": f"Bearer {res.json()['access_token']}"}
+
     return _make
 
 
 @pytest.fixture()
 def fake_razorpay(monkeypatch):
     """Stands in for the network call to Razorpay's Orders API only --
-    everything else (order bookkeeping, signatures, fulfilment) is real."""
+    everything else (order bookkeeping, signatures, fulfilment) is real.
+    Returns an order object shaped like Razorpay's response."""
     issued = []
 
     def _create(key_id, key_secret, amount, currency, receipt, notes):
@@ -71,7 +81,10 @@ def fake_razorpay(monkeypatch):
         _counter["orders"] = _counter.get("orders", 0) + 1
         order_id = f"order_UNIT{_counter['orders']:05d}"
         issued.append({"order_id": order_id, "amount": amount, "currency": currency, "notes": notes})
-        return order_id
+        return {
+            "id": order_id, "entity": "order", "amount": amount, "currency": currency,
+            "receipt": receipt, "status": "created", "notes": notes,
+        }
 
     monkeypatch.setattr(payment_service, "_create_razorpay_order", _create)
     return issued

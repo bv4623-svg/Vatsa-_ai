@@ -142,8 +142,12 @@
     scroll-behavior: smooth;
     background-color: var(--background);
     color: var(--foreground);
+    /* Decorative blurred glows extend past their cards; clip (unlike hidden)
+       keeps position: sticky working while stopping a sideways scrollbar. */
+    overflow-x: clip;
   }
   body {
+    overflow-x: clip;
     min-height: 100vh;
     line-height: 1.6;
     background-color: var(--background);

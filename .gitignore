@@ -16,3 +16,4 @@ Backend/generated_images/
 
 # Built static site for Netlify Drop (generated, not source)
 netlify-drop/
+render-upload/

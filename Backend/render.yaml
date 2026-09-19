@@ -27,10 +27,10 @@ services:
       mountPath: /data
       sizeGB: 5
     envVars:
-      # Development used Python 3.14. 3.13 is used here because more hosts and
-      # wheels support it; it has not been tested against this app.
+      # Render's own default (3.14.3 when this was written). The app was
+      # developed and tested on Python 3.14, so stay on that line.
       - key: PYTHON_VERSION
-        value: 3.13.5
+        value: 3.14.3
       # One directory for the SQLite database, uploads and generated images.
       - key: DATA_DIR
         value: /data

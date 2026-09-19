@@ -13,3 +13,6 @@ tsconfig.tsbuildinfo
 .DS_Store
 .aider*
 Backend/generated_images/
+
+# Built static site for Netlify Drop (generated, not source)
+netlify-drop/

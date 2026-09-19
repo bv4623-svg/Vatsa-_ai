@@ -49,7 +49,7 @@ Required environment variables (names in `Backend/.env.example`):
 | `EMAIL_*`, `MAIL_FROM` | SMTP for OTP/notification mail |
 | `GOOGLE_*`, `GITHUB_*`, `MICROSOFT_*` | only if you keep social login; the `*_REDIRECT_URI` values must use the backend's https URL and be registered with each provider |
 
-**Storage.** SQLite is the database and uploads/generated images are written to `Backend/uploads` and `Backend/generated_images`. Use a host with a **persistent volume**, mount it at those two paths, and point `DATABASE_URL` at a file on it (e.g. `sqlite:////data/vatsa.db`). On an ephemeral filesystem every redeploy wipes users, payments and files. Python 3.14 was used locally; if the host lacks it, 3.12/3.13 should work but were not tested.
+**Storage.** SQLite is the database, and uploads and generated images are written to disk too. Set `DATA_DIR` to a directory on a **persistent disk** (e.g. `/data`) and all three go there; leave it unset locally. On an ephemeral filesystem every redeploy wipes users, payments and files. `Backend/render.yaml` is a Render blueprint that does this (paid instance + 5 GB disk + `DATA_DIR=/data`); it has not been run on Render. Render deploys from a Git repo, not a zip. Python 3.14 was used locally; the blueprint pins 3.13.5, which has not been tested against this app.
 
 Check: `GET https://<backend>/health` returns `{"status":"ok",…}` and `GET https://<backend>/payment/config` returns `"configured": true`.
 

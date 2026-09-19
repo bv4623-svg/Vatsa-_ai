@@ -15,7 +15,7 @@ logger = logging.getLogger("UploadRouter")
 router = APIRouter(prefix="/api", tags=["upload"])
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-UPLOAD_STORAGE_ROOT = os.path.join(BACKEND_DIR, "uploads")
+UPLOAD_STORAGE_ROOT = os.path.join(os.getenv("DATA_DIR") or BACKEND_DIR, "uploads")
 
 
 def sanitize_filename(raw: str) -> str:

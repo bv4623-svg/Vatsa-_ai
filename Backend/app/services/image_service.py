@@ -28,7 +28,7 @@ from app.services.library import register_item
 logger = logging.getLogger("ImageService")
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-STORAGE_ROOT = os.path.join(BACKEND_DIR, "generated_images")
+STORAGE_ROOT = os.path.join(os.getenv("DATA_DIR") or BACKEND_DIR, "generated_images")
 
 # Empirically, the watermark sits within the outer ~12% border of the
 # image regardless of exact placement (corner varies). Trimming that

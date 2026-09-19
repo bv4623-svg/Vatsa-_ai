@@ -44,6 +44,7 @@ Required environment variables (names in `Backend/.env.example`):
 | `FRONTEND_REDIRECT_URL` | your Netlify origin |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | test keys now, live keys at go-live |
 | `RAZORPAY_WEBHOOK_SECRET` | any strong string; paste the same one into the dashboard (§4) |
+| `ADMIN_EMAILS` | comma-separated emails allowed to look payments up at `/api/admin/payments?email=`; leave empty to disable. Each admin also needs 2FA on and a normal login session |
 | `OPENROUTER_API_KEY` | AI provider |
 | `EMAIL_*`, `MAIL_FROM` | SMTP for OTP/notification mail |
 | `GOOGLE_*`, `GITHUB_*`, `MICROSOFT_*` | only if you keep social login; the `*_REDIRECT_URI` values must use the backend's https URL and be registered with each provider |
@@ -95,7 +96,7 @@ Status as of this build.
 | 2 | INR from one documented rate, both currencies shown, USD first | PASS |
 | 3 | Razorpay is the only gateway; no other SDK or mention | PASS |
 | 4 | Secrets server-side only; `/payment/config` exposes only the public key id | PASS |
-| 5 | Signature verification + webhook + refund handling, covered by 15 backend tests | PASS |
+| 5 | Signature verification + webhook + refund handling, covered by 40 backend tests | PASS |
 | 6 | Home, Pricing, Contact, Privacy, Terms, Refund & Cancellation, About, Payments pages exist and link to each other | PASS |
 | 7 | No placeholder/stub pages (`/payment` was an empty stub and is rebuilt) | PASS |
 | 8 | Same business identity on every page (fake San Francisco address and `@vatsa.ai` emails removed) | PASS |

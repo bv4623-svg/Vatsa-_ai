@@ -9,6 +9,7 @@ import { AttachmentChip } from "@/components/home/AttachmentChip";
 import { AttachmentMenu } from "@/components/home/AttachmentMenu";
 import { ToolbarPopover } from "@/components/home/ToolbarPopover";
 import type { Attachment } from "@/types/home";
+import { useLocalHour } from "@/hooks/useLocalTime";
 
 const CHAT_SUGGESTIONS = [
   { label: "Build a Website", icon: <Code className="w-4 h-4" /> },
@@ -55,6 +56,8 @@ export function ChatEmptyState({
   showVoicePopover, setShowVoicePopover,
   fileInputRef, folderInputRef, onFileUpload, isFree,
 }: ChatEmptyStateProps) {
+  // null until hydrated: the static HTML cannot know the visitor's local time.
+  const hour = useLocalHour();
   return (
     <div className="flex min-h-full flex-col items-center justify-center px-4 py-12">
       <div className="mx-auto w-full max-w-[760px]">
@@ -63,7 +66,7 @@ export function ChatEmptyState({
           className="mb-6 text-center"
         >
           <h2 className="text-2xl font-medium text-foreground">
-            Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
+            {hour === null ? "Welcome" : `Good ${hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening"}`}
           </h2>
           <p className="mt-1 text-base text-muted-foreground">What would you like to build today?</p>
         </motion.div>

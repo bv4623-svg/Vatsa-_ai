@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Code, MessageSquare, Sparkles, Plus, ArrowRight } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { useLocalHour } from "@/hooks/useLocalTime";
 import Magnetic from "@/components/landing/Magnetic";
 
 const templates = [
@@ -15,8 +16,8 @@ const templates = [
 
 export function WorkspaceHome({ onQuickStart }: { onQuickStart: (prompt: string) => void }) {
   const { recentChats, pinnedProjects, getRecentChats, getPinnedProjects } = useWorkspaceStore();
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+  const hour = useLocalHour();
+  const greeting = hour === null ? "Welcome" : hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
 
   useEffect(() => {
     getRecentChats();

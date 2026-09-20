@@ -9,7 +9,8 @@ from app.models.user import User
 from app.models.token import TokenAccount, TokenTransaction
 from app.auth.jwt import get_password_hash, create_access_token
 
-FRONTEND_URL = os.getenv("FRONTEND_REDIRECT_URL", "http://localhost:3000")
+# Env FRONTEND_REDIRECT_URL, else the live site (see app/config/urls.py).
+from app.config.urls import FRONTEND_URL  # noqa: E402
 
 
 def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) -> User:

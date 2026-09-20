@@ -36,7 +36,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         # HSTS only makes sense once the site is actually served over HTTPS
         # -- sending it over plain HTTP dev traffic does nothing harmful,
-        # but gating it keeps local http://localhost runs from being
+        # but gating it keeps plain-http local runs from being
         # confusing about why a browser "remembers" HTTPS-only later.
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"

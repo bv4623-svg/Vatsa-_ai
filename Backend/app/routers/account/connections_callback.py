@@ -16,7 +16,7 @@ from app.routers.account.connections import (
 
 router = APIRouter()
 
-FRONTEND_URL = os.getenv("FRONTEND_REDIRECT_URL", "http://localhost:3000")
+from app.config.urls import FRONTEND_URL  # env FRONTEND_REDIRECT_URL, else the live site
 
 
 async def _fetch_google_identity(code: str) -> Tuple[str, Optional[str]]:

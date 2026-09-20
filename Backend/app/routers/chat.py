@@ -25,7 +25,7 @@ from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
 from app.services.feature_access import check_daily_limit, increment_usage
 
-BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://127.0.0.1:8000")
+from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else the live API
 
 logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])

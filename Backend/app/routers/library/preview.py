@@ -14,7 +14,7 @@ router = APIRouter()
 # Same absolute-URL pattern chat.py uses for generated-image <img> tags
 # embedded in message content -- the frontend renders this URL directly
 # against the backend, not through the Next.js proxy.
-BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://127.0.0.1:8000")
+from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else the live API
 
 # Read-only preview: enough to render something useful without shipping an
 # entire long-running chat's full history in one response.

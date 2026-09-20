@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from app.middleware import SecurityHeadersMiddleware
+from app.config.urls import allowed_origins
 
 from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, payment_history, tokens, upload, files, vision
@@ -55,8 +56,8 @@ app = FastAPI(title="Vatsa AI Backend", lifespan=lifespan)
 
 app.add_middleware(SecurityHeadersMiddleware)
 
-_DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
-_allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
+# ALLOWED_ORIGINS if set, else the live frontend and API (app/config/urls.py).
+_allowed_origins = allowed_origins()
 
 app.add_middleware(
     CORSMiddleware,

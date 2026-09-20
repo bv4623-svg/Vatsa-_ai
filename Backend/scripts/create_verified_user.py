@@ -40,6 +40,7 @@ import httpx
 from fastapi import HTTPException
 
 from app.auth.jwt import get_password_hash
+from app.config.urls import BACKEND_PUBLIC_URL
 from app.database import SessionLocal, init_db
 from app.models.token import TokenAccount, TokenTransaction
 from app.models.user import User
@@ -134,7 +135,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Create a user with a confirmed email and check that they can sign in.")
     parser.add_argument("email")
     parser.add_argument("--name", help="display name (default: the part of the email before @)")
-    parser.add_argument("--api", default=os.environ.get("VATSA_API_URL", "http://127.0.0.1:8000"),
+    parser.add_argument("--api", default=os.environ.get("VATSA_API_URL") or BACKEND_PUBLIC_URL,
                         help="backend to sign in against (default: %(default)s)")
     parser.add_argument("--no-login-check", action="store_true", help="only create the user")
     args = parser.parse_args()

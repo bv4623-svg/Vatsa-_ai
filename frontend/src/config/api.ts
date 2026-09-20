@@ -5,10 +5,11 @@
  * Set NEXT_PUBLIC_API_URL to the deployed API (e.g. https://api.example.com)
  * in Netlify's environment before building -- it is inlined at build time.
  * NEXT_PUBLIC_API_BASE is the legacy name and is still honoured. With
- * neither set (local development) it falls back to the local API server.
+ * neither set it falls back to the live API; local development points it
+ * elsewhere in .env.local.
  */
 export const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE ||
-  "http://localhost:8000"
+  "https://vatsa-ai.onrender.com"
 ).replace(/\/+$/, "");

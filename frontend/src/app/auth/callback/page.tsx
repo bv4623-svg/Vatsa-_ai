@@ -3,12 +3,14 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { establishSession } from "@/lib/session";
+import { useLocalYear } from "@/hooks/useLocalTime";
 
 function CallbackInner() {
   const router = useRouter();
   const params = useSearchParams();
 
   const [loading, setLoading] = useState(true);
+  const thisYear = useLocalYear();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [userData, setUserData] = useState<any>(null);
 
@@ -217,7 +219,7 @@ function CallbackInner() {
                   id="birthYear"
                   type="number"
                   min="1950"
-                  max={new Date().getFullYear()}
+                  max={thisYear ?? undefined}
                   required
                   value={birthYear}
                   onChange={(e) => setBirthYear(e.target.value)}

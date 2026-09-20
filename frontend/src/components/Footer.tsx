@@ -1,8 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 import { AIIcon } from '@/components/brand/AIIcon';
+import { useLocalYear } from '@/hooks/useLocalTime';
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = useLocalYear();
 
   return (
     <footer className="w-full border-t border-white/10 bg-black/40 backdrop-blur-md text-gray-300 py-8 px-6 md:px-12 mt-auto">
@@ -61,7 +64,7 @@ export default function Footer() {
         </div>
 
         <div className="text-xs text-gray-500 text-center md:text-right">
-          &copy; {currentYear} Vatsa AI. All rights reserved.
+          &copy; {currentYear === null ? "" : `${currentYear} `}Vatsa AI. All rights reserved.
         </div>
       </div>
     </footer>

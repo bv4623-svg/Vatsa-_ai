@@ -3,12 +3,12 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-// Same resolution as src/config/api.ts: the deployed API origin, with the
-// local server as the development default.
+// Same resolution as src/config/api.ts: the deployed API origin, defaulting
+// to the live API.
 const backendOrigin = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE ||
-  "http://127.0.0.1:8000"
+  "https://vatsa-ai.onrender.com"
 ).replace(/\/+$/, "");
 
 // No Content-Security-Policy on purpose: Razorpay's checkout script, iframe

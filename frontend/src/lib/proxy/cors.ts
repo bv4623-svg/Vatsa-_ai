@@ -3,7 +3,8 @@
  * website on the internet make credentialed cross-origin requests through
  * this proxy and read the response. Only an origin on this explicit
  * allowlist is ever echoed back. */
-const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+// The live site. Development adds its own origin through ALLOWED_ORIGINS.
+const DEFAULT_ALLOWED_ORIGINS = ["https://vatsaai.netlify.app"];
 
 function allowedOrigins(): string[] {
   const fromEnv = process.env.ALLOWED_ORIGINS;

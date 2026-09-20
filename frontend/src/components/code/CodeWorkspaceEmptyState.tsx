@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { ProjectFile } from "@/types/code";
 import { AIIcon } from "@/components/brand/AIIcon";
+import { useLocalHour } from "@/hooks/useLocalTime";
 
 const QUICK_SUGGESTIONS = [
   { label: "Build a website", icon: <Globe className="h-4 w-4" /> },
@@ -18,8 +19,24 @@ const QUICK_SUGGESTIONS = [
   { label: "Design a dashboard", icon: <Monitor className="h-4 w-4" /> },
 ];
 
+/** Small seeded generator (mulberry32). The suggestion list is built during
+ * render, so it must be identical on the server and in the browser: with
+ * Math.random it differed on every render, which is impure and can trip
+ * hydration. A fixed seed gives the same varied list every time. */
+function seededRandom(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function useSuggestionsCarousel(paused: boolean, active: boolean) {
   const allSuggestions = useMemo(() => {
+    const rand = seededRandom(20260101);
     const actions = ["Build","Create","Design","Develop","Write","Implement","Deploy","Optimize","Refactor","Test","Launch","Scale"];
     const topics = ["website","web app","mobile app","API","dashboard","component","tool","system","platform","SaaS"];
     const techs = ["React","Next.js","TypeScript","Node.js","Python","FastAPI","PostgreSQL","Redis","Docker","Tailwind","GraphQL","Prisma","Supabase"];
@@ -39,10 +56,10 @@ function useSuggestionsCarousel(paused: boolean, active: boolean) {
 
     const out = new Set<string>(hand);
     for (let i = 0; out.size < 60 && i < 500; i++) {
-      const a = actions[(Math.random() * actions.length) | 0];
-      const t = topics[(Math.random() * topics.length) | 0];
-      const tech = techs[(Math.random() * techs.length) | 0];
-      const sp = specifics[(Math.random() * specifics.length) | 0];
+      const a = actions[(rand() * actions.length) | 0];
+      const t = topics[(rand() * topics.length) | 0];
+      const tech = techs[(rand() * techs.length) | 0];
+      const sp = specifics[(rand() * specifics.length) | 0];
       out.add(`${a} a ${t} with ${tech} and ${sp}`);
     }
     return Array.from(out);
@@ -81,12 +98,9 @@ export function CodeWorkspaceEmptyState({
   const { current: currentSuggestion, index: suggestionIndex } =
     useSuggestionsCarousel(carouselPaused, Boolean(inputValue));
 
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
-  })();
+  const hour = useLocalHour();
+  const greeting =
+    hour === null ? "Welcome" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const handleAttachFile = () => {
     const input = document.createElement("input");

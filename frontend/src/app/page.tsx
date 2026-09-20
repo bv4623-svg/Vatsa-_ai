@@ -26,6 +26,7 @@ import { useAppStore } from "@/stores/app-store";
 import { PRICES_USD } from "@/config/pricing";
 import { ACCESS_NOTE, RATE_NOTE, formatPrice, getPlan, listPrice, DEFAULT_CURRENCY } from "@/data/plans";
 import { AIIcon } from "@/components/brand/AIIcon";
+import { useLocalHour } from "@/hooks/useLocalTime";
 
 // ─────────────────────────────────────────────────────────────
 // 1. DATA (full – unchanged)
@@ -2103,6 +2104,8 @@ function Hero({ onPalette, onAuth, onSuggestionClick, onPromptSubmit }: {
   const [modelsNow, setModelsNow] = useState(437);
   const [latencyNow, setLatencyNow] = useState(38);
   const inputRef = useRef<HTMLInputElement>(null);
+  // null until hydrated: the static HTML cannot know the visitor's local time.
+  const hour = useLocalHour();
 
   useEffect(() => {
     if (userActive) return;
@@ -2186,10 +2189,10 @@ function Hero({ onPalette, onAuth, onSuggestionClick, onPromptSubmit }: {
   };
 
   function greeting() {
-    const h = new Date().getHours();
-    if (h < 5) return "Good night";
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
+    if (hour === null) return "Welcome";
+    if (hour < 5) return "Good night";
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
     return "Good evening";
   }
 

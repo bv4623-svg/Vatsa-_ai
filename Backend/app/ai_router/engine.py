@@ -25,7 +25,7 @@ from app.ai_router.metrics import RouterMetrics
 from app.ai_router.providers.base import ProviderAdapter, ProviderResult
 from app.ai_router.registry import ModelRegistry
 from app.ai_router.retry import RetryPolicies, RetryPolicy
-from app.ai_router.sanitize import redact_identity
+from app.ai_router.sanitize import redact_identity, StreamingRedactor
 from app.ai_router.strategy import Strategy, StrategyContext, build_strategy, parse_weights
 from app.ai_router.types import EventType, GenerateResult, ModelSpec, RouteMeta, RouteRequest, StreamEvent
 from app.ai_router.usage import InMemoryUsageSink, LoggingUsageSink, UsageRecord, UsageSink, estimate_cost
@@ -290,6 +290,14 @@ class RouterEngine:
                 attempts_total += 1
                 call_start = time.monotonic()
                 self._inflight.begin(spec.id)
+                # One redactor per candidate attempt: it holds back the last
+                # few words instead of redacting each chunk in isolation, so
+                # a leak split across two chunks by the provider (e.g.
+                # "Google's" / " Gemini") is still caught as a whole -- see
+                # StreamingRedactor's docstring. flush()ed below wherever
+                # this attempt stops sending DELTA/THINKING events.
+                delta_redactor = StreamingRedactor(terms)
+                thinking_redactor = StreamingRedactor(terms)
                 try:
                     idle_timeout = min(self._config.timeout_s, max(0.05, deadline - time.monotonic()))
                     agen = adapter.stream(
@@ -305,15 +313,26 @@ class RouterEngine:
                         if event.type == EventType.THINKING:
                             if request.include_reasoning:
                                 started_output = True
-                                yield StreamEvent(EventType.THINKING, content=redact_identity(event.content, terms))
+                                piece = thinking_redactor.feed(event.content)
+                                if piece:
+                                    yield StreamEvent(EventType.THINKING, content=piece)
                             continue
                         if event.type == EventType.DELTA:
                             started_output = True
-                            yield StreamEvent(EventType.DELTA, content=redact_identity(event.content, terms))
+                            piece = delta_redactor.feed(event.content)
+                            if piece:
+                                yield StreamEvent(EventType.DELTA, content=piece)
                             continue
                         if event.type == EventType.USAGE:
                             usage_seen = event.usage
                             continue
+                    # Stream ended normally: release whatever was still held back.
+                    tail = thinking_redactor.flush()
+                    if tail:
+                        yield StreamEvent(EventType.THINKING, content=tail)
+                    tail = delta_redactor.flush()
+                    if tail:
+                        yield StreamEvent(EventType.DELTA, content=tail)
                 except (ProviderError, asyncio.TimeoutError) as exc:
                     err = exc if isinstance(exc, ProviderError) else ProviderError(
                         ErrorKind.TIMEOUT, detail="stream idle timeout"
@@ -327,6 +346,15 @@ class RouterEngine:
                             self._health.record_failure(spec.id, err.kind)
                         else:
                             breaker.cancel()
+                        # Release whatever text was still held back for cross-chunk
+                        # redaction before telling the client the stream broke --
+                        # it was legitimately sent before the failure, not lost.
+                        tail = thinking_redactor.flush()
+                        if tail:
+                            yield StreamEvent(EventType.THINKING, content=tail)
+                        tail = delta_redactor.flush()
+                        if tail:
+                            yield StreamEvent(EventType.DELTA, content=tail)
                         duration_ms = (time.monotonic() - start) * 1000
                         self._record_usage(request, spec, status="truncated", error=err.kind.value,
                                             usage=usage_seen, duration_ms=duration_ms)

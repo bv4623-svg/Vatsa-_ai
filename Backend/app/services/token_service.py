@@ -4,11 +4,6 @@ from datetime import datetime
 from app.models.user import User
 from app.models.token import TokenAccount, TokenTransaction
 
-PREMIUM_MODELS = {
-    "claude-opus-5", "claude-3.5-sonnet", "anthropic/claude-3.5-sonnet",
-    "gpt-5.6-luna", "openai/gpt-4o", "gemini-3.6-flash", "google/gemini-2.5-pro"
-}
-
 # Used only when a caller doesn't yet pass `premium=` explicitly (see
 # check_allowance below). Prefer ModelRegistry.is_route_premium() for new code.
 PREMIUM_MODELS_LEGACY_MARKERS = ("claude", "gpt-4o", "sonnet", "opus", "pro")

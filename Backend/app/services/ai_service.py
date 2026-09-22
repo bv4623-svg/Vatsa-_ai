@@ -6,11 +6,24 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.services.memory_service import MemoryService
 from app.services.token_service import TokenService
+from app.services.feature_access import user_tier
 from app.ai_router import get_router
 from app.ai_router.errors import RouterError
 from app.ai_router.types import Capability, RouteRequest
 
 logger = logging.getLogger("AIService")
+
+# Backs the "Priority queue" line on the pricing page (Pro/Business only --
+# see frontend/src/data/plans.matrix.ts). Lower number = served first under
+# load; AdmissionController sheds the highest-numbered priorities first when
+# a process is near AI_MAX_INFLIGHT (see app/ai_router/admission.py). Free
+# requests aren't refused because of this alone -- they just have less
+# reserved capacity, and are the first shed if the process is genuinely
+# overloaded.
+def _priority_for(user: User, is_code: bool) -> int:
+    if user_tier(user) == "free":
+        return 3
+    return 2 if is_code else 1
 
 # Public name shown anywhere a real provider/model identifier would
 # otherwise leak (API responses, token-ledger entries, persisted
@@ -135,7 +148,7 @@ class AIService:
             # looking like they got the reasoning they explicitly asked for.
             allow_fallback=not reasoning,
             include_reasoning=reasoning,
-            priority=2 if is_code else 1,
+            priority=_priority_for(user, is_code),
             user_id=user.id,
         )
 
@@ -344,7 +357,7 @@ class AIService:
             required=frozenset(required),
             allow_fallback=not reasoning,
             include_reasoning=reasoning,
-            priority=2 if is_code else 1,
+            priority=_priority_for(user, is_code),
             user_id=user.id,
         )
 

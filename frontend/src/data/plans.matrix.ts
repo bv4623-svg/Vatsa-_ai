@@ -19,8 +19,12 @@ export const FEATURE_MATRIX: FeatureRow[] = [
   { label: "Code sandbox",           values: { free: false, pro: true,  business: true } },
   { label: "Priority queue",         values: { free: false, pro: true,  business: true } },
   { label: "Deep research",          values: { free: false, pro: false, business: true } },
-  { label: "Team collaboration",     values: { free: false, pro: false, business: true } },
-  { label: "SSO",                    values: { free: false, pro: false, business: true } },
   { label: "API access (beta)",      values: { free: false, pro: true,  business: true } },
-  { label: "Custom SLAs",            values: { free: false, pro: false, business: true } },
 ];
+
+// Removed from here on 2026-09-25: "Team collaboration", "SSO" and "Custom
+// SLAs" were advertised on the Business tier with no backing implementation
+// anywhere in the product (no team/org data model, no SAML/OIDC enterprise
+// login beyond the existing per-user Google/GitHub/Microsoft OAuth, no SLA
+// monitoring/credit system) -- see the audit notes in the PR that removed
+// them. Re-add a row here only once the feature is real.

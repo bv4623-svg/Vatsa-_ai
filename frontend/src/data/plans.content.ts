@@ -8,11 +8,19 @@ export const MODEL_PARTNERS = [
   "Grok", "Midjourney", "Poe", "Qwen", "Ollama", "Anthropic",
 ];
 
+// Each of these is something this product actually does today -- see
+// Backend/app/auth/jwt.py (bcrypt), Backend/app/routers/auth/twofactor.py
+// (2FA), and the account-deletion/memory-export flow. Replaced the previous
+// list ("Enterprise Security", "99.9% Uptime", "GDPR Compliant", "24/7
+// Support") on 2026-09-25: none of those were backed by an actual SLA,
+// support operation, or compliance review, and "GDPR Compliant" in
+// particular is a legal claim that needs a real compliance review before
+// it's said publicly, not a marketing phrase -- do not re-add it without one.
 export const TRUST_BADGES = [
-  "Enterprise Security",
-  "99.9% Uptime",
-  "GDPR Compliant",
-  "24/7 Support",
+  "HTTPS Encrypted",
+  "Passwords Hashed, Never Stored in Plain Text",
+  "Two-Factor Authentication Available",
+  "Export or Delete Your Data Anytime",
 ];
 
 function priceSentence(): string {

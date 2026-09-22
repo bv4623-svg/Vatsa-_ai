@@ -27,12 +27,30 @@ def soft_delete_account(db: Session, user: User) -> None:
 
 
 def _tables_with_user_id(db: Session) -> list:
-    rows = db.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
+    """Table/column names come from the database's own schema catalog here,
+    never from user input, so the f-strings below (in _cascade_delete_user)
+    are safe -- but the catalog queries themselves are SQLite-specific
+    (sqlite_master, PRAGMA table_info). information_schema is the portable
+    equivalent for PostgreSQL. Not verified against a live PostgreSQL server
+    (none was available while writing this) -- the SQLite path is unchanged
+    and still covered by the existing test suite.
+    """
+    dialect = db.bind.dialect.name if db.bind is not None else "sqlite"
     tables = []
-    for (name,) in rows:
-        cols = db.execute(text(f"PRAGMA table_info({name})")).fetchall()
-        if any(c[1] == "user_id" for c in cols):
-            tables.append(name)
+    if dialect == "sqlite":
+        rows = db.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
+        for (name,) in rows:
+            cols = db.execute(text(f"PRAGMA table_info({name})")).fetchall()
+            if any(c[1] == "user_id" for c in cols):
+                tables.append(name)
+    else:
+        rows = db.execute(
+            text(
+                "SELECT DISTINCT table_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND column_name = 'user_id'"
+            )
+        ).fetchall()
+        tables = [name for (name,) in rows]
     return tables
 
 

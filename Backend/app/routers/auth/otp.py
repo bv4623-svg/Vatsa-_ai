@@ -17,6 +17,12 @@ from app.routers.auth.schemas import OtpSendRequest, OtpVerifyRequest, ResetPass
 router = APIRouter(tags=["authentication"])
 logger = logging.getLogger("AuthOTP")
 
+# Minimum gap between two OTP sends to the same email+purpose, so mashing
+# "Resend code" can't spray outbound emails or churn through the 5-per-10-min
+# cap in a few seconds. Backed by the same (Redis-ready) limiter as every
+# other auth rate limit -- see app/utils/rate_limit.py.
+RESEND_COOLDOWN_SECONDS = 45
+
 # Off by default everywhere, including production, so an OTP code never lands
 # in server logs. Set DEBUG_LOG_OTP=true only in local development, when SMTP
 # isn't configured yet and there's no other way to read the code that was
@@ -36,6 +42,11 @@ def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db
     # Per-IP cap on top of the per-email one below, so one source can't
     # spray OTP requests (and outbound emails) across many target addresses.
     enforce_rate_limit(f"otp-send:ip:{client_ip(request)}", limit=20, window_seconds=600)
+
+    # Minimum gap between consecutive sends to this email+purpose (see
+    # RESEND_COOLDOWN_SECONDS) -- independent of the 5-per-10-min cap below,
+    # which only stops sustained abuse, not a user double-clicking "resend".
+    enforce_rate_limit(f"otp-cooldown:{email}:{purpose}", limit=1, window_seconds=RESEND_COOLDOWN_SECONDS)
 
     # Rate limit — max 5 in 10 min
     recent = (

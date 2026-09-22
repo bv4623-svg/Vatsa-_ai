@@ -64,7 +64,7 @@ export const PRICING_FAQS: FaqEntry[] = [
   {
     question: "How does smart routing work?",
     answer:
-      "Smart routing automatically picks the best model (Claude, GPT, Gemini, DeepSeek, etc.) for each request based on task, cost, and latency.",
+      "Smart routing automatically picks the best available model for each request based on the task, with automatic fallback if one is slow or unavailable. The underlying model configuration is managed internally.",
   },
   {
     question: "Is my data secure?",

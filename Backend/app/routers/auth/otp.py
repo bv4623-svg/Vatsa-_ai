@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+import logging
 import os
 import secrets
 
@@ -14,6 +15,13 @@ from app.services.password_policy import validate_password_strength
 from app.routers.auth.schemas import OtpSendRequest, OtpVerifyRequest, ResetPasswordRequest
 
 router = APIRouter(tags=["authentication"])
+logger = logging.getLogger("AuthOTP")
+
+# Off by default everywhere, including production, so an OTP code never lands
+# in server logs. Set DEBUG_LOG_OTP=true only in local development, when SMTP
+# isn't configured yet and there's no other way to read the code that was
+# generated -- see the missing-env-var 503 below.
+_DEBUG_LOG_OTP = (os.getenv("DEBUG_LOG_OTP") or "").strip().lower() in {"1", "true", "yes"}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -54,7 +62,12 @@ def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db
     db.add(otp)
     db.commit()
 
-    print(f"\n[OTP] Generated for {email}: {code}  (purpose={purpose})\n", flush=True)
+    if _DEBUG_LOG_OTP:
+        # Local development only (see _DEBUG_LOG_OTP above) -- never enabled
+        # by default, so a real OTP code can never end up in production logs.
+        print(f"\n[OTP][DEBUG_LOG_OTP] Generated for {email}: {code}  (purpose={purpose})\n", flush=True)
+    else:
+        logger.info(f"OTP generated for {email} (purpose={purpose})")
 
     missing = [k for k in ("EMAIL_USERNAME", "EMAIL_PASSWORD") if not os.getenv(k)]
     if missing:
@@ -132,8 +145,14 @@ def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
         if not user.is_active:
             raise HTTPException(400, "User account is deactivated")
 
+        # "tv" (token_version) must be on every login token -- it's what lets
+        # a password reset or "sign out other devices" revoke a session (see
+        # get_current_user). Every other login path (core.py, oauth/shared.py,
+        # twofactor.py) already sets it; this one was missing it, which meant
+        # a token minted via OTP login stayed valid forever, even through a
+        # password reset that was supposed to kill it.
         token = create_access_token(
-            {"sub": str(user.id), "email": user.email, "name": user.full_name}
+            {"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version}
         )
         return {
             "verified": True,

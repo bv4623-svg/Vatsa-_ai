@@ -24,6 +24,7 @@ from app.services.chat_projects import get_project_instructions_for_conversation
 from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
 from app.services.feature_access import check_daily_limit, increment_usage
+from app.ai_router.errors import RouterError
 
 from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else the live API
 
@@ -270,7 +271,10 @@ async def _stream_chat_response(
                 yield f"data: {json.dumps({'delta': event['delta']})}\n\n"
             elif "error" in event:
                 logger.warning(f"Stream error for user {user.id}: {event['error']}")
-                yield f"data: {json.dumps({'error': event['error']})}\n\n"
+                payload = {"error": event["error"]}
+                if event.get("retry_after"):
+                    payload["retry_after"] = event["retry_after"]
+                yield f"data: {json.dumps(payload)}\n\n"
                 return
             elif event.get("done"):
                 full_text = event["content"]
@@ -388,6 +392,13 @@ async def chat_endpoint(
         )
     except ValueError as ve:
         raise HTTPException(status_code=402, detail=str(ve))
+    except RouterError as e:
+        # e.public_message / str(e) are already safe to show a user -- the
+        # router never lets a raw provider error or model name reach here.
+        logger.warning(f"Router error for user {user.id}: {type(e).__name__}: {e}")
+        status_code = 503 if e.code == "ai_busy" else 502
+        headers = {"Retry-After": str(int(e.retry_after))} if e.retry_after else None
+        raise HTTPException(status_code=status_code, detail=e.public_message, headers=headers)
     except Exception as e:
         # Log the real error (may name a provider/model) server-side only;
         # never forward exception text to the client -- it can contain

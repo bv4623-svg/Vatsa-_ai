@@ -62,8 +62,15 @@ const LANGUAGES = [
   { value: "zh", label: "Chinese" },
   // ... add all languages you support
 ];
+// These ids are the actual route names the backend's AI Router understands
+// (see Backend/app/ai_router/config.py's builtin_registry) -- keep them in
+// sync with that file, not with any specific underlying provider/model,
+// which is never exposed here (see Backend/app/ai_router/sanitize.py).
 const MODELS: Array<{ id: string; name: string; desc: string; badge: string }> = [
-  // ... real model list from your backend or store
+  { id: "auto", name: "Vatsa AI", desc: "Balanced for everyday chat and coding", badge: "Recommended" },
+  { id: "vatsa-pro", name: "Vatsa AI Pro", desc: "Strongest reasoning for complex work", badge: "Pro" },
+  { id: "vatsa-advanced", name: "Vatsa AI Advanced", desc: "Deep, nuanced responses", badge: "Advanced" },
+  { id: "vatsa-fast", name: "Vatsa AI Fast", desc: "Fastest responses for quick tasks", badge: "Fast" },
 ];
 const VOICES = ["Amy", "Brian", "Emma", "James", "Sofia"];
 
@@ -407,7 +414,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             </>
           )}
 
-          {/* ─── Models (real model list from store) ─── */}
+          {/* ─── Models ─── */}
           {section === "models" && (
             <>
               <Row title="Default model" desc="Applied to every new conversation." stacked>

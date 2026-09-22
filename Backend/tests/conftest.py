@@ -13,7 +13,51 @@ os.environ["RAZORPAY_WEBHOOK_SECRET"] = "unit-test-webhook-secret"
 import pytest
 from fastapi.testclient import TestClient
 
+# Importing app.main runs load_dotenv(Backend/.env) as a side effect. A real
+# developer .env sitting there can carry real third-party credentials, and
+# load_dotenv's default `override=False` only protects a var that's already
+# set -- popping one beforehand doesn't stop this load from setting it right
+# back. So these are cleared AFTER the import instead. Without this, a test
+# that reaches an under-tested code path -- e.g. POST /auth/otp/send actually
+# calling send_otp_email -- silently makes a live network call using them
+# instead of failing fast and deterministically. Found the hard way: the OTP
+# resend-cooldown tests were making real SMTP connections to Gmail with this
+# machine's real (rejected) app password. Add to this list if a new
+# external-credential env var is introduced.
 from app.main import app
+
+_LEAKY_ENV_VARS = (
+    "EMAIL_USERNAME", "EMAIL_PASSWORD",
+    "OPENROUTER_API_KEY",
+    "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_SECRET", "MICROSOFT_CLIENT_SECRET",
+    "SERPER_API_KEY", "TAVILY_API_KEY", "BRAVE_API_KEY", "GOOGLE_CSE_API_KEY",
+)
+
+
+def _clear_leaky_env() -> None:
+    for name in _LEAKY_ENV_VARS:
+        os.environ.pop(name, None)
+
+
+_clear_leaky_env()
+
+
+@pytest.fixture(autouse=True)
+def _no_real_external_credentials():
+    """Re-clears _LEAKY_ENV_VARS before every test, not just once at import
+    time. Needed because scripts/create_verified_user.py (imported by
+    tests/test_create_verified_user.py) calls load_dotenv() again on its own
+    -- python-dotenv's default override=False only protects a var that's
+    already set, so once something pops these, a later load_dotenv() call
+    anywhere in the process puts the developer's real Backend/.env values
+    right back via os.environ.setdefault(). Found the hard way: with only a
+    one-time clear at collection time, tests that ran later in the full
+    suite (alphabetically after test_create_verified_user.py) were making
+    real SMTP calls to Gmail with this machine's real credentials."""
+    _clear_leaky_env()
+    yield
+
+
 from app.database import SessionLocal
 from app.auth.jwt import get_password_hash
 from app.models.user import User

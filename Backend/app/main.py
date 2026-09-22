@@ -66,6 +66,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Browsers only expose a small header safelist to JS by default --
+    # Retry-After is used by rate-limited/overloaded responses (login, OTP
+    # send/resend, the AI router's 503) and needs this to be readable via
+    # fetch()/axios in the frontend.
+    expose_headers=["Retry-After"],
 )
 
 # Include all routers

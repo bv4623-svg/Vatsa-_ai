@@ -119,9 +119,18 @@ def enforce_rate_limit(key: str, limit: int, window_seconds: int) -> None:
     """Raise 429 once `key` exceeds `limit` hits inside `window_seconds`."""
     allowed, retry_after = _backend.hit(key, limit, window_seconds)
     if not allowed:
+        # Short waits get an exact count (useful for a resend-code cooldown);
+        # longer ones keep the vaguer phrasing -- "try again in 823 seconds"
+        # reads worse than "in a few minutes" once it's more than ~a minute and
+        # a half out.
+        message = (
+            f"Too many attempts. Try again in {retry_after} seconds."
+            if retry_after <= 90
+            else "Too many attempts. Try again in a few minutes."
+        )
         raise HTTPException(
             status_code=429,
-            detail="Too many attempts. Try again in a few minutes.",
+            detail=message,
             headers={"Retry-After": str(retry_after)},
         )
 

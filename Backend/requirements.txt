@@ -26,3 +26,6 @@ python-multipart>=0.0.9
 # Optional: only imported when REDIS_URL is set (see app/utils/rate_limit.py).
 # Needed for distributed rate limiting across more than one API instance.
 redis>=5.0
+# Optional: only needed when DATABASE_URL points at PostgreSQL instead of the
+# default SQLite file (see app/database.py). Not required for local dev.
+psycopg2-binary>=2.9

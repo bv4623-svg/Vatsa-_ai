@@ -353,6 +353,23 @@ class AIService:
         # caller (chat.py / the scheduled-task runner) decides how to surface it.
         result = await router.generate(request)
 
+        prompt_tokens = result.usage.prompt_tokens if result.usage else 0
+        completion_tokens = result.usage.completion_tokens if result.usage else 0
+        total_tokens = result.usage.total_tokens if result.usage else (prompt_tokens + completion_tokens)
+
+        # Regression note: this call was dropped in an earlier rewrite of this
+        # method (routing generate_response through the AI Router), so a
+        # non-streaming request never deducted tokens at all. Caught by
+        # tests/test_chat_and_vision_integration.py::test_chat_non_streaming_end_to_end,
+        # which asserts a TokenTransaction actually exists after the call.
+        TokenService.deduct_tokens(
+            db=db,
+            user_id=user.id,
+            tokens=total_tokens,
+            reason="AI response",
+            model=PUBLIC_MODEL_NAME,
+        )
+
         return {
             "status": "success",
             "query": query,
@@ -363,9 +380,9 @@ class AIService:
             "reasoning": result.reasoning if reasoning else "",
             "selected_model": PUBLIC_MODEL_NAME,
             "usage": {
-                "prompt_tokens": result.usage.prompt_tokens if result.usage else 0,
-                "completion_tokens": result.usage.completion_tokens if result.usage else 0,
-                "total_tokens": result.usage.total_tokens if result.usage else 0,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
             },
             "workspace": workspace,
             "vis": 95 if is_code else 85,

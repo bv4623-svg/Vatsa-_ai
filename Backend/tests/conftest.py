@@ -9,6 +9,15 @@ os.environ["JWT_SECRET_KEY"] = "test-secret-not-used-anywhere-else"
 os.environ["RAZORPAY_KEY_ID"] = "rzp_test_unit"
 os.environ["RAZORPAY_KEY_SECRET"] = "unit-test-secret"
 os.environ["RAZORPAY_WEBHOOK_SECRET"] = "unit-test-webhook-secret"
+# app.utils.rate_limit picks its backend ONCE, at import time (a module-level
+# singleton) -- unlike EMAIL_USERNAME/etc below, which are re-read fresh on
+# every call, popping this *after* importing app.main would be too late: the
+# real REDIS_URL from .env would already have selected a live Redis backend
+# for the whole test run. Setting it to "" (not leaving it unset) matters too:
+# load_dotenv()'s default override=False only refuses to touch a key that
+# already exists, even with an empty value -- an absent key would still get
+# repopulated from .env's real value.
+os.environ["REDIS_URL"] = ""
 
 import pytest
 from fastapi.testclient import TestClient

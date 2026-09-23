@@ -19,7 +19,7 @@ load_dotenv(env_path if env_path.exists() else None)
 import logging
 import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from contextlib import asynccontextmanager
@@ -31,6 +31,13 @@ from app.middleware.metrics import MetricsMiddleware
 from app.middleware.timeout import RequestTimeoutMiddleware
 from app.config.urls import allowed_origins
 from app.observability import check_database, check_email_configured, check_redis, db_pool_status, http_metrics
+from app.utils.log_redaction import install as install_log_redaction
+
+# Applied at import time (before any router/service logger below can emit a
+# line) so a secret can never slip out through a log call made during
+# startup either -- see app/utils/log_redaction.py for why this needs more
+# than just `logging.getLogger().addFilter(...)`.
+install_log_redaction()
 
 from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, payment_history, tokens, upload, files, vision
@@ -63,11 +70,37 @@ async def lifespan(app: FastAPI):
     shutdown_scheduler()
 
 
-app = FastAPI(title="Vatsa AI Backend", lifespan=lifespan)
+# /docs, /redoc and the raw OpenAPI schema are disabled in production so the
+# route/schema surface (including anything that could hint at internals) is
+# never publicly browsable outside dev/staging.
+_is_production = os.getenv("ENV") == "production"
+
+app = FastAPI(
+    title="Vatsa AI Backend",
+    lifespan=lifespan,
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
+)
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestTimeoutMiddleware)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catches anything that isn't already a controlled HTTPException (those
+    keep going through FastAPI's normal handling, unaffected by this) --
+    an unexpected bug, an unhandled library error, anything. The client
+    never sees exception text (which could contain a stack trace, a DB
+    error, a file path, or a library version); the full detail is only
+    ever logged server-side."""
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "internal_error", "message": "Something went wrong"}},
+    )
 
 # ALLOWED_ORIGINS if set, else the live frontend and API (app/config/urls.py).
 _allowed_origins = allowed_origins()

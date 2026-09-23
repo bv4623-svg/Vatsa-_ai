@@ -13,6 +13,13 @@ tsconfig.tsbuildinfo
 .DS_Store
 .aider*
 Backend/generated_images/
+venv/
+.venv/
+*.env
+.env.*.local
+.pytest_cache/
+dist/
+build/
 
 # Built static site for Netlify Drop (generated, not source)
 netlify-drop/

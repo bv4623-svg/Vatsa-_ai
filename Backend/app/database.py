@@ -46,7 +46,18 @@ else:
     )
     logger.info("DB pool: size=%d overflow=%d recycle=%ds", _pool_size, _max_overflow, _pool_recycle)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# expire_on_commit=False: without it, every attribute access on an ORM
+# object AFTER any db.commit() in the same request re-issues a SELECT to
+# refresh it (SQLAlchemy's default), even though nothing else changed the
+# row -- measured live: a single /api/chat call issued ~20 real queries,
+# several of them re-fetching the same User/Conversation row after an
+# unrelated commit elsewhere in the same request (e.g. TokenService
+# deducting tokens commits, then the handler goes on to read user.tier).
+# The ~30 explicit db.refresh() calls already in this codebase are exactly
+# the places that DO need a fresh value right after a commit (e.g. a
+# server-generated id/timestamp); this only removes the *implicit*,
+# blanket refresh everywhere else.
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 Base = declarative_base()
 
 def get_db() -> Generator:

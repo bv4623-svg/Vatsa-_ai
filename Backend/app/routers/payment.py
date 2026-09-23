@@ -15,6 +15,7 @@ from app.services.feature_access import user_tier
 from app.services.payment_service import (
     PaymentService, PaymentNotConfigured, PaymentProviderError,
 )
+from app.utils.rate_limit import client_ip, enforce_rate_limit
 
 logger = logging.getLogger("PaymentWebhook")
 
@@ -73,9 +74,14 @@ def payment_config():
 @router.post("/api/payment/create-order")
 def create_order(
     req: CreateOrderRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Each call hits Razorpay's real Orders API -- unbounded, this is both
+    # an external-cost and an abuse vector (spamming orders nobody pays for).
+    enforce_rate_limit(f"payment-create-order:user:{current_user.id}", limit=10, window_seconds=600)
+    enforce_rate_limit(f"payment-create-order:ip:{client_ip(request)}", limit=20, window_seconds=600)
     try:
         return PaymentService.create_order(db, current_user, req.plan_id, req.currency)
     except ValueError as e:
@@ -90,9 +96,12 @@ def create_order(
 @router.post("/api/payment/verify")
 def verify_payment(
     req: VerifyPaymentRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_rate_limit(f"payment-verify:user:{current_user.id}", limit=20, window_seconds=600)
+    enforce_rate_limit(f"payment-verify:ip:{client_ip(request)}", limit=40, window_seconds=600)
     result = PaymentService.verify_payment(
         db=db,
         user=current_user,

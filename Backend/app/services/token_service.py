@@ -1,3 +1,4 @@
+from sqlalchemy import update, case
 from sqlalchemy.orm import Session
 from typing import Tuple, List, Optional
 from datetime import datetime
@@ -66,19 +67,40 @@ class TokenService:
         model: Optional[str] = None,
         reference_id: Optional[str] = None
     ) -> TokenTransaction:
+        """Atomic at the SQL level (UPDATE ... SET balance = CASE ...), not
+        a Python-side read-modify-write. This app's Session has
+        expire_on_commit=False (see database.py): an `acc` object loaded
+        earlier in the same request (e.g. by check_allowance, well before
+        a slow AI stream finishes) keeps its in-memory balance even after
+        a concurrent request or webhook commits a change to the same row.
+        `acc.balance -= tokens_to_deduct; commit()` would silently
+        overwrite that concurrent change with a stale value -- a lost
+        update that can wipe out tokens a user purchased seconds earlier.
+        Same pattern already used by app/services/feature_access.py's
+        increment_usage."""
         acc = TokenService.get_or_create_account(db, user_id)
         tokens_to_deduct = max(0, tokens)
-        new_balance = max(0, acc.balance - tokens_to_deduct)
 
-        acc.balance = new_balance
-        acc.total_used += tokens_to_deduct
-        acc.updated_at = datetime.utcnow()
+        db.execute(
+            update(TokenAccount)
+            .where(TokenAccount.user_id == user_id)
+            .values(
+                balance=case(
+                    (TokenAccount.balance - tokens_to_deduct < 0, 0),
+                    else_=TokenAccount.balance - tokens_to_deduct,
+                ),
+                total_used=TokenAccount.total_used + tokens_to_deduct,
+                updated_at=datetime.utcnow(),
+            )
+        )
+        db.commit()
+        db.refresh(acc)  # acc.balance now reflects the real, just-written value
 
         tx = TokenTransaction(
             user_id=user_id,
             type="usage",
             amount=-tokens_to_deduct,
-            balance_after=new_balance,
+            balance_after=acc.balance,
             reason=reason,
             model=model,
             reference_id=reference_id
@@ -109,18 +131,24 @@ class TokenService:
 
         acc = TokenService.get_or_create_account(db, user_id)
         tokens_to_add = max(0, tokens)
-        new_balance = acc.balance + tokens_to_add
 
-        acc.balance = new_balance
+        values = {
+            "balance": TokenAccount.balance + tokens_to_add,
+            "updated_at": datetime.utcnow(),
+        }
         if tx_type == "purchase":
-            acc.total_purchased += tokens_to_add
-        acc.updated_at = datetime.utcnow()
+            values["total_purchased"] = TokenAccount.total_purchased + tokens_to_add
+        db.execute(
+            update(TokenAccount).where(TokenAccount.user_id == user_id).values(**values)
+        )
+        db.commit()
+        db.refresh(acc)  # acc.balance now reflects the real, just-written value
 
         tx = TokenTransaction(
             user_id=user_id,
             type=tx_type,
             amount=tokens_to_add,
-            balance_after=new_balance,
+            balance_after=acc.balance,
             reason=reason,
             reference_id=reference_id
         )

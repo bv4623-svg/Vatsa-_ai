@@ -83,6 +83,23 @@ def _no_real_external_credentials():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Every test's TestClient shares one fake IP, and the in-process rate
+    limiter backend (REDIS_URL="" in tests, see above) is one shared
+    module-level object for the whole test session -- without this, a
+    per-IP limit with a long enough window (e.g. payment endpoints' 10
+    minutes) accumulates hits across unrelated tests in other files and
+    starts 429-ing tests that never touch the limit intentionally. Found
+    the hard way: adding a per-IP rate limit to /payment/create-order and
+    /payment/verify broke ~25 previously-passing tests across three other
+    files that don't test rate limiting at all."""
+    from app.utils import rate_limit
+    rate_limit._backend._buckets.clear()
+    rate_limit._local_fallback._buckets.clear()
+    yield
+
+
 from app.database import SessionLocal
 from app.auth.jwt import get_password_hash
 from app.models.user import User

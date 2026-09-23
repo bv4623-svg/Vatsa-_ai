@@ -1,7 +1,9 @@
+import re
+import json
 import base64
+import logging
 from typing import Optional
-
-from fastapi import Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,8 +15,41 @@ from app.ai_router import get_router
 from app.ai_router.errors import RouterError
 from app.ai_router.types import Capability, RouteRequest
 
-from app.routers.vision.parsing import _ANALYSIS_PROMPT, _parse_vision_response
-from app.routers.vision.router import router, logger, MAX_IMAGE_BYTES, ALLOWED_CONTENT_TYPES
+logger = logging.getLogger("VisionRouter")
+router = APIRouter(prefix="/api/vision", tags=["vision"])
+
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+_ANALYSIS_PROMPT = (
+    "Analyze this image carefully. Respond with ONLY a JSON object (no markdown "
+    "fences, no extra commentary) in exactly this shape:\n"
+    '{"description": "a detailed description of the scene, mood, and composition", '
+    '"tags": ["short", "keyword", "tags"], '
+    '"objects": ["key objects or people visible"], '
+    '"extracted_text": "any text visible in the image via OCR, or an empty string if none"}'
+)
+
+_FENCE_RE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
+
+
+def _parse_vision_response(raw: str) -> dict:
+    text = (raw or "").strip()
+    fence = _FENCE_RE.match(text)
+    if fence:
+        text = fence.group(1)
+    try:
+        data = json.loads(text)
+        return {
+            "description": data.get("description") or "",
+            "tags": data.get("tags") or [],
+            "objects": data.get("objects") or [],
+            "extracted_text": data.get("extracted_text") or "",
+        }
+    except (json.JSONDecodeError, AttributeError):
+        # Model didn't follow the JSON format -- still return something
+        # useful rather than failing the whole request over formatting.
+        return {"description": text, "tags": [], "objects": [], "extracted_text": ""}
 
 
 @router.post("/analyze")

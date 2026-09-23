@@ -89,23 +89,34 @@ class RedisRateLimitBackend:
 def _build_backend() -> RateLimitBackend:
     redis_url = (os.getenv("REDIS_URL") or "").strip()
     if not redis_url:
+        logger.info("rate_limiter backend: in-process fallback (REDIS_URL not set)")
         return InMemoryRateLimitBackend()
     try:
         import redis  # optional dependency; only required when REDIS_URL is set
         client = redis.Redis.from_url(redis_url, socket_timeout=2, socket_connect_timeout=2)
         client.ping()
-        logger.info("Rate limiting is backed by Redis")
+        logger.info("rate_limiter backend: redis")
         return RedisRateLimitBackend(client)
     except Exception:
         logger.exception(
-            "REDIS_URL is set but Redis could not be reached (or the `redis` "
-            "package is not installed); falling back to in-process rate "
-            "limiting. This is NOT safe with more than one API instance."
+            "rate_limiter backend: in-process fallback (REDIS_URL is set but "
+            "Redis could not be reached, or the `redis` package is not "
+            "installed). This is NOT safe with more than one API instance."
         )
         return InMemoryRateLimitBackend()
 
 
 _backend: RateLimitBackend = _build_backend()
+
+# Always available regardless of what _backend is, so a Redis outage that
+# happens AFTER startup (as opposed to REDIS_URL being unreachable when
+# _build_backend() ran) has somewhere safe to fall back to. _build_backend()
+# only handles the startup case -- once _backend is a RedisRateLimitBackend,
+# it stays that object for the rest of the process, so a later connection
+# error from Redis itself would otherwise propagate out of enforce_rate_limit
+# as a 500 on every rate-limited endpoint (login, OTP, 2FA, ...) instead of
+# degrading. See tests/test_rate_limit_backends.py.
+_local_fallback = InMemoryRateLimitBackend()
 
 
 def client_ip(request: Request) -> str:
@@ -117,7 +128,15 @@ def client_ip(request: Request) -> str:
 
 def enforce_rate_limit(key: str, limit: int, window_seconds: int) -> None:
     """Raise 429 once `key` exceeds `limit` hits inside `window_seconds`."""
-    allowed, retry_after = _backend.hit(key, limit, window_seconds)
+    try:
+        allowed, retry_after = _backend.hit(key, limit, window_seconds)
+    except Exception:
+        # Never let a transport error from the rate limiter itself take down
+        # an unrelated request. Falls back to per-process limiting for this
+        # call rather than either crashing or (worse) silently allowing
+        # unlimited attempts through.
+        logger.exception("rate_limiter backend unavailable mid-request; falling back to in-process for this call")
+        allowed, retry_after = _local_fallback.hit(key, limit, window_seconds)
     if not allowed:
         # Short waits get an exact count (useful for a resend-code cooldown);
         # longer ones keep the vaguer phrasing -- "try again in 823 seconds"
@@ -137,5 +156,12 @@ def enforce_rate_limit(key: str, limit: int, window_seconds: int) -> None:
 
 def reset_rate_limit(key: str) -> None:
     """Called after a successful sign-in so one bad typo streak doesn't
-    keep counting against a user who then got it right."""
-    _backend.reset(key)
+    keep counting against a user who then got it right. Clears both the
+    primary backend and the local fallback -- if Redis was briefly down
+    during the earlier failed attempts, the count could be sitting in
+    either one."""
+    for backend in {id(_backend): _backend, id(_local_fallback): _local_fallback}.values():
+        try:
+            backend.reset(key)
+        except Exception:
+            logger.exception("rate_limiter backend unavailable; could not reset a key on it")

@@ -8,7 +8,9 @@ crashing the process.
 import pytest
 from fastapi import HTTPException
 
-from app.utils.rate_limit import InMemoryRateLimitBackend, RedisRateLimitBackend, _build_backend, enforce_rate_limit
+from app.utils.rate_limit import (
+    InMemoryRateLimitBackend, RedisRateLimitBackend, _build_backend, enforce_rate_limit, reset_rate_limit,
+)
 
 
 def test_in_memory_allows_up_to_the_limit_then_blocks():
@@ -122,3 +124,93 @@ def test_enforce_rate_limit_raises_429_with_retry_after_header():
         assert "Retry-After" in exc_info.value.headers
     finally:
         mod._backend = original
+
+
+class _DeadRedisClient:
+    """Stands in for a redis-py client whose connection has dropped: every
+    command raises, matching what redis.exceptions.ConnectionError/TimeoutError
+    look like from the caller's side."""
+
+    def incr(self, key):
+        raise ConnectionError("Redis connection dropped (simulated)")
+
+    def expire(self, key, seconds):
+        raise ConnectionError("Redis connection dropped (simulated)")
+
+    def ttl(self, key):
+        raise ConnectionError("Redis connection dropped (simulated)")
+
+    def delete(self, key):
+        raise ConnectionError("Redis connection dropped (simulated)")
+
+
+def test_enforce_rate_limit_degrades_instead_of_crashing_when_redis_dies_mid_process():
+    """Regression test: found live against the real vatsa-redis container --
+    _build_backend() only handles Redis being unreachable at startup. Once
+    _backend is a RedisRateLimitBackend, a LATER connection failure (Redis
+    restarts, network blip, container stopped) used to propagate straight out
+    of enforce_rate_limit() as an unhandled exception -- every rate-limited
+    endpoint (login, OTP send, 2FA, admin-payments) would 500 instead of
+    falling back. See app/utils/rate_limit.py's _local_fallback."""
+    import app.utils.rate_limit as mod
+    original_backend = mod._backend
+    original_fallback = mod._local_fallback
+    mod._backend = RedisRateLimitBackend(_DeadRedisClient())
+    mod._local_fallback = InMemoryRateLimitBackend()
+    try:
+        enforce_rate_limit("dead-redis-key", limit=1, window_seconds=60)  # must not raise
+        with pytest.raises(HTTPException) as exc_info:
+            enforce_rate_limit("dead-redis-key", limit=1, window_seconds=60)
+        assert exc_info.value.status_code == 429  # the in-process fallback enforced it
+    finally:
+        mod._backend = original_backend
+        mod._local_fallback = original_fallback
+
+
+def test_reset_rate_limit_does_not_raise_when_redis_is_dead():
+    import app.utils.rate_limit as mod
+    original_backend = mod._backend
+    mod._backend = RedisRateLimitBackend(_DeadRedisClient())
+    try:
+        reset_rate_limit("dead-redis-key")  # must not raise
+    finally:
+        mod._backend = original_backend
+
+
+# -- Optional live-Redis tests: run only when a real Redis is reachable at
+# the URL below, so this suite stays deterministic in environments without
+# one (e.g. plain `pytest` with no REDIS_URL configured). This project's dev
+# setup runs one in Docker as `vatsa-redis`. --------------------------------
+def _live_redis_client():
+    try:
+        import redis
+    except ImportError:
+        return None
+    try:
+        client = redis.Redis.from_url("redis://localhost:6379/0", socket_timeout=1, socket_connect_timeout=1)
+        client.ping()
+        return client
+    except Exception:
+        return None
+
+
+@pytest.mark.skipif(_live_redis_client() is None, reason="no live Redis reachable at redis://localhost:6379/0")
+def test_redis_backend_against_a_real_live_redis_server():
+    client = _live_redis_client()
+    backend = RedisRateLimitBackend(client)
+    key = "pytest-live-redis-check"
+    client.delete(f"ratelimit:{key}")
+    try:
+        allowed, _ = backend.hit(key, limit=2, window_seconds=5)
+        assert allowed is True
+        allowed, _ = backend.hit(key, limit=2, window_seconds=5)
+        assert allowed is True
+        allowed, retry_after = backend.hit(key, limit=2, window_seconds=5)
+        assert allowed is False
+        assert 0 < retry_after <= 5
+        ttl = client.ttl(f"ratelimit:{key}")
+        assert 0 < ttl <= 5  # a real TTL, set by a real EXPIRE, read back from a real server
+        backend.reset(key)
+        assert client.exists(f"ratelimit:{key}") == 0
+    finally:
+        client.delete(f"ratelimit:{key}")

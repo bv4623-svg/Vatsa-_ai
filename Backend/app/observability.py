@@ -8,8 +8,9 @@ codes, latency and path/method labels only.
 from __future__ import annotations
 
 import logging
+import threading
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from sqlalchemy import text
 
@@ -73,6 +74,35 @@ class HttpMetrics:
 
 
 http_metrics = HttpMetrics()
+
+
+class RouteStatusCounters:
+    """HTTP status code counts broken down by matched ROUTE PATTERN (e.g.
+    "/api/conversations/{conv_id}", not the resolved "/api/conversations/
+    7f3a..."). Route patterns are a small, fixed set (one per registered
+    endpoint) fixed at startup, so this can't grow unbounded the way
+    counting by raw resolved path could -- see app/middleware/
+    request_logging.py, which is the only writer."""
+
+    def __init__(self) -> None:
+        self._counts: Dict[Tuple[str, str, int], int] = {}
+        self._lock = threading.Lock()
+
+    def record(self, method: str, route_pattern: str, status_code: int) -> None:
+        key = (method, route_pattern, status_code)
+        with self._lock:
+            self._counts[key] = self._counts.get(key, 0) + 1
+
+    def prometheus(self) -> str:
+        lines = []
+        for (method, route, status), count in sorted(self._counts.items()):
+            lines.append(
+                f'http_requests_by_route_total{{method="{method}",route="{route}",status="{status}"}} {count}'
+            )
+        return "\n".join(lines) + ("\n" if lines else "")
+
+
+route_status_counters = RouteStatusCounters()
 
 
 def db_pool_status() -> Dict[str, Any]:

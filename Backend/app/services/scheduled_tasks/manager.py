@@ -1,6 +1,8 @@
 import logging
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.base import JobLookupError
+from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.triggers.cron import CronTrigger
 
 from app.database import SessionLocal
@@ -8,7 +10,46 @@ from app.models.scheduled_task import ScheduledTask
 from app.services.scheduled_tasks.runner import run_scheduled_task_sync
 
 logger = logging.getLogger("ScheduledTaskManager")
-scheduler = BackgroundScheduler()
+
+
+def _build_jobstore():
+    """MemoryJobStore (APScheduler's own default) unless REDIS_URL is set
+    and reachable, in which case every worker process shares the same job
+    definitions instead of each keeping its own separate copy -- same
+    fallback shape as app/utils/rate_limit.py and app/utils/cache.py.
+    Sharing the job store alone does not stop two workers from both firing
+    the same job at the same tick; locking.py's run-lock is what actually
+    prevents a double execution."""
+    redis_url = (os.getenv("REDIS_URL") or "").strip()
+    if not redis_url:
+        logger.info("scheduler jobstore: in-process (single worker; REDIS_URL not set)")
+        return MemoryJobStore()
+    try:
+        from apscheduler.jobstores.redis import RedisJobStore
+        import redis as redis_pkg
+        # RedisJobStore takes its own connection kwargs (not a URL) --
+        # parsed once here so REDIS_URL stays the single source of truth
+        # everywhere else in the app already reads it from.
+        conn = redis_pkg.Redis.from_url(redis_url, socket_timeout=2, socket_connect_timeout=2)
+        conn.ping()
+        store = RedisJobStore(
+            host=conn.connection_pool.connection_kwargs.get("host", "localhost"),
+            port=conn.connection_pool.connection_kwargs.get("port", 6379),
+            db=conn.connection_pool.connection_kwargs.get("db", 0),
+            password=conn.connection_pool.connection_kwargs.get("password"),
+        )
+        logger.info("scheduler jobstore: redis")
+        return store
+    except Exception:
+        logger.exception(
+            "scheduler jobstore: in-process fallback (REDIS_URL is set but "
+            "Redis could not be reached, or the `redis` package is not "
+            "installed). This is NOT safe with more than one worker process."
+        )
+        return MemoryJobStore()
+
+
+scheduler = BackgroundScheduler(jobstores={"default": _build_jobstore()})
 
 
 def _job_id(task_id: str) -> str:

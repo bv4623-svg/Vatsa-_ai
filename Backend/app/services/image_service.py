@@ -24,11 +24,13 @@ from sqlalchemy.orm import Session
 
 from app.models.generated_image import GeneratedImage
 from app.services.library import register_item
+from app.services.storage import get_storage_backend
 
 logger = logging.getLogger("ImageService")
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STORAGE_ROOT = os.path.join(os.getenv("DATA_DIR") or BACKEND_DIR, "generated_images")
+_storage = get_storage_backend(STORAGE_ROOT)
 
 # Empirically, the watermark sits within the outer ~12% border of the
 # image regardless of exact placement (corner varies). Trimming that
@@ -120,13 +122,8 @@ async def generate_and_store_image(db: Session, user_id: int, prompt: str) -> Di
     processed = _process_image(raw)
 
     image_id = uuid.uuid4().hex
-    user_dir = os.path.join(STORAGE_ROOT, str(user_id))
-    os.makedirs(user_dir, exist_ok=True)
-    abs_path = os.path.join(user_dir, f"{image_id}.png")
-    with open(abs_path, "wb") as f:
-        f.write(processed)
-
     relative_path = os.path.join(str(user_id), f"{image_id}.png")
+    _storage.put(relative_path, processed)
     record = GeneratedImage(id=image_id, user_id=user_id, file_path=relative_path, prompt=prompt)
     db.add(record)
     db.commit()
@@ -145,4 +142,10 @@ async def generate_and_store_image(db: Session, user_id: int, prompt: str) -> Di
 
 
 def resolve_image_path(file_path: str) -> str:
-    return os.path.join(STORAGE_ROOT, file_path)
+    # Identical to the pre-abstraction `os.path.join(STORAGE_ROOT, file_path)`
+    # when STORAGE_BACKEND=local (the default). With STORAGE_BACKEND=s3 this
+    # returns an object URL instead of a local path -- app/routers/files.py's
+    # FileResponse(...) still expects a local path either way, so S3-mode
+    # read-serving through that route is not wired up yet; only the write
+    # side (generate_and_store_image below) is migrated to the abstraction.
+    return _storage.url(file_path)

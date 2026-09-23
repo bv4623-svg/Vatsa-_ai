@@ -29,15 +29,27 @@ from typing import List, Optional
 from app.middleware import SecurityHeadersMiddleware
 from app.middleware.metrics import MetricsMiddleware
 from app.middleware.timeout import RequestTimeoutMiddleware
+from app.middleware.request_logging import RequestLoggingMiddleware
 from app.config.urls import allowed_origins
-from app.observability import check_database, check_email_configured, check_redis, db_pool_status, http_metrics
+from app.observability import check_database, check_email_configured, check_redis, db_pool_status, http_metrics, route_status_counters
 from app.utils.log_redaction import install as install_log_redaction
+from app.utils.structured_logging import install as install_structured_logging
+from app.utils.sentry_integration import init_sentry, capture_exception as capture_exception_to_sentry
+from app.utils.cache import counters as cache_counters
 
 # Applied at import time (before any router/service logger below can emit a
 # line) so a secret can never slip out through a log call made during
 # startup either -- see app/utils/log_redaction.py for why this needs more
 # than just `logging.getLogger().addFilter(...)`.
 install_log_redaction()
+# Sets up the root logger's actual output handler (JSON in production,
+# human-readable in dev) -- also re-applies the redaction filter above to
+# this new handler, since it did not exist yet when install_log_redaction()
+# ran a moment ago.
+install_structured_logging()
+# No-op unless SENTRY_DSN is set (and, even then, only if the optional
+# sentry-sdk package is installed -- see the module docstring).
+init_sentry()
 
 from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, payment_history, tokens, upload, files, vision
@@ -97,6 +109,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     error, a file path, or a library version); the full detail is only
     ever logged server-side."""
     logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    capture_exception_to_sentry(exc)
     return JSONResponse(
         status_code=500,
         content={"error": {"code": "internal_error", "message": "Something went wrong"}},
@@ -117,6 +130,7 @@ app.add_middleware(
     # fetch()/axios in the frontend.
     expose_headers=["Retry-After"],
 )
+app.add_middleware(RequestLoggingMiddleware)
 
 # Include all routers
 app.include_router(chat.router)
@@ -207,6 +221,10 @@ def metrics():
     redis_state = check_redis()
     redis_value = {"ok": 1, "not_configured": -1, "unreachable": 0}.get(redis_state, -1)
     lines.append(f"redis_connection_state {redis_value}\n")
+    cache_hits, cache_misses = cache_counters.snapshot()
+    lines.append(f"cache_hit_total {cache_hits}\n")
+    lines.append(f"cache_miss_total {cache_misses}\n")
+    lines.append(route_status_counters.prometheus())
     return PlainTextResponse("".join(lines), media_type="text/plain; version=0.0.4")
 
 

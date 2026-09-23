@@ -15,6 +15,12 @@ if os.getenv("TEST_AGAINST_REAL_DATABASE_URL") == "1":
 else:
     _tmp = tempfile.mkdtemp(prefix="vatsa-test-")
     os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+# Without this, UPLOAD_STORAGE_ROOT/STORAGE_ROOT (app/routers/upload.py,
+# app/services/image_service.py) default to the real Backend/uploads and
+# Backend/generated_images directories -- a test that actually exercises
+# POST /api/upload or generate_and_store_image would write real files
+# into the project tree instead of a throwaway directory.
+os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="vatsa-test-data-"))
 os.environ["JWT_SECRET_KEY"] = "test-secret-not-used-anywhere-else"
 os.environ["RAZORPAY_KEY_ID"] = "rzp_test_unit"
 os.environ["RAZORPAY_KEY_SECRET"] = "unit-test-secret"

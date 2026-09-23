@@ -25,11 +25,20 @@ from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
 from app.services.feature_access import check_daily_limit, increment_usage
 from app.ai_router.errors import RouterError
+from app.utils.rate_limit import enforce_rate_limit
 
 from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else the live API
 
 logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])
+
+# Short-window burst guard, independent of the per-day chat_messages/
+# code_messages caps in feature_access.py -- those alone don't stop a script
+# from burning through a whole day's allowance in a few seconds. Redis-backed
+# when REDIS_URL is set (see app/utils/rate_limit.py), so it holds across
+# every API instance, not just the one that happens to receive the burst.
+CHAT_BURST_LIMIT = 30
+CHAT_BURST_WINDOW_SECONDS = 60
 
 
 def _extract_and_save_memory(user_id: int, message_text: str) -> None:
@@ -308,6 +317,8 @@ async def chat_endpoint(
 ):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    enforce_rate_limit(f"chat-burst:user:{user.id}", limit=CHAT_BURST_LIMIT, window_seconds=CHAT_BURST_WINDOW_SECONDS)
 
     user_settings = user.settings or {}
     chosen_model = req.model or req.preferred_model or user_settings.get("defaultModel") or "auto"

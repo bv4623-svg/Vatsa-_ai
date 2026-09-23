@@ -1,9 +1,12 @@
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pathlib import Path
 import os
 from typing import Generator, Optional
+
+logger = logging.getLogger("Database")
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 # DATA_DIR moves everything this app writes (database, uploads, generated
@@ -31,13 +34,17 @@ else:
     # closed, and pool_size/max_overflow/pool_recycle are configurable per
     # deployment rather than hardcoded. Defaults are conservative for a
     # single small instance; raise DB_POOL_SIZE alongside API instance count.
+    _pool_size = int(os.getenv("DB_POOL_SIZE", "5"))
+    _max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+    _pool_recycle = int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800"))
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         pool_pre_ping=True,
-        pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
-        max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
-        pool_recycle=int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800")),
+        pool_size=_pool_size,
+        max_overflow=_max_overflow,
+        pool_recycle=_pool_recycle,
     )
+    logger.info("DB pool: size=%d overflow=%d recycle=%ds", _pool_size, _max_overflow, _pool_recycle)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

@@ -1,18 +1,24 @@
 """app/database.py's _ensure_column() used to be SQLite-only (PRAGMA
 table_info, and DDL literals like "DATETIME"/"DEFAULT 0" that PostgreSQL
 either doesn't have or is stricter about) -- it would have crashed init_db()
-outright on first run against Postgres. These tests exercise the
-SQLite path for real (same engine the rest of the suite uses) and the
-PostgreSQL path against a fake connection/dialect, since no live Postgres
-server is available in this environment -- that part is NOT an end-to-end
-verification against real PostgreSQL, only of this function's own SQL and
-control flow. See the docstring on _ensure_column for the same caveat.
+outright on first run against Postgres. These tests exercise the SQLite path
+for real (whichever dialect this suite is actually running against -- see
+the skip guard below and tests/conftest.py's TEST_AGAINST_REAL_DATABASE_URL)
+and the PostgreSQL path against a fake connection/dialect for the case where
+this suite is running on SQLite as usual. The Postgres branch has since also
+been verified against a real, live PostgreSQL 16 server (by running this
+whole suite with TEST_AGAINST_REAL_DATABASE_URL=1) -- see the PR history for
+that run's results; that verification isn't repeated here on every run since
+it requires a real server.
 """
 from unittest.mock import MagicMock
+
+import pytest
 
 from app.database import _ensure_column, engine
 
 
+@pytest.mark.skipif(engine.dialect.name != "sqlite", reason="exercises the SQLite-specific branch only")
 def test_ensure_column_sqlite_adds_a_missing_column_and_is_idempotent(client):
     # `client` (session-scoped) has already run the app's startup, which
     # calls init_db() and creates every table -- needed before ALTER TABLE.

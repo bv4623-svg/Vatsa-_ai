@@ -16,16 +16,21 @@ from dotenv import load_dotenv
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(env_path if env_path.exists() else None)
 
+import logging
 import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, PlainTextResponse
 from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from app.middleware import SecurityHeadersMiddleware
+from app.middleware.metrics import MetricsMiddleware
+from app.middleware.timeout import RequestTimeoutMiddleware
 from app.config.urls import allowed_origins
+from app.observability import check_database, check_email_configured, check_redis, db_pool_status, http_metrics
 
 from app.routers import chat, profile, conversations, auth as auth_router
 from app.routers import memory, payment, payment_history, tokens, upload, files, vision
@@ -42,13 +47,18 @@ from app.services.account import register_account_jobs
 
 # Initialize intent classifier singleton
 intent_classifier = IntentClassifier()
+logger = logging.getLogger("Startup")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    init_scheduler()
-    register_account_jobs()
+    try:
+        init_db()
+        init_scheduler()
+        register_account_jobs()
+    except Exception:
+        logger.exception("Startup failed -- refusing to serve traffic")
+        raise
     yield
     shutdown_scheduler()
 
@@ -56,6 +66,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Vatsa AI Backend", lifespan=lifespan)
 
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(MetricsMiddleware)
+app.add_middleware(RequestTimeoutMiddleware)
 
 # ALLOWED_ORIGINS if set, else the live frontend and API (app/config/urls.py).
 _allowed_origins = allowed_origins()
@@ -117,7 +129,52 @@ class ClassifyResponse(BaseModel):
 
 @app.get("/health")
 def health():
+    """Liveness only: no DB/Redis call, so this stays fast (<50ms) and
+    healthy even if a downstream dependency is degraded -- a load balancer
+    should use /ready for that instead, not this one."""
     return {"status": "ok", "intents_loaded": len(INTENTS)}
+
+
+@app.get("/ready")
+def ready():
+    """Readiness for a load balancer: only returns 200 once every
+    dependency this process actually needs is reachable. Email is checked
+    for configuration presence only, not a live SMTP handshake -- see
+    app/observability.py:check_email_configured for why."""
+    db_ok = check_database()
+    redis_state = check_redis()  # "ok" | "not_configured" | "unreachable"
+    email_ok = check_email_configured()
+    checks = {
+        "database": "ok" if db_ok else "unreachable",
+        "redis": redis_state,
+        "email_configured": email_ok,
+    }
+    # Redis is optional (falls back to in-process rate limiting on a single
+    # instance) -- only "unreachable" (configured but broken) fails
+    # readiness, not "not_configured".
+    is_ready = db_ok and redis_state != "unreachable"
+    return JSONResponse(
+        status_code=200 if is_ready else 503,
+        content={"ready": is_ready, "checks": checks},
+    )
+
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus text exposition format. Deliberately public (matches how
+    Prometheus itself is normally scraped) and deliberately free of
+    secrets, per-user data, and provider/model names -- those live on the
+    separate admin-gated /api/admin/ai-router/status and /metrics instead
+    (see app/routers/ai_router_status.py)."""
+    lines = [http_metrics.prometheus()]
+    pool = db_pool_status()
+    for key, value in pool.items():
+        if isinstance(value, (int, float)):
+            lines.append(f'db_pool_{key}{{dialect="{pool.get("dialect", "?")}"}} {value}\n')
+    redis_state = check_redis()
+    redis_value = {"ok": 1, "not_configured": -1, "unreachable": 0}.get(redis_state, -1)
+    lines.append(f"redis_connection_state {redis_value}\n")
+    return PlainTextResponse("".join(lines), media_type="text/plain; version=0.0.4")
 
 
 @app.get("/intents")

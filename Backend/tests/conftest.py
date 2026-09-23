@@ -3,8 +3,18 @@ import tempfile
 
 # Set before anything imports app.*, so the app boots against a throwaway
 # database and known Razorpay credentials instead of the developer's own.
-_tmp = tempfile.mkdtemp(prefix="vatsa-test-")
-os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+# TEST_AGAINST_REAL_DATABASE_URL=1 is a deliberate, explicit opt-in escape
+# hatch to run this exact suite against a real DATABASE_URL (e.g. the
+# Postgres in .env) for one-off verification, without changing the default:
+# every other invocation still gets a throwaway, isolated SQLite file, which
+# is what keeps this suite fast and side-effect-free.
+if os.getenv("TEST_AGAINST_REAL_DATABASE_URL") == "1":
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+    assert os.getenv("DATABASE_URL"), "TEST_AGAINST_REAL_DATABASE_URL=1 but .env has no DATABASE_URL"
+else:
+    _tmp = tempfile.mkdtemp(prefix="vatsa-test-")
+    os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
 os.environ["JWT_SECRET_KEY"] = "test-secret-not-used-anywhere-else"
 os.environ["RAZORPAY_KEY_ID"] = "rzp_test_unit"
 os.environ["RAZORPAY_KEY_SECRET"] = "unit-test-secret"

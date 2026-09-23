@@ -89,7 +89,7 @@ class RedisRateLimitBackend:
 def _build_backend() -> RateLimitBackend:
     redis_url = (os.getenv("REDIS_URL") or "").strip()
     if not redis_url:
-        logger.info("rate_limiter backend: in-process fallback (REDIS_URL not set)")
+        logger.warning("rate_limiter backend: in-process (dev only) -- REDIS_URL not set")
         return InMemoryRateLimitBackend()
     try:
         import redis  # optional dependency; only required when REDIS_URL is set

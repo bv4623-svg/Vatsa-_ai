@@ -16,8 +16,15 @@ from app.services.password_policy import validate_password_strength
 from sqlalchemy.orm.attributes import flag_modified
 from typing import Any, Dict
 from app.services.feature_access import user_tier, check_daily_limit
+from app.utils.cache import cache_get, cache_set, cache_delete
 
 router = APIRouter(tags=["authentication"])
+
+_PROFILE_CACHE_TTL_SECONDS = 60
+
+
+def _profile_cache_key(user_id: int) -> str:
+    return f"profile:{user_id}"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -173,6 +180,19 @@ def login_form(request: Request, form_data: OAuth2PasswordRequestForm = Depends(
 @router.get("/api/auth/me")
 @router.get("/api/profile")
 def get_current_user_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Short TTL (see _PROFILE_CACHE_TTL_SECONDS), not fully invalidated on
+    # every write: token balance and daily usage counts here change from
+    # many call sites across the app (every chat/code/image/search request,
+    # every payment) -- invalidating this cache from all of them would be
+    # a large, risky blast radius for a field that's already fine to show
+    # up to a minute stale. update_settings/complete_onboarding below (the
+    # two writes that live in this same file) still invalidate explicitly,
+    # since those should feel instant.
+    cache_key = _profile_cache_key(user.id)
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     token_acc = db.query(TokenAccount).filter_by(user_id=user.id).first()
     balance = token_acc.balance if token_acc else 50000
     tier = user_tier(user)
@@ -180,7 +200,7 @@ def get_current_user_profile(user: User = Depends(get_current_user), db: Session
     for feature in ("chat_messages", "code_messages", "image_gen", "web_search"):
         _, used, limit = check_daily_limit(db, user, feature)
         usage[feature] = {"used": used, "limit": limit}
-    return {
+    result = {
         "id": user.id, "email": user.email,
         "name": user.full_name or user.email.split("@")[0],
         "full_name": user.full_name or user.email.split("@")[0],
@@ -194,6 +214,8 @@ def get_current_user_profile(user: User = Depends(get_current_user), db: Session
         "settings": user.settings or {},
         "twoFactorEnabled": user.two_factor_enabled,
     }
+    cache_set(cache_key, result, _PROFILE_CACHE_TTL_SECONDS)
+    return result
 
 
 @router.patch("/auth/settings")
@@ -224,6 +246,7 @@ def update_settings(
     flag_modified(user, "settings")
     db.commit()
     db.refresh(user)
+    cache_delete(_profile_cache_key(user.id))
     return {"settings": user.settings}
 
 
@@ -255,4 +278,5 @@ def complete_onboarding(
     user.profile_completed = True
     db.commit()
     db.refresh(user)
+    cache_delete(_profile_cache_key(user.id))
     return {"success": True, "message": "Onboarding completed", "user": user.to_dict()}

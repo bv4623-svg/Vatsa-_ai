@@ -14,10 +14,14 @@ from app.models.payment import Payment
 from app.models.subscription import Subscription
 from app.services import payment_ledger as ledger
 from app.services.token_service import TokenService
+from app.utils.cache import cache_get, cache_set
 
 logger = logging.getLogger("PaymentService")
 
 RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders"
+
+_PLANS_CACHE_KEY = "payment:plans"
+_PLANS_CACHE_TTL_SECONDS = 300  # PLANS never changes at runtime; long TTL is fine
 
 _PLAN_META = {
     "pro":      {"label": "Pro",      "tokens": 500000,  "tier": "pro"},
@@ -95,6 +99,15 @@ def _create_razorpay_order(key_id: str, key_secret: str, amount: int, currency: 
 class PaymentService:
     @staticmethod
     def get_plans() -> Dict[str, Dict[str, Any]]:
+        # PLANS is a fixed in-memory dict built once at import time -- this
+        # cache_get/cache_set round trip is mostly here for parity with
+        # the other read paths (and to exercise the hit/miss counters on
+        # this always-cheap endpoint too), not because computing PLANS is
+        # itself expensive.
+        cached = cache_get(_PLANS_CACHE_KEY)
+        if cached is not None:
+            return cached
+        cache_set(_PLANS_CACHE_KEY, PLANS, _PLANS_CACHE_TTL_SECONDS)
         return PLANS
 
     @staticmethod

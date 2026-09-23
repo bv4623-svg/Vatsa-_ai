@@ -10,12 +10,14 @@ from app.database import get_db
 from app.models.user import User
 from app.services.library import register_item, check_quota
 from app.services.account import notify_quota_warning
+from app.services.storage import get_storage_backend
 
 logger = logging.getLogger("UploadRouter")
 router = APIRouter(prefix="/api", tags=["upload"])
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UPLOAD_STORAGE_ROOT = os.path.join(os.getenv("DATA_DIR") or BACKEND_DIR, "uploads")
+_storage = get_storage_backend(UPLOAD_STORAGE_ROOT)
 
 
 def sanitize_filename(raw: str) -> str:
@@ -169,11 +171,8 @@ async def upload_file(
     # flow that reads it back is unaffected by -- this is additive).
     if current_user:
         try:
-            user_dir = os.path.join(UPLOAD_STORAGE_ROOT, str(current_user.id))
-            os.makedirs(user_dir, exist_ok=True)
             storage_path = os.path.join(str(current_user.id), f"{file_id}_{filename}")
-            with open(os.path.join(UPLOAD_STORAGE_ROOT, storage_path), "wb") as f:
-                f.write(raw)
+            _storage.put(storage_path, raw)
 
             register_item(
                 db, current_user.id, "upload", name=filename, size_bytes=len(raw),

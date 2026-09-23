@@ -1,10 +1,12 @@
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pathlib import Path
 import os
 from typing import Generator, Optional
+
+from app.utils.request_context import record_db_query
 
 logger = logging.getLogger("Database")
 
@@ -45,6 +47,16 @@ else:
         pool_recycle=_pool_recycle,
     )
     logger.info("DB pool: size=%d overflow=%d recycle=%ds", _pool_size, _max_overflow, _pool_recycle)
+
+
+@event.listens_for(engine, "after_cursor_execute")
+def _count_query_for_request_log(conn, cursor, statement, parameters, context, executemany):
+    """Feeds the db_query_count field on the per-request structured log
+    (see app/middleware/request_logging.py). A no-op with no request in
+    flight (a scheduled task's own session, a script) -- see
+    app/utils/request_context.py."""
+    record_db_query()
+
 
 # expire_on_commit=False: without it, every attribute access on an ORM
 # object AFTER any db.commit() in the same request re-issues a SELECT to

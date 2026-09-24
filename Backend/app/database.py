@@ -19,6 +19,13 @@ raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 
 if "sqlite+aiosqlite" in raw_db_url:
     SQLALCHEMY_DATABASE_URL = raw_db_url.replace("sqlite+aiosqlite", "sqlite")
+elif raw_db_url.startswith("postgres://"):
+    # SQLAlchemy 1.4+ dropped the bare "postgres://" scheme (some providers,
+    # notably Heroku historically, hand out URLs in that form) -- only
+    # "postgresql://" loads the dialect. Neon's own dashboard already gives
+    # "postgresql://", so this is a defensive normalization for whatever
+    # DATABASE_URL actually arrives with, not a query-param or sslmode change.
+    SQLALCHEMY_DATABASE_URL = "postgresql://" + raw_db_url[len("postgres://"):]
 else:
     SQLALCHEMY_DATABASE_URL = raw_db_url
 

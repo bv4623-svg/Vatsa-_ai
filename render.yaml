@@ -3,7 +3,7 @@ services:
     name: vatsaai-backend
     runtime: docker
     region: singapore
-    plan: starter
+    plan: free
     dockerfilePath: ./Backend/Dockerfile
     dockerContext: ./Backend
     healthCheckPath: /health
@@ -12,14 +12,9 @@ services:
       - key: ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: vatsaai-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: vatsaai-redis
-          property: connectionString
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: EMAIL_USERNAME
@@ -52,40 +47,15 @@ services:
         value: https://api.vatsaai.com
       - key: FRONTEND_REDIRECT_URL
         value: https://vatsaai.com
+      - key: STORAGE_BACKEND
+        value: local
       - key: DB_POOL_SIZE
-        value: "20"
+        value: "5"
       - key: DB_MAX_OVERFLOW
-        value: "40"
+        value: "10"
       - key: DB_POOL_RECYCLE_SECONDS
         value: "1800"
       - key: CACHE_ENABLED
         value: "true"
-      # Optional -- only used if set (see Backend/.env.example). Left as
-      # sync: false placeholders so Render prompts for them without any
-      # real value ever living in this file.
-      - key: STORAGE_BACKEND
-        value: local
-      - key: S3_ENDPOINT
+      - key: ADMIN_EMAILS
         sync: false
-      - key: S3_REGION
-        sync: false
-      - key: S3_BUCKET
-        sync: false
-      - key: S3_ACCESS_KEY
-        sync: false
-      - key: S3_SECRET_KEY
-        sync: false
-      - key: SENTRY_DSN
-        sync: false
-
-  - type: redis
-    name: vatsaai-redis
-    region: singapore
-    plan: starter
-    ipAllowList: []
-
-databases:
-  - name: vatsaai-db
-    region: singapore
-    plan: starter
-    postgresMajorVersion: "16"

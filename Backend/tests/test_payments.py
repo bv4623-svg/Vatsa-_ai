@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from app.models.subscription import Subscription
 from app.models.user import User
-from app.services.payment_service import PLANS
+from app.services.payment_service import PLANS, resolve_plan
 from app.services.subscription_expiry import expire_subscriptions
 
 KEY_SECRET = "unit-test-secret"
@@ -34,17 +34,22 @@ def refresh_tier(db, user):
 
 
 def test_catalog_is_exactly_the_two_prices_in_both_currencies():
+    # USD is the fixed catalog (PLANS); INR is resolved fresh per call from
+    # the live/cached exchange rate (see app/services/exchange_rate.py and
+    # the autouse _deterministic_exchange_rate fixture, which pins it to
+    # the historical 83 rate here), rounded to the nearest ten rupees --
+    # 24*83=1992 -> 1990, 99*83=8217 -> 8220.
     assert {k: v["amount_paise"] for k, v in PLANS.items()} == {
         "pro:USD": 24 * 100,
         "business:USD": 99 * 100,
-        "pro:INR": 24 * 83 * 100,
-        "business:INR": 99 * 83 * 100,
     }
+    assert resolve_plan("pro", "INR")["amount_paise"] == 1990 * 100
+    assert resolve_plan("business", "INR")["amount_paise"] == 8220 * 100
 
 
 def test_order_amounts_match_catalog(client, make_user, fake_razorpay):
     _, headers = make_user()
-    cases = [("pro", "USD", 2400), ("business", "USD", 9900), ("pro", "INR", 199200), ("business", "INR", 821700)]
+    cases = [("pro", "USD", 2400), ("business", "USD", 9900), ("pro", "INR", 199000), ("business", "INR", 822000)]
     for plan_id, currency, expected in cases:
         res = create_order(client, headers, plan_id, currency)
         assert res.status_code == 200, res.text

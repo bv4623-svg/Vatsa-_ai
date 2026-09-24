@@ -10,8 +10,9 @@ import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 import { PaymentUnavailable } from "@/components/checkout/PaymentUnavailable";
 import { CurrencySwitch } from "@/components/pricing/CurrencySwitch";
 import { ACCESS_DAYS } from "@/config/pricing";
-import { PLANS, formatPrice, listPrice } from "@/data/plans";
+import { PLANS, formatPrice, listPrice, type Plan } from "@/data/plans";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useLiveInrPrices } from "@/hooks/useLiveInrPrices";
 import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,17 @@ function CheckoutInner() {
 
   const plan = useMemo(() => PLANS.find((p) => p.id === planId && p.id !== "free"), [planId]);
   const [currency, setCurrency] = useCurrency();
+
+  // The actual Razorpay order amount is resolved server-side from the same
+  // live rate (Backend/app/services/exchange_rate.py) -- this only makes
+  // sure the price shown here, before paying, matches it exactly rather
+  // than the static fixed-rate figure baked into PLANS at build time.
+  const { prices: liveInrPrices, loading: loadingLiveInr } = useLiveInrPrices();
+  const pricedPlan: Plan | undefined = useMemo(() => {
+    if (!plan || plan.id === "free") return plan;
+    const liveInr = liveInrPrices[plan.id as "pro" | "business"];
+    return liveInr === undefined ? plan : { ...plan, priceINR: liveInr };
+  }, [plan, liveInrPrices]);
 
   // A deep link such as /checkout?plan=pro&currency=INR picks the charge currency.
   useEffect(() => {
@@ -62,7 +74,7 @@ function CheckoutInner() {
     );
   }
 
-  const amountLabel = formatPrice(listPrice(plan, currency), currency);
+  const amountLabel = formatPrice(listPrice(pricedPlan ?? plan, currency), currency);
 
   return (
     <>
@@ -79,7 +91,7 @@ function CheckoutInner() {
           <CurrencySwitch />
         </div>
 
-        <CheckoutSummary plan={plan} currency={currency} />
+        <CheckoutSummary plan={pricedPlan ?? plan} currency={currency} isLoadingLiveInr={loadingLiveInr} />
 
         {status === "unconfigured" ? (
           <PaymentUnavailable error={error} missing={config?.missing} amountLabel={amountLabel} />

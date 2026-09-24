@@ -79,8 +79,10 @@ def test_order_row_carries_snapshot_amounts_and_razorpay_response(client, make_u
     order_id = create_order(client, headers, "business", "INR").json()["order_id"]
 
     row = payment_for(db, order_id)
+    # 99*83=8217, rounded to the nearest ten rupees -> 8220 (see
+    # test_payments.py::test_catalog_is_exactly_the_two_prices_in_both_currencies).
     assert (row.user_id, row.email, row.plan, row.currency, row.amount, row.status) == (
-        user.id, user.email, "business", "INR", 821700, "created")
+        user.id, user.email, "business", "INR", 822000, "created")
     assert row.razorpay_payment_id is None and row.razorpay_signature is None
     assert row.raw_payload["order"]["id"] == order_id
     assert fake_razorpay[-1]["notes"] == {"user_id": str(user.id), "email": user.email, "plan": "business"}

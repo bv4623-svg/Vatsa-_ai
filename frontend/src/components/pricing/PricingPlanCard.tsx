@@ -12,9 +12,18 @@ interface PricingPlanCardProps {
   ctaLabel: string;
   isCurrent: boolean;
   onSelect: (plan: Plan) => void;
+  liveInr?: number;
+  isLoadingLiveInr?: boolean;
 }
 
-export function PricingPlanCard({ plan, ctaLabel, isCurrent, onSelect }: PricingPlanCardProps) {
+export function PricingPlanCard({
+  plan,
+  ctaLabel,
+  isCurrent,
+  onSelect,
+  liveInr,
+  isLoadingLiveInr,
+}: PricingPlanCardProps) {
   return (
     <div
       className={cn(
@@ -34,7 +43,7 @@ export function PricingPlanCard({ plan, ctaLabel, isCurrent, onSelect }: Pricing
           {plan.popular && <Star className="h-4 w-4 fill-blue-500 text-blue-500" aria-hidden="true" />}
         </div>
 
-        <PlanPrice plan={plan} />
+        <PlanPrice plan={plan} liveInr={liveInr} isLoadingLiveInr={isLoadingLiveInr} />
 
         <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{plan.description}</p>
       </div>

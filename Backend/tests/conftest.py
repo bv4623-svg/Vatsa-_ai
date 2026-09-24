@@ -100,6 +100,20 @@ def _reset_rate_limits():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _deterministic_exchange_rate(monkeypatch):
+    """Pins USD/INR to the historical fixed rate (83) for every test instead
+    of letting app.services.exchange_rate hit the real frankfurter.dev/
+    open.er-api.com APIs -- without this, the whole suite depends on network
+    access and its assertions on exact INR amounts would break every time
+    the real rate moves. 83 specifically so tests written before the live
+    rate existed (fixed $24/$99 -> ₹1,992/₹8,217) keep working unchanged."""
+    import app.services.exchange_rate as exchange_rate
+
+    monkeypatch.setattr(exchange_rate, "get_usd_to_inr_rate", lambda: (83.0, "live"))
+    yield
+
+
 from app.database import SessionLocal
 from app.auth.jwt import get_password_hash
 from app.models.user import User

@@ -26,8 +26,12 @@ export function formatBothPrices(plan: Plan): string {
   return `${formatPrice(plan.priceUSD, "USD")} (${formatPrice(plan.priceINR, "INR")})`;
 }
 
-/** The one place the exchange rate is explained to customers. */
-export const RATE_NOTE = `INR prices use a fixed rate of ${formatPrice(1, "USD")} = ${formatPrice(USD_TO_INR, "INR")}.`;
+/** The one place the exchange rate is explained to customers. INR prices
+ * are computed from a live rate refreshed hourly (see GET
+ * /api/pricing/exchange-rate); this fixed rate is shown only as a
+ * reference point and used as the displayed/charged figure if that live
+ * lookup is ever unavailable. */
+export const RATE_NOTE = `INR prices are based on the live USD/INR rate (updated hourly) and rounded to the nearest multiple of ten -- reference rate ${formatPrice(1, "USD")} ≈ ${formatPrice(USD_TO_INR, "INR")}.`;
 
 /** What one payment buys -- there is no auto-renewal. */
 export const ACCESS_NOTE = `Prices include all taxes. One payment gives ${ACCESS_DAYS} days of access; nothing renews automatically.`;

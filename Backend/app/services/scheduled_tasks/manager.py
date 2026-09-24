@@ -68,10 +68,17 @@ def schedule_task(task: ScheduledTask) -> None:
     except Exception:
         logger.warning("Could not schedule task %s: invalid cron %r", task.id, task.schedule)
         return
-    scheduler.add_job(
-        run_scheduled_task_sync, trigger=trigger, id=_job_id(task.id), args=[task.id],
-        replace_existing=True, misfire_grace_time=3600,
-    )
+    try:
+        scheduler.add_job(
+            run_scheduled_task_sync, trigger=trigger, id=_job_id(task.id), args=[task.id],
+            replace_existing=True, misfire_grace_time=3600,
+        )
+    except Exception:
+        # A Redis-backed jobstore can hit a transient connection error here
+        # (see app/utils/redis_client.py) -- one task failing to (re-)arm
+        # must not stop every task after it in init_scheduler()'s loop from
+        # being scheduled too.
+        logger.exception("Could not schedule task %s (jobstore error)", task.id)
 
 
 def unschedule_task(task_id: str) -> None:

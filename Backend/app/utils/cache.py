@@ -120,22 +120,14 @@ class RedisCacheBackend:
 
 
 def _build_backend() -> CacheBackend:
-    redis_url = (os.getenv("REDIS_URL") or "").strip()
-    if not redis_url:
-        logger.warning("cache backend: in-process (dev only) -- REDIS_URL not set")
+    from app.utils.redis_client import get_redis_client
+
+    client = get_redis_client()
+    if client is None:
+        logger.warning("cache backend: in-process (REDIS_URL not set or Redis unreachable)")
         return InMemoryCacheBackend()
-    try:
-        import redis  # optional dependency; only required when REDIS_URL is set
-        client = redis.Redis.from_url(redis_url, socket_timeout=2, socket_connect_timeout=2)
-        client.ping()
-        logger.info("cache backend: redis")
-        return RedisCacheBackend(client)
-    except Exception:
-        logger.exception(
-            "cache backend: in-process fallback (REDIS_URL is set but Redis "
-            "could not be reached, or the `redis` package is not installed)."
-        )
-        return InMemoryCacheBackend()
+    logger.info("cache backend: redis")
+    return RedisCacheBackend(client)
 
 
 _backend: CacheBackend = _build_backend()

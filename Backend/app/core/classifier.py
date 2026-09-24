@@ -10,12 +10,29 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 
 # --- TF‑IDF ---
-try:
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.metrics.pairwise import cosine_similarity
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
+# scikit-learn (and its own transitive numpy/scipy) is only actually
+# needed once a classification request runs the TF-IDF path -- loading it
+# just because this module got imported cost every worker process real
+# memory at startup whether or not classification was ever used. Loaded
+# lazily on first IntentClassifier() construction instead (see
+# _ensure_sklearn_loaded below), cached per-process after that.
+HAS_SKLEARN = None
+TfidfVectorizer = None
+cosine_similarity = None
+
+
+def _ensure_sklearn_loaded() -> bool:
+    global HAS_SKLEARN, TfidfVectorizer, cosine_similarity
+    if HAS_SKLEARN is None:
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer as _TfidfVectorizer
+            from sklearn.metrics.pairwise import cosine_similarity as _cosine_similarity
+            TfidfVectorizer = _TfidfVectorizer
+            cosine_similarity = _cosine_similarity
+            HAS_SKLEARN = True
+        except ImportError:
+            HAS_SKLEARN = False
+    return HAS_SKLEARN
 
 # Import intents data (must exist)
 try:
@@ -96,7 +113,7 @@ class IntentClassifier:
                 self._example_texts.append(ex)
                 self._example_intent_index.append(name)
 
-        if HAS_SKLEARN and self._example_texts:
+        if _ensure_sklearn_loaded() and self._example_texts:
             self._vectorizer = TfidfVectorizer(lowercase=True, stop_words="english")
             self._example_matrix = self._vectorizer.fit_transform(self._example_texts)
         else:
@@ -115,7 +132,7 @@ class IntentClassifier:
         return raw * 100, matched
 
     def _similarity_scores(self, query: str) -> dict:
-        if not HAS_SKLEARN or self._vectorizer is None or self._example_matrix is None:
+        if self._vectorizer is None or self._example_matrix is None:
             return {name: 0.0 for name in self.intent_names}
         query_vec = self._vectorizer.transform([query])
         sims = cosine_similarity(query_vec, self._example_matrix)[0]

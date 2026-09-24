@@ -18,7 +18,6 @@ as app/utils/rate_limit.py and app/utils/cache.py:
     modules.
 """
 import logging
-import os
 import threading
 from typing import Dict, Protocol
 
@@ -64,23 +63,17 @@ class _RedisLock:
 
 
 def _build_backend() -> LockBackend:
-    redis_url = (os.getenv("REDIS_URL") or "").strip()
-    if not redis_url:
-        logger.info("scheduler lock backend: in-process (single worker; REDIS_URL not set)")
-        return _InMemoryLock()
-    try:
-        import redis  # optional dependency; only required when REDIS_URL is set
-        client = redis.Redis.from_url(redis_url, socket_timeout=2, socket_connect_timeout=2)
-        client.ping()
-        logger.info("scheduler lock backend: redis")
-        return _RedisLock(client)
-    except Exception:
-        logger.exception(
-            "scheduler lock backend: in-process fallback (REDIS_URL is set but "
-            "Redis could not be reached, or the `redis` package is not "
-            "installed). This is NOT safe with more than one worker process."
+    from app.utils.redis_client import get_redis_client
+
+    client = get_redis_client()
+    if client is None:
+        logger.info(
+            "scheduler lock backend: in-process (REDIS_URL not set or Redis "
+            "unreachable). This is NOT safe with more than one worker process."
         )
         return _InMemoryLock()
+    logger.info("scheduler lock backend: redis")
+    return _RedisLock(client)
 
 
 _backend: LockBackend = _build_backend()

@@ -41,11 +41,12 @@ else:
     # instance/worker: pool_pre_ping avoids handing out a connection the
     # server (or a managed provider's idle-connection reaper) already
     # closed, and pool_size/max_overflow/pool_recycle are configurable per
-    # deployment rather than hardcoded. Defaults are conservative for a
-    # single small instance; raise DB_POOL_SIZE alongside API instance count.
-    _pool_size = int(os.getenv("DB_POOL_SIZE", "5"))
-    _max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
-    _pool_recycle = int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800"))
+    # deployment rather than hardcoded. Defaults are deliberately small (a
+    # 512MB instance running a single uvicorn worker has no room for a
+    # large idle pool); raise these alongside API instance count/RAM.
+    _pool_size = int(os.getenv("DB_POOL_SIZE", "2"))
+    _max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "2"))
+    _pool_recycle = int(os.getenv("DB_POOL_RECYCLE_SECONDS", "300"))
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         pool_pre_ping=True,

@@ -19,7 +19,6 @@ enforces its own separate limit.
 """
 
 import logging
-import os
 import threading
 import time
 from typing import Dict, Protocol, Tuple
@@ -87,23 +86,17 @@ class RedisRateLimitBackend:
 
 
 def _build_backend() -> RateLimitBackend:
-    redis_url = (os.getenv("REDIS_URL") or "").strip()
-    if not redis_url:
-        logger.warning("rate_limiter backend: in-process (dev only) -- REDIS_URL not set")
-        return InMemoryRateLimitBackend()
-    try:
-        import redis  # optional dependency; only required when REDIS_URL is set
-        client = redis.Redis.from_url(redis_url, socket_timeout=2, socket_connect_timeout=2)
-        client.ping()
-        logger.info("rate_limiter backend: redis")
-        return RedisRateLimitBackend(client)
-    except Exception:
-        logger.exception(
-            "rate_limiter backend: in-process fallback (REDIS_URL is set but "
-            "Redis could not be reached, or the `redis` package is not "
-            "installed). This is NOT safe with more than one API instance."
+    from app.utils.redis_client import get_redis_client
+
+    client = get_redis_client()
+    if client is None:
+        logger.warning(
+            "rate_limiter backend: in-process (REDIS_URL not set or Redis "
+            "unreachable). This is NOT safe with more than one API instance."
         )
         return InMemoryRateLimitBackend()
+    logger.info("rate_limiter backend: redis")
+    return RedisRateLimitBackend(client)
 
 
 _backend: RateLimitBackend = _build_backend()

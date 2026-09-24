@@ -64,13 +64,42 @@ from app.database import init_db
 from app.services.scheduled_tasks import init_scheduler, shutdown_scheduler
 from app.services.account import register_account_jobs
 
-# Initialize intent classifier singleton
-intent_classifier = IntentClassifier()
+# Intent classifier singleton, built lazily on first /api/classify call --
+# constructing it eagerly here ran scikit-learn's import plus a TF-IDF
+# fit_transform over every intent example on every worker process's
+# startup, whether or not classification was ever actually requested.
+_intent_classifier: Optional[IntentClassifier] = None
 logger = logging.getLogger("Startup")
+
+
+def _get_intent_classifier() -> IntentClassifier:
+    global _intent_classifier
+    if _intent_classifier is None:
+        _intent_classifier = IntentClassifier()
+    return _intent_classifier
+
+
+def _log_rss_memory(label: str) -> None:
+    """Best-effort RSS snapshot for watching memory on a constrained
+    instance (e.g. Render's 512MB free tier) -- `resource` is POSIX-only,
+    so this is a no-op on Windows dev machines rather than a startup
+    failure. ru_maxrss is kilobytes on Linux (where this actually runs in
+    production, in Docker) but bytes on macOS -- only the Linux reading is
+    trusted enough here to convert to MB."""
+    try:
+        import platform
+        import resource
+        rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        if platform.system() == "Darwin":
+            rss_kb = rss_kb / 1024
+        logger.info("RSS MB (%s): %.1f", label, rss_kb / 1024)
+    except Exception:
+        pass
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _log_rss_memory("startup:before")
     try:
         init_db()
         init_scheduler()
@@ -78,6 +107,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("Startup failed -- refusing to serve traffic")
         raise
+    _log_rss_memory("startup:after")
     yield
     shutdown_scheduler()
 
@@ -253,7 +283,7 @@ def classify(req: ClassifyRequest):
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query must not be empty")
 
-    result = intent_classifier.classify(req.query, top_k=req.top_k)
+    result = _get_intent_classifier().classify(req.query, top_k=req.top_k)
     return result.to_dict()
 
 

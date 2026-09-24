@@ -4,6 +4,8 @@ __pycache__/
 *.pyc
 .env
 .env.local
+.env.production
+.env.production.local
 *.log
 *.db
 *.db.bak
@@ -24,3 +26,6 @@ build/
 # Built static site for Netlify Drop (generated, not source)
 netlify-drop/
 render-upload/
+
+# Hostinger deployment archive (generated, not source)
+frontend/frontend-deploy.zip

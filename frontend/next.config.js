@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
-import createNextIntlPlugin from "next-intl/plugin";
+const path = require("path");
+const createNextIntlPlugin = require("next-intl/plugin");
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -21,7 +21,8 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 ];
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   async rewrites() {
     return [
       {
@@ -34,6 +35,19 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+
+  // Explicit fallback for the "@/*" -> "src/*" alias (tsconfig.json already
+  // declares it under compilerOptions.paths, and Next.js normally infers
+  // this into the webpack config automatically) -- added because Hostinger's
+  // build environment failed to resolve "@/..." imports with
+  // "Module not found" even though the target files exist, tsconfig.json is
+  // present and correct, and the same build succeeds locally. Harmless
+  // where automatic inference already works; only makes a difference where
+  // it silently doesn't.
+  webpack(config) {
+    config.resolve.alias["@"] = path.resolve(__dirname, "src");
+    return config;
+  },
 };
 
-export default withNextIntl(nextConfig);
+module.exports = withNextIntl(nextConfig);

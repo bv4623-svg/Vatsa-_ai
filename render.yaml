@@ -1,0 +1,91 @@
+services:
+  - type: web
+    name: vatsaai-backend
+    runtime: docker
+    region: singapore
+    plan: starter
+    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: ./Backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vatsaai-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: vatsaai-redis
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: EMAIL_USERNAME
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_SMTP_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_SMTP_PORT
+        value: "587"
+      - key: MAIL_FROM
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://api.vatsaai.com/api/auth/google/callback
+      - key: ALLOWED_ORIGINS
+        value: https://vatsaai.com,https://www.vatsaai.com
+      - key: BACKEND_PUBLIC_URL
+        value: https://api.vatsaai.com
+      - key: FRONTEND_REDIRECT_URL
+        value: https://vatsaai.com
+      - key: DB_POOL_SIZE
+        value: "20"
+      - key: DB_MAX_OVERFLOW
+        value: "40"
+      - key: DB_POOL_RECYCLE_SECONDS
+        value: "1800"
+      - key: CACHE_ENABLED
+        value: "true"
+      # Optional -- only used if set (see Backend/.env.example). Left as
+      # sync: false placeholders so Render prompts for them without any
+      # real value ever living in this file.
+      - key: STORAGE_BACKEND
+        value: local
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: redis
+    name: vatsaai-redis
+    region: singapore
+    plan: starter
+    ipAllowList: []
+
+databases:
+  - name: vatsaai-db
+    region: singapore
+    plan: starter
+    postgresMajorVersion: "16"

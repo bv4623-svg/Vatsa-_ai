@@ -100,13 +100,29 @@ def _log_rss_memory(label: str) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _log_rss_memory("startup:before")
+
+    # The database is a hard dependency -- nothing in this app works
+    # without it, so a failure here must still refuse to serve traffic.
     try:
         init_db()
-        init_scheduler()
-        register_account_jobs()
     except Exception:
         logger.exception("Startup failed -- refusing to serve traffic")
         raise
+
+    # The scheduler and its jobs are not: a momentarily-unreachable Redis
+    # (the shared jobstore backend, see app/utils/redis_client.py) should
+    # degrade -- scheduled tasks/system jobs sit un-armed until the next
+    # restart or a future retry -- not take the whole API down. Each gets
+    # its own try/except so one failing doesn't also skip the other.
+    try:
+        init_scheduler()
+    except Exception:
+        logger.exception("init_scheduler() failed at startup -- continuing without it")
+    try:
+        register_account_jobs()
+    except Exception:
+        logger.exception("register_account_jobs() failed at startup -- continuing without it")
+
     _log_rss_memory("startup:after")
     yield
     shutdown_scheduler()

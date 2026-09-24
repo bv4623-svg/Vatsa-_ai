@@ -26,17 +26,23 @@ def _build_jobstore():
         return MemoryJobStore()
     try:
         from apscheduler.jobstores.redis import RedisJobStore
-        import redis as redis_pkg
-        # RedisJobStore takes its own connection kwargs (not a URL) --
-        # parsed once here so REDIS_URL stays the single source of truth
-        # everywhere else in the app already reads it from.
-        conn = redis_pkg.Redis.from_url(redis_url, socket_timeout=2, socket_connect_timeout=2)
-        conn.ping()
+        from app.utils.redis_client import get_redis_client
+
+        # RedisJobStore builds its own internal connection from host/port/db/
+        # password kwargs rather than accepting a pre-built client object, so
+        # it can't literally reuse the shared client -- but going through
+        # get_redis_client() first means the connect+ping probe (and its
+        # retry loop) only ever happens once at startup, not once per module.
+        conn = get_redis_client()
+        if conn is None:
+            raise ConnectionError("shared Redis client unavailable")
         store = RedisJobStore(
             host=conn.connection_pool.connection_kwargs.get("host", "localhost"),
             port=conn.connection_pool.connection_kwargs.get("port", 6379),
             db=conn.connection_pool.connection_kwargs.get("db", 0),
             password=conn.connection_pool.connection_kwargs.get("password"),
+            socket_keepalive=True,
+            health_check_interval=30,
         )
         logger.info("scheduler jobstore: redis")
         return store

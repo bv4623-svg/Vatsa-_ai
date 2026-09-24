@@ -12,6 +12,8 @@ upstream flag, every image is downloaded server-side, has its outer
 border trimmed and upscaled back to remove any edge watermark, and is
 re-hosted from our own storage.
 """
+from __future__ import annotations
+
 import os
 import io
 import uuid
@@ -19,7 +21,6 @@ import logging
 import urllib.parse
 from typing import Dict, Any, Optional
 import aiohttp
-from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm import Session
 
 from app.models.generated_image import GeneratedImage
@@ -62,6 +63,7 @@ async def _fetch_raw_image(prompt: str) -> bytes:
 
 
 def _load_brand_font(size: int) -> ImageFont.FreeTypeFont:
+    from PIL import ImageFont
     for path in BRAND_FONT_CANDIDATES:
         if os.path.isfile(path):
             try:
@@ -77,6 +79,8 @@ def _add_branding(img: Image.Image) -> Image.Image:
     relative to the image so it looks right at any resolution. White
     fill + black stroke so it stays legible over any background.
     """
+    from PIL import Image, ImageDraw
+
     w, h = img.size
     font_size = max(14, int(h * 0.035))
     font = _load_brand_font(font_size)
@@ -99,6 +103,7 @@ def _add_branding(img: Image.Image) -> Image.Image:
 
 
 def _process_image(raw: bytes) -> bytes:
+    from PIL import Image
     img = Image.open(io.BytesIO(raw)).convert("RGB")
     w, h = img.size
     trim_x = int(w * WATERMARK_TRIM_FRACTION)

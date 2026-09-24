@@ -33,24 +33,6 @@ def sanitize_filename(raw: str) -> str:
     name = name.lstrip(".") or "file"
     return name[:255]
 
-try:
-    import pdfplumber
-    PDF_SUPPORT = True
-except ImportError:
-    PDF_SUPPORT = False
-
-try:
-    import docx as _docx
-    DOCX_SUPPORT = True
-except ImportError:
-    DOCX_SUPPORT = False
-
-try:
-    import openpyxl
-    XLSX_SUPPORT = True
-except ImportError:
-    XLSX_SUPPORT = False
-
 FILE_STORE = {}
 
 # Real file-format signatures, checked against the actual bytes rather than
@@ -77,7 +59,9 @@ def extract_text_from_bytes(raw: bytes, filename: str) -> str:
     _check_magic_bytes(raw, filename)
     lower = filename.lower()
     if lower.endswith(".pdf"):
-        if not PDF_SUPPORT:
+        try:
+            import pdfplumber
+        except ImportError:
             raise HTTPException(500, "PDF support not installed. Run: pip install pdfplumber")
         text = ""
         try:
@@ -88,7 +72,9 @@ def extract_text_from_bytes(raw: bytes, filename: str) -> str:
         return text
 
     if lower.endswith(".docx"):
-        if not DOCX_SUPPORT:
+        try:
+            import docx as _docx
+        except ImportError:
             raise HTTPException(500, "DOCX support not installed. Run: pip install python-docx")
         try:
             doc = _docx.Document(io.BytesIO(raw))
@@ -102,7 +88,9 @@ def extract_text_from_bytes(raw: bytes, filename: str) -> str:
             return ""
 
     if lower.endswith((".xlsx", ".xlsm")):
-        if not XLSX_SUPPORT:
+        try:
+            import openpyxl
+        except ImportError:
             raise HTTPException(500, "Excel support not installed. Run: pip install openpyxl")
         try:
             wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)

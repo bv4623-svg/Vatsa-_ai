@@ -34,4 +34,8 @@ echo "Running Alembic migrations..."
 alembic upgrade head
 
 echo "Starting uvicorn..."
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" --workers 4 --timeout-graceful-shutdown 30
+# A single worker: on Render's 512MB free tier, each additional worker is a
+# full separate process with its own copy of every loaded library -- 4
+# workers multiplied the app's baseline memory footprint by 4x for no
+# throughput benefit on an instance this small.
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" --workers 1 --timeout-graceful-shutdown 30

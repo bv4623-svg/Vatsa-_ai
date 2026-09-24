@@ -50,11 +50,11 @@ services:
       - key: STORAGE_BACKEND
         value: local
       - key: DB_POOL_SIZE
-        value: "5"
+        value: "2"
       - key: DB_MAX_OVERFLOW
-        value: "10"
+        value: "2"
       - key: DB_POOL_RECYCLE_SECONDS
-        value: "1800"
+        value: "300"
       - key: CACHE_ENABLED
         value: "true"
       - key: ADMIN_EMAILS

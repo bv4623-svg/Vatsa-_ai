@@ -65,3 +65,29 @@ def test_oauth_login_marks_a_matching_legacy_account_as_linked(db, make_user):
     same_user = get_or_create_oauth_user(db, user.email, user.full_name, "github")
     assert same_user.id == user.id
     assert same_user.oauth_linked is True
+
+
+def test_logout_requires_a_valid_token(client):
+    res = client.post("/api/auth/logout")
+    assert res.status_code == 401
+
+
+def test_logout_succeeds_for_an_authenticated_user_and_clears_the_cookie(client, make_user):
+    _, headers = make_user(email="logout-test@example.com")
+    res = client.post("/api/auth/logout", headers=headers)
+    assert res.status_code == 200, res.text
+    assert res.json() == {"success": True}
+    set_cookie = res.headers.get("set-cookie", "")
+    assert "vatsa_session=" in set_cookie
+    assert "Max-Age=0" in set_cookie
+
+
+def test_logout_does_not_bump_token_version(db, client, make_user):
+    """Logout must not invalidate the account's other active sessions --
+    that's a separate, deliberate action (sign-out-other-devices), not
+    what a routine logout should do."""
+    user, headers = make_user(email="logout-scope@example.com")
+    version_before = user.token_version
+    client.post("/api/auth/logout", headers=headers)
+    db.refresh(user)
+    assert user.token_version == version_before

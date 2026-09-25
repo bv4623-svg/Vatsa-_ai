@@ -43,13 +43,20 @@ def preview_item(item: LibraryItem = Depends(get_owned_item), db: Session = Depe
         return {"kind": "image", "url": f"{BACKEND_PUBLIC_URL}/api/files/{item.source_id}/preview?token={token}"}
 
     if item.type == "upload" and item.storage_path:
-        abs_path = resolve_path(item.type, item.storage_path)
-        if not os.path.isfile(abs_path):
-            raise HTTPException(status_code=404, detail="File not found on disk")
+        from app.routers.upload import upload_storage
+        try:
+            data = upload_storage.get(item.storage_path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="File not found in storage")
+
+        if (item.mime or "").startswith("image/"):
+            return {"kind": "image"}
+
         text = None
-        if (item.mime or "").startswith("text/") or (item.name or "").lower().endswith((".txt", ".md", ".json", ".csv")):
-            with open(abs_path, "r", encoding="utf-8", errors="ignore") as f:
-                text = f.read(20_000)
+        if (item.mime or "").startswith("text/") or (item.name or "").lower().endswith(
+            (".txt", ".md", ".json", ".csv", ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css")
+        ):
+            text = data.decode("utf-8", errors="ignore")[:20_000]
         return {"kind": "file", "mime": item.mime, "text": text}
 
     return {"kind": "unsupported"}

@@ -7,10 +7,10 @@ import type { FeatureRow } from "./plans.types";
    table can never disagree. */
 
 export const FEATURE_MATRIX: FeatureRow[] = [
-  { label: "Chat messages/day",      values: { free: "25", pro: "2,000", business: "2,000" } },
-  { label: "Code messages/day",      values: { free: "3",  pro: "500",   business: "500" } },
-  { label: "Image generation/day",   values: { free: "20", pro: "200",   business: "200" } },
-  { label: "Web search/day",         values: { free: "5",  pro: "500",   business: "500" } },
+  { label: "Chat messages",          values: { free: "Unlimited", pro: "Unlimited", business: "Unlimited" } },
+  { label: "Code apps (projects)",   values: { free: "1",  pro: "20",   business: "200" } },
+  { label: "Image generation/day",   values: { free: "5",  pro: "100",  business: "500" } },
+  { label: "Web search/day",         values: { free: "5",  pro: "Unlimited", business: "Unlimited" } },
   { label: "Vision (image analysis)",values: { free: false, pro: true,  business: true } },
   { label: "Voice (text-to-speech)", values: { free: false, pro: true,  business: true } },
   { label: "Reasoning mode",         values: { free: false, pro: true,  business: true } },

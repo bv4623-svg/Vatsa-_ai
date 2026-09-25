@@ -9,7 +9,7 @@ export const STORAGE_LIMIT_GB: Record<PlanId, number> = {
 };
 
 export const DAILY_LIMITS: Record<PlanId, DailyLimits> = {
-  free:     { chat: 25,   code: 3,   image: 20,  search: 5 },
-  pro:      { chat: 2000, code: 500, image: 200, search: 500 },
-  business: { chat: 2000, code: 500, image: 200, search: 500 },
+  free:     { chat: null, codeApps: 1,   image: 5,   search: 5 },
+  pro:      { chat: null, codeApps: 20,  image: 100, search: null },
+  business: { chat: null, codeApps: 200, image: 500, search: null },
 };

@@ -36,6 +36,11 @@ export function PricingPlanCard({
           Most Popular
         </span>
       )}
+      {plan.id === "business" && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-400 to-purple-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+          ⚡ 5x more power than Pro
+        </span>
+      )}
 
       <div className="mb-5">
         <div className="flex items-center gap-2">

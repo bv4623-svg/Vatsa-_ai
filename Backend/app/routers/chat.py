@@ -32,11 +32,13 @@ from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else t
 logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])
 
-# Short-window burst guard, independent of the per-day chat_messages/
-# code_messages caps in feature_access.py -- those alone don't stop a script
-# from burning through a whole day's allowance in a few seconds. Redis-backed
-# when REDIS_URL is set (see app/utils/rate_limit.py), so it holds across
-# every API instance, not just the one that happens to receive the burst.
+# Short-window burst guard. Chat itself has no daily cap on any tier
+# (feature_access.py's DAILY_LIMITS no longer has a chat_messages/
+# code_messages entry -- "unlimited" is a real, enforced fact, not just
+# display copy), which makes this the ONLY thing standing between a script
+# and firing requests as fast as the network allows. Redis-backed when
+# REDIS_URL is set (see app/utils/rate_limit.py), so it holds across every
+# API instance, not just the one that happens to receive the burst.
 CHAT_BURST_LIMIT = 30
 CHAT_BURST_WINDOW_SECONDS = 60
 

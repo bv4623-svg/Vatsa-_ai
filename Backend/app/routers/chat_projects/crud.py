@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.chat_project import ChatProject
 from app.auth.dependencies import get_current_user
 from app.services.chat_projects import to_public_dict, detach_all
+from app.services.feature_access import check_project_limit
 from app.routers.chat_projects.deps import get_owned_project
 from app.routers.chat_projects.schemas import CreateProjectRequest, UpdateProjectRequest
 from app.utils.cache import cache_get, cache_set, cache_delete_many
@@ -31,6 +32,16 @@ def _invalidate_project_list_cache(user_id: int) -> None:
 
 @router.post("/api/projects")
 def create_project(payload: CreateProjectRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    allowed, used, limit = check_project_limit(db, user)
+    if not allowed:
+        raise HTTPException(status_code=403, detail={
+            "error": "project_limit_reached",
+            "used": used,
+            "limit": limit,
+            "message": f"Project limit reached ({used}/{limit}). Upgrade for more, or delete an existing project.",
+            "upgrade_url": "/pricing",
+        })
+
     project = ChatProject(
         id=uuid.uuid4().hex,
         user_id=user.id,

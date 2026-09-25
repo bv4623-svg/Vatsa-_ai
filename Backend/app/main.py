@@ -59,6 +59,7 @@ from app.routers import chat_projects as chat_projects_router
 from app.routers import account as account_router
 from app.routers import ai_router_status
 from app.routers import pricing as pricing_router
+from app.routers import contact as contact_router
 from app.core.classifier import IntentClassifier
 from intents_data import INTENTS
 from app.database import init_db
@@ -197,6 +198,7 @@ app.include_router(chat_projects_router.router)
 app.include_router(account_router.router)
 app.include_router(ai_router_status.router)
 app.include_router(pricing_router.router)
+app.include_router(contact_router.router)
 
 
 # Intent classification endpoints

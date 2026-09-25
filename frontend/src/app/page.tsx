@@ -25,7 +25,6 @@ import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } 
 import { useAppStore } from "@/stores/app-store";
 import { PRICES_USD } from "@/config/pricing";
 import { ACCESS_NOTE, RATE_NOTE, formatPrice, getPlan, listPrice, DEFAULT_CURRENCY } from "@/data/plans";
-import { AIIcon } from "@/components/brand/AIIcon";
 import { useLocalHour } from "@/hooks/useLocalTime";
 
 // ─────────────────────────────────────────────────────────────
@@ -1809,8 +1808,8 @@ function Footer() {
         <div className="grid gap-10 md:grid-cols-[1.2fr_repeat(3,0.7fr)]">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 to-cyan-400/20 flex items-center justify-center">
-                <AIIcon size={20} />
+              <div className="relative h-8 w-8 overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 to-cyan-400/20">
+                <Image src="/logo.png" alt="Vatsa AI" fill className="object-contain p-1" sizes="32px" />
               </div>
               <span className="font-display text-[16px] font-semibold text-white">
                 Vatsa<span className="ml-1 align-super font-mono text-[8px] tracking-[0.18em] text-violet-300/90">AI</span>
@@ -1953,7 +1952,7 @@ function Navbar({ onPalette, onAuth, onStartBuilding }: { onPalette: () => void;
     return (
       <a href="#top" className="group flex items-center gap-2.5">
         <span className="relative grid h-8 w-8 place-items-center overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 via-indigo-500/15 to-cyan-400/20">
-          <AIIcon size={20} />
+          <Image src="/logo.png" alt="Vatsa AI" fill className="object-contain p-1" sizes="32px" />
         </span>
         <span className="font-display text-[17px] font-semibold tracking-tight text-white">
           Vatsa<span className="ml-1 align-super font-mono text-[9px] font-medium tracking-[0.18em] text-violet-300/90">AI</span>

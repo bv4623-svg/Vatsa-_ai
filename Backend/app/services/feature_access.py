@@ -127,12 +127,34 @@ def check_project_limit(db: Session, user: User) -> Tuple[bool, int, int]:
     """Returns (allowed, current_count, limit) for creating one more
     project. Unlike check_daily_limit this counts real, standing rows
     (ChatProject), not a per-day counter that resets at midnight --
-    deleting/archiving a project frees up a slot, a new day does not."""
+    deleting/archiving a project frees up a slot, a new day does not.
+
+    ChatProject backs a separate, ChatGPT-style "folder for organizing
+    chats" feature (POST /api/projects) -- not the same resource as a
+    "code app" (see check_code_app_limit below), even though they share
+    the same 1/20/200 numbers today."""
     from app.models.chat_project import ChatProject
 
     tier = user_tier(user)
     limit = PROJECT_LIMITS.get(tier, 0)
     used = db.query(ChatProject).filter_by(user_id=user.id).count()
+    return used < limit, used, limit
+
+
+def check_code_app_limit(db: Session, user: User) -> Tuple[bool, int, int]:
+    """Returns (allowed, current_count, limit) for creating one more code
+    app. A "code app" is a Conversation row with workspace="code" (what
+    the /code workspace's "New Project" button actually creates via
+    POST /api/conversations) -- a different table from ChatProject above,
+    despite the pricing page calling both "projects" at different times.
+    Counts every standing row regardless of `archived` (archiving hides a
+    conversation from view, it doesn't free a slot -- only a real delete,
+    via DELETE /api/conversations/{id}, does)."""
+    from app.models.conversation import Conversation
+
+    tier = user_tier(user)
+    limit = PROJECT_LIMITS.get(tier, 0)
+    used = db.query(Conversation).filter_by(user_id=user.id, workspace="code").count()
     return used < limit, used, limit
 
 

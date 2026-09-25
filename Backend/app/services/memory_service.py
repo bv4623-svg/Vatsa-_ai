@@ -2,6 +2,14 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.models.memory import Memory
+from app.utils.cache import cache_get, cache_set, cache_delete
+
+CACHE_TTL_SECONDS = 60
+
+
+def _context_cache_key(user_id: int) -> str:
+    return f"memory:context:{user_id}"
+
 
 class MemoryService:
     @staticmethod
@@ -45,6 +53,7 @@ class MemoryService:
         db.add(mem)
         db.commit()
         db.refresh(mem)
+        cache_delete(_context_cache_key(user_id))
         return mem
 
     @staticmethod
@@ -63,6 +72,7 @@ class MemoryService:
         mem.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(mem)
+        cache_delete(_context_cache_key(user_id))
         return mem
 
     @staticmethod
@@ -72,12 +82,14 @@ class MemoryService:
             return False
         db.delete(mem)
         db.commit()
+        cache_delete(_context_cache_key(user_id))
         return True
 
     @staticmethod
     def clear_all_memories(db: Session, user_id: int) -> int:
         count = db.query(Memory).filter(Memory.user_id == user_id).delete()
         db.commit()
+        cache_delete(_context_cache_key(user_id))
         return count
 
     @staticmethod
@@ -111,6 +123,7 @@ class MemoryService:
             existing.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(existing)
+            cache_delete(_context_cache_key(user_id))
             return existing
 
         mem = Memory(
@@ -138,13 +151,22 @@ class MemoryService:
                 db.delete(old)
             db.commit()
 
+        cache_delete(_context_cache_key(user_id))
         return mem
 
     @staticmethod
     def get_context_summary(db: Session, user_id: int) -> str:
-        """Returns relevant user memories as concise context for the LLM prompt."""
+        """Returns relevant user memories as concise context for the LLM
+        prompt. Cached per user (see app/utils/cache.py): this is read on
+        every chat request but only changes when one of the write methods
+        above runs, so a short-TTL cache avoids re-querying + re-joining
+        memories on every single message."""
+        cache_key = _context_cache_key(user_id)
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         memories = MemoryService.get_user_memories(db, user_id, limit=20)
-        if not memories:
-            return ""
-        lines = [f"- {m.content}" for m in memories if m.content.strip()]
-        return "\n".join(lines)
+        summary = "" if not memories else "\n".join(f"- {m.content}" for m in memories if m.content.strip())
+        cache_set(cache_key, summary, CACHE_TTL_SECONDS)
+        return summary

@@ -6,8 +6,7 @@ import { RootShell } from "@/components/layout/RootShell";
 import { LocaleProvider } from "@/providers/LocaleProvider";
 import { localeDir } from "@/i18n/locales";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vatsaai.netlify.app";
+import { SITE_URL } from "@/config/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

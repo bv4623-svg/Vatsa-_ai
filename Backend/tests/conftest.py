@@ -3,17 +3,117 @@ import tempfile
 
 # Set before anything imports app.*, so the app boots against a throwaway
 # database and known Razorpay credentials instead of the developer's own.
-_tmp = tempfile.mkdtemp(prefix="vatsa-test-")
-os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+# TEST_AGAINST_REAL_DATABASE_URL=1 is a deliberate, explicit opt-in escape
+# hatch to run this exact suite against a real DATABASE_URL (e.g. the
+# Postgres in .env) for one-off verification, without changing the default:
+# every other invocation still gets a throwaway, isolated SQLite file, which
+# is what keeps this suite fast and side-effect-free.
+if os.getenv("TEST_AGAINST_REAL_DATABASE_URL") == "1":
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+    assert os.getenv("DATABASE_URL"), "TEST_AGAINST_REAL_DATABASE_URL=1 but .env has no DATABASE_URL"
+else:
+    _tmp = tempfile.mkdtemp(prefix="vatsa-test-")
+    os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+# Without this, UPLOAD_STORAGE_ROOT/STORAGE_ROOT (app/routers/upload.py,
+# app/services/image_service.py) default to the real Backend/uploads and
+# Backend/generated_images directories -- a test that actually exercises
+# POST /api/upload or generate_and_store_image would write real files
+# into the project tree instead of a throwaway directory.
+os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="vatsa-test-data-"))
 os.environ["JWT_SECRET_KEY"] = "test-secret-not-used-anywhere-else"
 os.environ["RAZORPAY_KEY_ID"] = "rzp_test_unit"
 os.environ["RAZORPAY_KEY_SECRET"] = "unit-test-secret"
 os.environ["RAZORPAY_WEBHOOK_SECRET"] = "unit-test-webhook-secret"
+# app.utils.rate_limit picks its backend ONCE, at import time (a module-level
+# singleton) -- unlike EMAIL_USERNAME/etc below, which are re-read fresh on
+# every call, popping this *after* importing app.main would be too late: the
+# real REDIS_URL from .env would already have selected a live Redis backend
+# for the whole test run. Setting it to "" (not leaving it unset) matters too:
+# load_dotenv()'s default override=False only refuses to touch a key that
+# already exists, even with an empty value -- an absent key would still get
+# repopulated from .env's real value.
+os.environ["REDIS_URL"] = ""
 
 import pytest
 from fastapi.testclient import TestClient
 
+# Importing app.main runs load_dotenv(Backend/.env) as a side effect. A real
+# developer .env sitting there can carry real third-party credentials, and
+# load_dotenv's default `override=False` only protects a var that's already
+# set -- popping one beforehand doesn't stop this load from setting it right
+# back. So these are cleared AFTER the import instead. Without this, a test
+# that reaches an under-tested code path -- e.g. POST /auth/otp/send actually
+# calling send_otp_email -- silently makes a live network call using them
+# instead of failing fast and deterministically. Found the hard way: the OTP
+# resend-cooldown tests were making real SMTP connections to Gmail with this
+# machine's real (rejected) app password. Add to this list if a new
+# external-credential env var is introduced.
 from app.main import app
+
+_LEAKY_ENV_VARS = (
+    "EMAIL_USERNAME", "EMAIL_PASSWORD",
+    "OPENROUTER_API_KEY",
+    "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_SECRET",
+    "SERPER_API_KEY", "TAVILY_API_KEY", "BRAVE_API_KEY", "GOOGLE_CSE_API_KEY",
+)
+
+
+def _clear_leaky_env() -> None:
+    for name in _LEAKY_ENV_VARS:
+        os.environ.pop(name, None)
+
+
+_clear_leaky_env()
+
+
+@pytest.fixture(autouse=True)
+def _no_real_external_credentials():
+    """Re-clears _LEAKY_ENV_VARS before every test, not just once at import
+    time. Needed because scripts/create_verified_user.py (imported by
+    tests/test_create_verified_user.py) calls load_dotenv() again on its own
+    -- python-dotenv's default override=False only protects a var that's
+    already set, so once something pops these, a later load_dotenv() call
+    anywhere in the process puts the developer's real Backend/.env values
+    right back via os.environ.setdefault(). Found the hard way: with only a
+    one-time clear at collection time, tests that ran later in the full
+    suite (alphabetically after test_create_verified_user.py) were making
+    real SMTP calls to Gmail with this machine's real credentials."""
+    _clear_leaky_env()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Every test's TestClient shares one fake IP, and the in-process rate
+    limiter backend (REDIS_URL="" in tests, see above) is one shared
+    module-level object for the whole test session -- without this, a
+    per-IP limit with a long enough window (e.g. payment endpoints' 10
+    minutes) accumulates hits across unrelated tests in other files and
+    starts 429-ing tests that never touch the limit intentionally. Found
+    the hard way: adding a per-IP rate limit to /payment/create-order and
+    /payment/verify broke ~25 previously-passing tests across three other
+    files that don't test rate limiting at all."""
+    from app.utils import rate_limit
+    rate_limit._backend._buckets.clear()
+    rate_limit._local_fallback._buckets.clear()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _deterministic_exchange_rate(monkeypatch):
+    """Pins USD/INR to the historical fixed rate (83) for every test instead
+    of letting app.services.exchange_rate hit the real frankfurter.dev/
+    open.er-api.com APIs -- without this, the whole suite depends on network
+    access and its assertions on exact INR amounts would break every time
+    the real rate moves. 83 specifically so tests written before the live
+    rate existed (fixed $24/$99 -> ₹1,992/₹8,217) keep working unchanged."""
+    import app.services.exchange_rate as exchange_rate
+
+    monkeypatch.setattr(exchange_rate, "get_usd_to_inr_rate", lambda: (83.0, "live"))
+    yield
+
+
 from app.database import SessionLocal
 from app.auth.jwt import get_password_hash
 from app.models.user import User

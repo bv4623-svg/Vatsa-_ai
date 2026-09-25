@@ -25,7 +25,6 @@ import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } 
 import { useAppStore } from "@/stores/app-store";
 import { PRICES_USD } from "@/config/pricing";
 import { ACCESS_NOTE, RATE_NOTE, formatPrice, getPlan, listPrice, DEFAULT_CURRENCY } from "@/data/plans";
-import { AIIcon } from "@/components/brand/AIIcon";
 import { useLocalHour } from "@/hooks/useLocalTime";
 
 // ─────────────────────────────────────────────────────────────
@@ -52,8 +51,8 @@ const routerSteps = [
   ["Capabilities", "Code, reasoning, UI"],
   ["Cost", "Within Pro limit"],
   ["Latency", "0.8s predicted"],
-  ["Availability", "4 providers healthy"],
-  ["Best model", "Claude Opus 5"],
+  ["Availability", "All systems healthy"],
+  ["Routing to", "Best available model"],
   ["Generating", "Workspace artifact"],
 ];
 
@@ -251,27 +250,23 @@ const VATSA = PRICES_USD.pro;
 const FAQS = [
   {
     q: "How does Vatsa choose which AI model to use?",
-    a: "Every prompt runs through the router pipeline: intent classification, memory lookup, context assembly, and a live benchmark of 437 models on reasoning, speed, cost, and uptime. The winning model executes while a fallback stays armed. You can watch the entire decision in the router replay — nothing is hidden.",
+    a: "Every prompt runs through Vatsa AI's internal router: it classifies what you're asking for, checks which of our supported models can handle it, and picks the best available one — with automatic fallback and retry if a model is slow or unavailable. The specific model configuration is managed internally and isn't exposed, so the experience stays consistent even as we upgrade or swap what's running underneath.",
   },
   {
-    q: "Do I need separate subscriptions to OpenAI, Anthropic, or Google?",
-    a: "No. One Vatsa subscription includes Claude, GPT, Gemini, DeepSeek, Grok, Mistral, Llama and every open model we support. You pay one flat price and the router spends your credits on whichever model is best for each task.",
+    q: "Do I need separate subscriptions to other AI providers?",
+    a: "No. One Vatsa subscription is all you need — you don't manage separate accounts or API keys for individual providers. You pay one flat price and Vatsa AI's router handles model selection for each task automatically.",
   },
   {
     q: "What exactly is a Workspace?",
-    a: "A workspace is a complete AI environment — not a chat window. The Coding workspace pairs you with a pair-programmer, repo tools and test runners; the Data Lab connects CSV/SQL/Python; the Website Builder designs and deploys. Each one assembles the right models, tools, and memory automatically.",
+    a: "Chat is your general assistant with memory of your preferences and past conversations. Code is a dedicated environment for generating and iterating on code, with its own project and file history. Both share the same account, memory, and conversation history.",
   },
   {
     q: "Is my data used to train models?",
-    a: "Never. Your prompts, files, and memory graph are excluded from training on every plan. Business and Enterprise plans add region pinning, VPC deployment, and audit logs. You can export or delete your memory at any time.",
+    a: "Your prompts and files are used to generate your responses and, where you've enabled it, to build your personal memory — not to train models. You can view, export, or delete your memory at any time from Settings.",
   },
   {
     q: "What happens if a model provider goes down?",
-    a: "The health dashboard checks every provider every 30 seconds. If latency spikes or a provider degrades, the armed fallback takes over mid-stream — your response continues on the next-best model without restarting.",
-  },
-  {
-    q: "Can my team share workspaces and memory?",
-    a: "Yes. Business plans include shared team workspaces, a shared memory graph, admin controls, SSO, and per-seat analytics — so your team's context compounds instead of being scattered across personal accounts.",
+    a: "Vatsa AI tracks the health of each underlying model from real traffic. If one starts failing, the router automatically stops sending it new requests and falls back to the next available option for your next request. A reply that's already streaming to you finishes on the model that started it, so you never see it cut off partway through and restart.",
   },
 ];
 
@@ -339,9 +334,9 @@ const REPLAY = [
   { t: "00:00.000", tag: "intent.detect", line: "software_build · app_clone (p = 0.97)", c: "#8b7bff" },
   { t: "00:00.041", tag: "memory.load", line: "3 contexts · 12,408 tokens recalled", c: "#5bc8f5" },
   { t: "00:00.086", tag: "planner.compose", line: "14 steps · artifacts: [code, ui, prd]", c: "#5bc8f5" },
-  { t: "00:00.122", tag: "router.score", line: "claude-5 0.97 · gpt-5.6 0.91 · gemini-3 0.88", c: "#f5cd5b" },
-  { t: "00:00.158", tag: "router.select", line: "→ claude-opus-5 (SWE-bench leader)", c: "#4ade9c" },
-  { t: "00:00.174", tag: "fallback.arm", line: "gpt-5.6 standby · region iad-1", c: "#8892b0" },
+  { t: "00:00.122", tag: "router.score", line: "evaluating eligible models…", c: "#f5cd5b" },
+  { t: "00:00.158", tag: "router.select", line: "→ best available model selected", c: "#4ade9c" },
+  { t: "00:00.174", tag: "fallback.arm", line: "fallback route armed", c: "#8892b0" },
   { t: "00:00.201", tag: "stream.begin", line: "TTFB 380ms · stream open", c: "#e7e9f2" },
 ];
 
@@ -350,7 +345,7 @@ const STAGES = [
   { label: "Memory", icon: Database, msg: "Loading memory (3 contexts)…" },
   { label: "Context", icon: Layers, msg: "Assembling context window…" },
   { label: "Tools", icon: Braces, msg: "Detecting capabilities…" },
-  { label: "Ranking", icon: Trophy, msg: "Scoring 437 models…" },
+  { label: "Ranking", icon: Trophy, msg: "Scoring eligible models…" },
   { label: "Fallback", icon: ShieldCheck, msg: "Arming fallback route…" },
   { label: "Stream", icon: AudioWaveform, msg: "Streaming response…" },
 ];
@@ -366,7 +361,7 @@ const STEPS = [
   { icon: Database, label: "Memory", desc: "Relevant context retrieved from your personal memory graph." },
   { icon: Layers, label: "Context", desc: "A purpose-built context window is assembled per task." },
   { icon: Brain, label: "Planning", desc: "The planner decomposes work into steps and artifacts." },
-  { icon: RouteIcon, label: "Model Selection", desc: "437 models scored on reasoning, speed, cost and uptime." },
+  { icon: RouteIcon, label: "Model Selection", desc: "Eligible models scored on speed, cost and availability." },
   { icon: Zap, label: "Execution", desc: "Winning model streams; fallback route stays armed." },
   { icon: Boxes, label: "Artifacts", desc: "Code, docs, decks and data materialize in your workspace." },
   { icon: FileCode2, label: "Response", desc: "Complete, cited, review-ready work — not a paragraph." },
@@ -1813,8 +1808,8 @@ function Footer() {
         <div className="grid gap-10 md:grid-cols-[1.2fr_repeat(3,0.7fr)]">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 to-cyan-400/20 flex items-center justify-center">
-                <AIIcon size={20} />
+              <div className="relative h-8 w-8 overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 to-cyan-400/20">
+                <Image src="/logo.png" alt="Vatsa AI" fill className="object-contain p-1" sizes="32px" />
               </div>
               <span className="font-display text-[16px] font-semibold text-white">
                 Vatsa<span className="ml-1 align-super font-mono text-[8px] tracking-[0.18em] text-violet-300/90">AI</span>
@@ -1957,7 +1952,7 @@ function Navbar({ onPalette, onAuth, onStartBuilding }: { onPalette: () => void;
     return (
       <a href="#top" className="group flex items-center gap-2.5">
         <span className="relative grid h-8 w-8 place-items-center overflow-hidden rounded-[9px] border border-white/10 bg-gradient-to-br from-violet-500/25 via-indigo-500/15 to-cyan-400/20">
-          <AIIcon size={20} />
+          <Image src="/logo.png" alt="Vatsa AI" fill className="object-contain p-1" sizes="32px" />
         </span>
         <span className="font-display text-[17px] font-semibold tracking-tight text-white">
           Vatsa<span className="ml-1 align-super font-mono text-[9px] font-medium tracking-[0.18em] text-violet-300/90">AI</span>

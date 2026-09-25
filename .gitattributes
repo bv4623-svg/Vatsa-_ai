@@ -1,0 +1,7 @@
+# start.sh (Backend/start.sh) is the Docker image's ENTRYPOINT, executed
+# as `sh /app/start.sh` inside a Linux container -- if a Windows checkout
+# with core.autocrlf enabled ever converts its line endings to CRLF, the
+# "#!/bin/sh" shebang becomes "#!/bin/sh\r", which fails inside the
+# container with "bad interpreter". Forcing LF here means it stays correct
+# regardless of what machine clones/checks out this repo.
+*.sh text eol=lf

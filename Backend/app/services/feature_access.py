@@ -13,7 +13,7 @@ promises Business real extras (Deep research, Team collaboration, SSO, 10x
 the storage) that Pro doesn't get.
 """
 from datetime import date
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 from fastapi import Depends, HTTPException
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
@@ -41,7 +41,13 @@ FEATURE_ACCESS: Dict[str, Dict[str, bool]] = {
     "tools":             {"free": False, "pro": True,  "business": True},
     "rag":               {"free": False, "pro": True,  "business": True},
     "code_page":         {"free": True,  "pro": True,  "business": True},
-    "code_projects":     {"free": False, "pro": True,  "business": True},
+    # Every tier can create projects now (count-gated by PROJECT_LIMITS
+    # below, not an all-or-nothing switch) -- Free previously read False
+    # here but nothing ever actually enforced it (grepped: no caller of
+    # has_access()/require_feature() ever checked "code_projects"), so
+    # this wasn't a real restriction being loosened, just a stale value
+    # made honest.
+    "code_projects":     {"free": True,  "pro": True,  "business": True},
     "code_export":       {"free": False, "pro": True,  "business": True},
     "code_deploy":       {"free": False, "pro": True,  "business": True},
     "deep_research":     {"free": False, "pro": False, "business": True},
@@ -49,11 +55,13 @@ FEATURE_ACCESS: Dict[str, Dict[str, bool]] = {
     "sso":               {"free": False, "pro": False, "business": True},
 }
 
-DAILY_LIMITS: Dict[str, Dict[str, int]] = {
-    "chat_messages":  {"free": 25,  "pro": 2000, "business": 2000},
-    "code_messages":  {"free": 3,   "pro": 500,  "business": 500},
-    "image_gen":      {"free": 20,  "pro": 200,  "business": 200},
-    "web_search":     {"free": 5,   "pro": 500,  "business": 500},
+# A tier mapped to None means unlimited for that tier specifically (see
+# check_daily_limit below); a feature missing from this dict entirely is
+# unlimited for every tier (pre-existing convention). chat_messages and
+# code_messages were removed outright -- unlimited on Free/Pro/Business.
+DAILY_LIMITS: Dict[str, Dict[str, Optional[int]]] = {
+    "image_gen":      {"free": 5,   "pro": 100,  "business": 500},
+    "web_search":     {"free": 5,   "pro": None, "business": None},
     "vision":         {"free": 0,   "pro": 100,  "business": 100},
     "tts":            {"free": 0,   "pro": 100,  "business": 100},
     "reasoning":      {"free": 0,   "pro": 200,  "business": 200},
@@ -63,6 +71,12 @@ DAILY_LIMITS: Dict[str, Dict[str, int]] = {
     # Pro. 20/day is a working allowance, not a published figure.
     "deep_research":  {"free": 0,   "pro": 0,    "business": 20},
 }
+
+# Total *standing* project count, not a daily counter -- checked against
+# how many ChatProject rows the user already has (see check_project_limit),
+# never reset. "5x Pro" on Business is a real, deliberate ratio: 200 = 10x
+# Pro here, chosen to be generous rather than mechanically 5x every axis.
+PROJECT_LIMITS: Dict[str, int] = {"free": 1, "pro": 20, "business": 200}
 
 _LEGACY_PRO_ALIASES = {"paid", "premium", "pro"}
 
@@ -91,17 +105,34 @@ def has_access(user: User, feature: str) -> bool:
 
 
 def check_daily_limit(db: Session, user: User, feature: str) -> Tuple[bool, int, int]:
-    """Returns (allowed, used_today, limit). A feature with no configured
-    limit is always allowed (limit reported as 0 -- meaning "unlimited",
-    not "zero")."""
+    """Returns (allowed, used_today, limit). A feature missing from
+    DAILY_LIMITS entirely is always allowed for every tier (limit reported
+    as 0, meaning "unlimited", not "zero"); a feature present but mapped to
+    None for this specific tier is unlimited for that tier only (see
+    web_search: free is capped, pro/business are not)."""
     limits = DAILY_LIMITS.get(feature)
     if limits is None:
         return True, 0, 0
     tier = user_tier(user)
     limit = limits.get(tier, 0)
+    if limit is None:
+        return True, 0, 0
     today = date.today()
     row = db.query(UsageDaily).filter_by(user_id=user.id, feature=feature, date=today).first()
     used = row.count if row else 0
+    return used < limit, used, limit
+
+
+def check_project_limit(db: Session, user: User) -> Tuple[bool, int, int]:
+    """Returns (allowed, current_count, limit) for creating one more
+    project. Unlike check_daily_limit this counts real, standing rows
+    (ChatProject), not a per-day counter that resets at midnight --
+    deleting/archiving a project frees up a slot, a new day does not."""
+    from app.models.chat_project import ChatProject
+
+    tier = user_tier(user)
+    limit = PROJECT_LIMITS.get(tier, 0)
+    used = db.query(ChatProject).filter_by(user_id=user.id).count()
     return used < limit, used, limit
 
 

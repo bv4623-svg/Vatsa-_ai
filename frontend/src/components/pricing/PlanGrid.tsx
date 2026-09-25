@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { PricingPlanCard } from "./PricingPlanCard";
 import { ACCESS_NOTE, PLANS, RATE_NOTE, type Plan } from "@/data/plans";
+import { useLiveInrPrices } from "@/hooks/useLiveInrPrices";
 
 interface PlanGridProps {
   isAuthenticated: boolean;
@@ -12,6 +13,7 @@ interface PlanGridProps {
 /** Card order comes straight from PLANS: Free, Pro (popular), Business. */
 export function PlanGrid({ isAuthenticated, userTier }: PlanGridProps) {
   const router = useRouter();
+  const { prices: liveInrPrices, loading: loadingLiveInr } = useLiveInrPrices();
 
   const ctaLabel = (plan: Plan) => {
     if (plan.id === "free") return isAuthenticated ? "Go to workspace" : plan.cta;
@@ -44,6 +46,8 @@ export function PlanGrid({ isAuthenticated, userTier }: PlanGridProps) {
             ctaLabel={ctaLabel(plan)}
             isCurrent={isAuthenticated && userTier === plan.id}
             onSelect={handleSelect}
+            liveInr={plan.id === "pro" || plan.id === "business" ? liveInrPrices[plan.id] : undefined}
+            isLoadingLiveInr={loadingLiveInr}
           />
         ))}
       </div>

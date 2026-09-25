@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+import logging
 import os
 import secrets
 
@@ -14,20 +15,48 @@ from app.services.password_policy import validate_password_strength
 from app.routers.auth.schemas import OtpSendRequest, OtpVerifyRequest, ResetPasswordRequest
 
 router = APIRouter(tags=["authentication"])
+logger = logging.getLogger("AuthOTP")
+
+# Minimum gap between two OTP sends to the same email+purpose, so mashing
+# "Resend code" can't spray outbound emails or churn through the 5-per-10-min
+# cap in a few seconds. Backed by the same (Redis-ready) limiter as every
+# other auth rate limit -- see app/utils/rate_limit.py.
+RESEND_COOLDOWN_SECONDS = 45
+
+# Off by default everywhere, including production, so an OTP code never lands
+# in server logs. Set DEBUG_LOG_OTP=true only in local development, when SMTP
+# isn't configured yet and there's no other way to read the code that was
+# generated -- see the missing-env-var 503 below.
+_DEBUG_LOG_OTP = (os.getenv("DEBUG_LOG_OTP") or "").strip().lower() in {"1", "true", "yes"}
 
 
 # ═══════════════════════════════════════════════════════════
-# OTP  (REAL EMAIL)
+# OTP -- password reset only. Sign-up and OTP-based login were removed
+# alongside email/password registration (see core.py:register); this is
+# the one surviving purpose because it is the only way back into the
+# account for an existing password-only user who forgot their password
+# and has not linked Google/GitHub yet (see User.oauth_linked). Once the
+# forced link-account gate ships, this endpoint retires too.
 # ═══════════════════════════════════════════════════════════
 @router.post("/auth/otp/send")
 @router.post("/api/auth/otp/send")
 def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
     purpose = req.purpose or "signup"
+    if purpose != "reset":
+        raise HTTPException(
+            status_code=410,
+            detail="OTP is only available for password reset. Sign-up now uses Google or GitHub.",
+        )
 
     # Per-IP cap on top of the per-email one below, so one source can't
     # spray OTP requests (and outbound emails) across many target addresses.
     enforce_rate_limit(f"otp-send:ip:{client_ip(request)}", limit=20, window_seconds=600)
+
+    # Minimum gap between consecutive sends to this email+purpose (see
+    # RESEND_COOLDOWN_SECONDS) -- independent of the 5-per-10-min cap below,
+    # which only stops sustained abuse, not a user double-clicking "resend".
+    enforce_rate_limit(f"otp-cooldown:{email}:{purpose}", limit=1, window_seconds=RESEND_COOLDOWN_SECONDS)
 
     # Rate limit — max 5 in 10 min
     recent = (
@@ -54,7 +83,12 @@ def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db
     db.add(otp)
     db.commit()
 
-    print(f"\n[OTP] Generated for {email}: {code}  (purpose={purpose})\n", flush=True)
+    if _DEBUG_LOG_OTP:
+        # Local development only (see _DEBUG_LOG_OTP above) -- never enabled
+        # by default, so a real OTP code can never end up in production logs.
+        print(f"\n[OTP][DEBUG_LOG_OTP] Generated for {email}: {code}  (purpose={purpose})\n", flush=True)
+    else:
+        logger.info(f"OTP generated for {email} (purpose={purpose})")
 
     missing = [k for k in ("EMAIL_USERNAME", "EMAIL_PASSWORD") if not os.getenv(k)]
     if missing:
@@ -87,11 +121,14 @@ def resend_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_
 def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
 
-    # Latest active OTP for this email
+    # Latest active OTP for this email -- only "reset" purpose OTPs are ever
+    # issued now (send_otp above rejects anything else), so this implicitly
+    # only ever matches a password-reset code.
     record = (
         db.query(OTP)
         .filter(
             OTP.email == email,
+            OTP.purpose == "reset",
             OTP.is_used == False,       # noqa: E712
             OTP.is_verified == False,   # noqa: E712
             OTP.expires_at > datetime.utcnow(),
@@ -118,41 +155,14 @@ def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
     record.mark_as_used()
     db.commit()
 
-    # Password-reset flow: hand back a short-lived reset token, do NOT log in
-    if record.purpose == "reset":
-        reset_token = create_access_token(
-            {"sub": email, "email": email, "purpose": "password_reset"},
-            expires_delta=timedelta(minutes=10),
-        )
-        return {"verified": True, "reset_token": reset_token}
-
-    # Existing user (e.g. OTP-based login) → login token
-    user = db.query(User).filter(User.email == email).first()
-    if user:
-        if not user.is_active:
-            raise HTTPException(400, "User account is deactivated")
-
-        token = create_access_token(
-            {"sub": str(user.id), "email": user.email, "name": user.full_name}
-        )
-        return {
-            "verified": True,
-            "access_token": token,
-            "token_type": "bearer",
-            "full_name": user.full_name,
-            "profile_completed": user.profile_completed,
-            "user": user.to_dict(),
-        }
-
-    # New user (signup flow) → verification token
-    vtoken = secrets.token_hex(16)
-    try:
-        record.verification_token = vtoken
-        db.commit()
-    except Exception:
-        db.rollback()
-
-    return {"verified": True, "verification_token": vtoken}
+    # Hand back a short-lived reset token for POST /auth/reset-password.
+    # Deliberately does NOT log the caller in -- verifying you own the
+    # inbox is not the same as authenticating as the account.
+    reset_token = create_access_token(
+        {"sub": email, "email": email, "purpose": "password_reset"},
+        expires_delta=timedelta(minutes=10),
+    )
+    return {"verified": True, "reset_token": reset_token}
 
 
 @router.post("/auth/reset-password")
@@ -179,13 +189,3 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     user.token_version = (user.token_version or 0) + 1
     db.commit()
     return {"success": True, "message": "Password reset successfully"}
-
-
-@router.get("/api/auth/check-username")
-def check_username(username: str, db: Session = Depends(get_db)):
-    return {"available": db.query(User).filter(User.username == username.strip()).first() is None}
-
-
-@router.get("/api/auth/check-email")
-def check_email(email: str, db: Session = Depends(get_db)):
-    return {"available": db.query(User).filter(User.email == email.lower().strip()).first() is None}

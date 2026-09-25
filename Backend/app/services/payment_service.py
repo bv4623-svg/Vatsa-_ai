@@ -8,16 +8,21 @@ from datetime import datetime, timedelta
 import httpx
 from sqlalchemy.orm import Session
 
-from app.config.pricing import PRICES_USD, PRICES_INR, ACCESS_DAYS
+from app.config.pricing import PRICES_USD, ACCESS_DAYS
 from app.models.user import User
 from app.models.payment import Payment
 from app.models.subscription import Subscription
 from app.services import payment_ledger as ledger
+from app.services.exchange_rate import get_live_prices_inr
 from app.services.token_service import TokenService
+from app.utils.cache import cache_get, cache_set
 
 logger = logging.getLogger("PaymentService")
 
 RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders"
+
+_PLANS_CACHE_KEY = "payment:plans"
+_PLANS_CACHE_TTL_SECONDS = 300  # USD half never changes; INR half tracks the live rate
 
 _PLAN_META = {
     "pro":      {"label": "Pro",      "tokens": 500000,  "tier": "pro"},
@@ -38,30 +43,46 @@ def _smallest_unit(amount: float) -> int:
     return int(round(amount * 100))
 
 
-def _build_catalog() -> Dict[str, Dict[str, Any]]:
-    catalog: Dict[str, Dict[str, Any]] = {}
-    for plan_id, meta in _PLAN_META.items():
-        for currency, prices in (("USD", PRICES_USD), ("INR", PRICES_INR)):
-            catalog[f"{plan_id}:{currency}"] = {
-                "id": plan_id,
-                "name": f"{meta['label']} ({ACCESS_DAYS} days)",
-                "amount_paise": _smallest_unit(prices[plan_id]),
-                "currency": currency,
-                "tokens": meta["tokens"],
-                "tier": meta["tier"],
-                "duration_days": ACCESS_DAYS,
-            }
-    return catalog
+def _catalog_entry(plan_id: str, meta: Dict[str, Any], currency: str, price_major_units: float) -> Dict[str, Any]:
+    return {
+        "id": plan_id,
+        "name": f"{meta['label']} ({ACCESS_DAYS} days)",
+        "amount_paise": _smallest_unit(price_major_units),
+        "currency": currency,
+        "tokens": meta["tokens"],
+        "tier": meta["tier"],
+        "duration_days": ACCESS_DAYS,
+    }
 
 
-# Exactly four entries: {pro, business} x {USD, INR}. There is no other
-# thing a customer can be charged for, and no fallback entry to land on.
-PLANS: Dict[str, Dict[str, Any]] = _build_catalog()
+def _build_usd_catalog() -> Dict[str, Dict[str, Any]]:
+    return {
+        f"{plan_id}:USD": _catalog_entry(plan_id, meta, "USD", PRICES_USD[plan_id])
+        for plan_id, meta in _PLAN_META.items()
+    }
+
+
+# USD entries only -- fixed, built once at import time. INR entries are
+# resolved fresh on every call (see resolve_plan/get_plans below) from the
+# same live, hourly-cached exchange rate the pricing page displays
+# (app/services/exchange_rate.py), so what a customer sees is always
+# exactly what they're charged. The historical fixed-rate PRICES_INR is no
+# longer used for the actual charge.
+PLANS: Dict[str, Dict[str, Any]] = _build_usd_catalog()
+
+
+def _build_inr_catalog() -> Dict[str, Dict[str, Any]]:
+    prices_inr, _rate, _source = get_live_prices_inr()
+    return {
+        f"{plan_id}:INR": _catalog_entry(plan_id, meta, "INR", prices_inr[plan_id])
+        for plan_id, meta in _PLAN_META.items()
+    }
 
 
 def resolve_plan(plan_id: str, currency: str = "USD") -> Optional[Dict[str, Any]]:
-    cur = "INR" if str(currency).upper() == "INR" else "USD"
-    return PLANS.get(f"{plan_id}:{cur}")
+    if str(currency).upper() != "INR":
+        return PLANS.get(f"{plan_id}:USD")
+    return _build_inr_catalog().get(f"{plan_id}:INR")
 
 
 def _razorpay_credentials() -> tuple[str, str]:
@@ -95,7 +116,21 @@ def _create_razorpay_order(key_id: str, key_secret: str, amount: int, currency: 
 class PaymentService:
     @staticmethod
     def get_plans() -> Dict[str, Dict[str, Any]]:
-        return PLANS
+        # PLANS (USD) is a fixed in-memory dict built once at import time;
+        # the INR half is resolved fresh from the live/cached exchange rate
+        # (app/services/exchange_rate.py) so a customer sees the same INR
+        # price here as they'll actually be charged in create_order() below.
+        # This cache layer just avoids rebuilding the combined dict (and
+        # exercises the hit/miss counters, like the other read paths) on
+        # every single request -- its short TTL sits well inside the
+        # exchange rate's own 1-hour cache window, so it never disagrees
+        # with what create_order() charges in that window.
+        cached = cache_get(_PLANS_CACHE_KEY)
+        if cached is not None:
+            return cached
+        combined = {**PLANS, **_build_inr_catalog()}
+        cache_set(_PLANS_CACHE_KEY, combined, _PLANS_CACHE_TTL_SECONDS)
+        return combined
 
     @staticmethod
     def create_order(db: Session, user: User, plan_id: str, currency: str = "USD") -> Dict[str, Any]:

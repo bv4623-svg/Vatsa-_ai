@@ -10,12 +10,14 @@ from app.database import get_db
 from app.models.user import User
 from app.services.library import register_item, check_quota
 from app.services.account import notify_quota_warning
+from app.services.storage import get_storage_backend
 
 logger = logging.getLogger("UploadRouter")
 router = APIRouter(prefix="/api", tags=["upload"])
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UPLOAD_STORAGE_ROOT = os.path.join(os.getenv("DATA_DIR") or BACKEND_DIR, "uploads")
+_storage = get_storage_backend(UPLOAD_STORAGE_ROOT)
 
 
 def sanitize_filename(raw: str) -> str:
@@ -30,24 +32,6 @@ def sanitize_filename(raw: str) -> str:
     name = name.replace("\\", "/").split("/")[-1].strip()
     name = name.lstrip(".") or "file"
     return name[:255]
-
-try:
-    import pdfplumber
-    PDF_SUPPORT = True
-except ImportError:
-    PDF_SUPPORT = False
-
-try:
-    import docx as _docx
-    DOCX_SUPPORT = True
-except ImportError:
-    DOCX_SUPPORT = False
-
-try:
-    import openpyxl
-    XLSX_SUPPORT = True
-except ImportError:
-    XLSX_SUPPORT = False
 
 FILE_STORE = {}
 
@@ -75,7 +59,9 @@ def extract_text_from_bytes(raw: bytes, filename: str) -> str:
     _check_magic_bytes(raw, filename)
     lower = filename.lower()
     if lower.endswith(".pdf"):
-        if not PDF_SUPPORT:
+        try:
+            import pdfplumber
+        except ImportError:
             raise HTTPException(500, "PDF support not installed. Run: pip install pdfplumber")
         text = ""
         try:
@@ -86,7 +72,9 @@ def extract_text_from_bytes(raw: bytes, filename: str) -> str:
         return text
 
     if lower.endswith(".docx"):
-        if not DOCX_SUPPORT:
+        try:
+            import docx as _docx
+        except ImportError:
             raise HTTPException(500, "DOCX support not installed. Run: pip install python-docx")
         try:
             doc = _docx.Document(io.BytesIO(raw))
@@ -100,7 +88,9 @@ def extract_text_from_bytes(raw: bytes, filename: str) -> str:
             return ""
 
     if lower.endswith((".xlsx", ".xlsm")):
-        if not XLSX_SUPPORT:
+        try:
+            import openpyxl
+        except ImportError:
             raise HTTPException(500, "Excel support not installed. Run: pip install openpyxl")
         try:
             wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
@@ -169,11 +159,8 @@ async def upload_file(
     # flow that reads it back is unaffected by -- this is additive).
     if current_user:
         try:
-            user_dir = os.path.join(UPLOAD_STORAGE_ROOT, str(current_user.id))
-            os.makedirs(user_dir, exist_ok=True)
             storage_path = os.path.join(str(current_user.id), f"{file_id}_{filename}")
-            with open(os.path.join(UPLOAD_STORAGE_ROOT, storage_path), "wb") as f:
-                f.write(raw)
+            _storage.put(storage_path, raw)
 
             register_item(
                 db, current_user.id, "upload", name=filename, size_bytes=len(raw),

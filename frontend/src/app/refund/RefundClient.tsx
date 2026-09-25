@@ -2,10 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { motion, useMotionValue, useSpring } from "framer-motion";
-import { Menu, Command, Info, CheckCircle2, XCircle, DollarSign, Calendar, Mail, RefreshCcw, AlertTriangle } from "lucide-react";
-import { VatsaMark } from "@/components/pricing/VatsaMark";
+import { Info, CheckCircle2, XCircle, DollarSign, Calendar, Mail, RefreshCcw, AlertTriangle } from "lucide-react";
+import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
 import { BusinessInfo } from "@/components/business/BusinessInfo";
 import { BUSINESS } from "@/config/business";
 
@@ -134,88 +132,6 @@ function Background() {
   );
 }
 
-// ─── Magnetic ──────────────────────────────────────────────────────
-interface MagneticProps {
-  children: React.ReactNode;
-  strength?: number;
-  className?: string;
-}
-
-function Magnetic({ children, strength = 0.32, className = "" }: MagneticProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 200, damping: 14, mass: 0.4 });
-  const sy = useSpring(y, { stiffness: 200, damping: 14, mass: 0.4 });
-
-  const onMove = (e: React.MouseEvent) => {
-    const r = ref.current?.getBoundingClientRect();
-    if (!r) return;
-    x.set((e.clientX - r.left - r.width / 2) * strength);
-    y.set((e.clientY - r.top - r.height / 2) * strength);
-  };
-  const reset = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  return (
-    <motion.div
-      ref={ref}
-      onMouseMove={onMove}
-      onMouseLeave={reset}
-      style={{ x: sx, y: sy }}
-      className={`inline-block ${className}`}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-// ─── Model Logos ──────────────────────────────────────────────────
-const modelLogos = [
-  { name: "OpenAI", src: "/openai.png" },
-  { name: "Claude", src: "/claude-color.png" },
-  { name: "Gemini", src: "/gemini-color.png" },
-  { name: "DeepSeek", src: "/deepseek-color.png" },
-  { name: "Mistral", src: "/mistral-color.png" },
-  { name: "Perplexity", src: "/perplexity-color.png" },
-  { name: "Grok", src: "/grok.png" },
-  { name: "Midjourney", src: "/midjourney.png" },
-  { name: "Poe", src: "/poe-color.png" },
-  { name: "Qwen", src: "/qwen-color.png" },
-  { name: "Ollama", src: "/ollama.png" },
-  { name: "Anthropic", src: "/anthropic.png" },
-];
-
-function ModelLogos() {
-  return (
-    <div className="scroll-reveal py-12">
-      <h3 className="text-center text-sm font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-8">
-        Powered by leading AI models
-      </h3>
-      <div className="flex flex-wrap items-center justify-center gap-8 gap-y-6 max-w-5xl mx-auto">
-        {modelLogos.map((logo) => (
-          <div key={logo.name} className="flex flex-col items-center gap-1">
-            <div className="h-10 w-16 relative grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100">
-              <Image
-                src={logo.src}
-                alt={logo.name}
-                fill
-                className="object-contain"
-                sizes="64px"
-              />
-            </div>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-              {logo.name}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Client Component ──────────────────────────────────────
 export default function RefundClient() {
   // Scroll reveal
@@ -270,17 +186,6 @@ export default function RefundClient() {
             background: rgba(255,255,255,0.04);
             border-color: rgba(255,255,255,0.06);
           }
-          .footer-link {
-            color: #9ca3af;
-            transition: color 0.15s ease;
-            font-size: 0.8rem;
-          }
-          .footer-link:hover {
-            color: #111827;
-          }
-          .dark .footer-link:hover {
-            color: #f3f4f6;
-          }
           @keyframes aurora-a {
             0% { transform: translate(0, 0) scale(1); }
             50% { transform: translate(6%, -4%) scale(1.1); }
@@ -298,45 +203,16 @@ export default function RefundClient() {
           }
         `}</style>
 
-        {/* ─── Navigation ─── */}
-        <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-          <div className="mx-auto flex h-[64px] max-w-7xl items-center justify-between px-5 lg:px-8">
-            <VatsaMark />
-            <nav className="hidden items-center gap-6 text-sm text-gray-600 dark:text-gray-400 lg:flex">
-              <Link href="/" className="hover:text-gray-900 dark:hover:text-white transition-colors">Home</Link>
-              <Link href="/pricing" className="hover:text-gray-900 dark:hover:text-white transition-colors">Pricing</Link>
-              <Link href="/home" className="hover:text-gray-900 dark:hover:text-white transition-colors">App</Link>
-            </nav>
-            <div className="flex items-center gap-2">
-              <button className="focus-ring hidden items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-xs text-gray-500 dark:text-gray-400 sm:flex hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
-                <Command size={13} /> K
-              </button>
-              <Link href="/login" className="focus-ring hidden rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white sm:block transition-colors">
-                Sign in
-              </Link>
-              <Magnetic strength={0.25}>
-                <Link href="/signup" className="focus-ring rounded-lg bg-black dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors inline-block">
-                  Start building
-                </Link>
-              </Magnetic>
-              <button className="focus-ring rounded-lg border border-gray-200 dark:border-gray-800 p-2 text-gray-600 dark:text-gray-400 lg:hidden hover:border-gray-300 dark:hover:border-gray-700 transition-colors" aria-label="Open menu">
-                <Menu size={18} />
-              </button>
-            </div>
-          </div>
-        </header>
-
+        <LegalPageLayout>
         {/* ─── Breadcrumb ─── */}
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            <Link href="/" className="hover:underline">Home</Link>
-            <span className="mx-2">/</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium">Refund Policy</span>
-          </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          <Link href="/" className="hover:underline">Home</Link>
+          <span className="mx-2">/</span>
+          <span className="text-gray-700 dark:text-gray-300 font-medium">Refund Policy</span>
         </div>
 
         {/* ─── Hero ─── */}
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-6 scroll-reveal">
+        <div className="pt-8 pb-6 scroll-reveal">
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 text-xs font-medium mb-4 backdrop-blur-sm">
               <Info className="w-4 h-4 text-blue-500" />
@@ -349,13 +225,13 @@ export default function RefundClient() {
               7-day refund window if the paid features are unused.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 18, 2026
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 25, 2026
             </p>
           </div>
         </div>
 
         {/* ─── Content ─── */}
-        <div className="max-w-4xl mx-auto px-5 lg:px-8 pb-12">
+        <div className="pb-12">
           <div className="glass-card rounded-2xl p-8 md:p-12 scroll-reveal">
             <div className="prose prose-lg dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
               {/* Eligibility Banner */}
@@ -418,7 +294,7 @@ export default function RefundClient() {
               {/* Location badge */}
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mt-6">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Vatsa AI is headquartered in <strong className="text-gray-700 dark:text-gray-300">Purnea, Bihar, India</strong> and operates under Indian jurisdiction.
+                  Vatsa AI is headquartered in <strong className="text-gray-700 dark:text-gray-300">{BUSINESS.locality}</strong> and operates under Indian jurisdiction.
                 </p>
               </div>
             </div>
@@ -440,30 +316,7 @@ export default function RefundClient() {
             </Link>
           </div>
         </div>
-
-        {/* ─── Model Logos ─── */}
-        <ModelLogos />
-
-        {/* ─── Footer ─── */}
-        <footer className="border-t border-gray-200 dark:border-gray-800 py-6 bg-white/60 dark:bg-gray-950/60 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-5 lg:px-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <VatsaMark compact />
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                © 2026 Vatsa AI. Intelligence, orchestrated.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link href="/about" className="footer-link">About</Link>
-                <Link href="/pricing" className="footer-link">Pricing</Link>
-                <Link href="/contact" className="footer-link">Contact</Link>
-                <Link href="/disclaimer" className="footer-link">Disclaimer</Link>
-                <Link href="/refund" className="footer-link">Refund Policy</Link>
-                <Link href="/privacy" className="footer-link">Privacy</Link>
-                <Link href="/terms" className="footer-link">Terms</Link>
-              </div>
-            </div>
-          </div>
-        </footer>
+        </LegalPageLayout>
       </div>
     </main>
   );

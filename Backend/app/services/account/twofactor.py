@@ -5,7 +5,6 @@ import secrets
 from typing import List, Optional
 
 import pyotp
-import qrcode
 
 from app.models.user import User
 
@@ -20,6 +19,8 @@ def generate_totp_secret() -> str:
 def generate_qr_data_uri(secret: str, email: str) -> str:
     """A base64 PNG data URI rendered entirely server-side -- the TOTP
     secret is never sent to any third-party QR-generation service."""
+    import qrcode
+
     uri = pyotp.totp.TOTP(secret).provisioning_uri(name=email, issuer_name=ISSUER)
     img = qrcode.make(uri)
     buf = io.BytesIO()

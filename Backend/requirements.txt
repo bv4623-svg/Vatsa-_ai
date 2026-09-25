@@ -13,7 +13,7 @@ pydantic-settings>=2.2
 python-dotenv>=1.0
 python-jose[cryptography]>=3.3
 SQLAlchemy>=2.0
-tiktoken>=0.7
+alembic>=1.13
 pdfplumber>=0.11
 python-docx>=1.2
 openpyxl>=3.1
@@ -23,3 +23,9 @@ apscheduler>=3.10
 pyotp>=2.9
 qrcode>=8.0
 python-multipart>=0.0.9
+# Optional: only imported when REDIS_URL is set (see app/utils/rate_limit.py).
+# Needed for distributed rate limiting across more than one API instance.
+redis>=5.0
+# Optional: only needed when DATABASE_URL points at PostgreSQL instead of the
+# default SQLite file (see app/database.py). Not required for local dev.
+psycopg2-binary>=2.9

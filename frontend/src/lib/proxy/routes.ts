@@ -15,7 +15,6 @@ export const BACKEND_AUTH_PREFIXES = [
   "/auth/token",
   "/auth/google",
   "/auth/github",
-  "/auth/microsoft",
   "/auth/me",
   "/auth/logout",
   "/auth/refresh",

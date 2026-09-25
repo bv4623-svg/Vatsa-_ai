@@ -83,10 +83,17 @@ export const CodePreviewPanel = ({
 
   const handleOpen = useCallback(() => {
     if (!codeContent) return;
-    const blob = new Blob([codeContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    // A blob: URL inherits this app's own origin, which would give
+    // AI-generated (or prompt-injected) content full access to
+    // localStorage -- including the auth token -- with no sandboxing at
+    // all once opened as its own tab. A data: URL always gets a fresh,
+    // opaque origin instead, regardless of who opened it, isolating it
+    // the same way the sandboxed <iframe> preview above is isolated.
+    window.open(
+      "data:text/html;charset=utf-8," + encodeURIComponent(codeContent),
+      "_blank",
+      "noopener,noreferrer"
+    );
   }, [codeContent]);
 
   const handleCopyAll = useCallback(() => {
@@ -228,7 +235,16 @@ export const CodePreviewPanel = ({
                 <iframe
                   key={key}
                   srcDoc={displayContent}
-                  sandbox="allow-scripts allow-modals allow-same-origin allow-forms allow-popups"
+                  // No allow-same-origin: this content can be AI-generated
+                  // (or attached by the user), and a srcdoc iframe with
+                  // both allow-scripts and allow-same-origin inherits this
+                  // app's own origin -- a prompt-injected <script> could
+                  // then read the auth token straight out of localStorage.
+                  // Without allow-same-origin the iframe gets an isolated,
+                  // opaque origin instead: scripts still run (so the "live"
+                  // preview stays interactive), just with no access to
+                  // this app's storage or cookies.
+                  sandbox="allow-scripts allow-modals allow-forms allow-popups"
                   className={cn("h-full w-full border-0 transition-all", previewBlurred && "blur-md")}
                   title="Live Preview"
                 />

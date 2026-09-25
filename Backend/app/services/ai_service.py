@@ -1,67 +1,35 @@
-import os
 import re
-import json
 import logging
-import aiohttp
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.services.memory_service import MemoryService
 from app.services.token_service import TokenService
+from app.services.feature_access import user_tier
+from app.ai_router import get_router
+from app.ai_router.errors import RouterError
+from app.ai_router.types import Capability, RouteRequest
 
 logger = logging.getLogger("AIService")
 
-# Public model selector names (as sent by the frontend's model picker) ->
-# real upstream provider/model id. Keys are the only names that should
-# ever appear in a request; never expose the values below to a client.
-MODEL_NAME_MAPPING = {
-    "auto":             "openai/gpt-4o",
-    "vatsa-pro":        "openai/gpt-4o",
-    "vatsa-advanced":   "anthropic/claude-3.5-sonnet",
-    "vatsa-fast":       "google/gemini-2.5-pro",
-    # Back-compat: accept older client builds that may still send these.
-    "claude-opus-5":     "anthropic/claude-3.5-sonnet",
-    "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
-    "gpt-5.6-luna":      "openai/gpt-4o",
-    "gpt-4o":            "openai/gpt-4o",
-    "gemini-3.6-flash":  "google/gemini-2.5-pro",
-    "gemini-1.5-pro":    "google/gemini-2.5-pro",
-    "deepseek-v3.2":     "deepseek/deepseek-chat",
-    "deepseek-chat":     "deepseek/deepseek-chat",
-}
-
-FREE_FALLBACK_MODELS = [
-    # Verified live against OpenRouter's /api/v1/models + a real completion
-    # call on 2026-09-16 -- the previous list (llama-3.3-70b-instruct:free,
-    # gemini-2.0-flash-exp:free, qwen-2.5-coder-32b-instruct:free,
-    # mistral-7b-instruct:free) had all been deprecated/removed upstream,
-    # silently collapsing this entire fallback chain to a single model.
-    "nex-agi/nex-n2.5-mini:free",
-    "nvidia/nemotron-3.5-lightning:free",
-    "google/gemma-4-31b-it:free",
-    "deepseek/deepseek-chat",  # not free, but cheap -- last-resort paid fallback
-]
-
-# Reasoning-mode model: emits its chain-of-thought as a separate
-# "reasoning" field (both buffered and streamed) distinct from the
-# final answer in "content" -- verified live against OpenRouter on
-# 2026-09-16. No silent fallback to a non-reasoning model on failure:
-# that would silently give the user a response without the reasoning
-# they explicitly asked for.
-REASONING_MODEL = os.getenv("REASONING_MODEL", "deepseek/deepseek-r1")
-
-# Per-model timeout for the fallback chain. Kept short deliberately: a
-# free-tier model that's down doesn't always fail fast -- it can hang
-# with no response at all -- and with several fallbacks configured, a
-# single stuck model at 120s would tax every request that reaches it
-# by two minutes before even trying the next candidate.
-OPENROUTER_TIMEOUT_SECONDS = 30
+# Backs the "Priority queue" line on the pricing page (Pro/Business only --
+# see frontend/src/data/plans.matrix.ts). Lower number = served first under
+# load; AdmissionController sheds the highest-numbered priorities first when
+# a process is near AI_MAX_INFLIGHT (see app/ai_router/admission.py). Free
+# requests aren't refused because of this alone -- they just have less
+# reserved capacity, and are the first shed if the process is genuinely
+# overloaded.
+def _priority_for(user: User, is_code: bool) -> int:
+    if user_tier(user) == "free":
+        return 3
+    return 2 if is_code else 1
 
 # Public name shown anywhere a real provider/model identifier would
 # otherwise leak (API responses, token-ledger entries, persisted
-# messages). Never expose MODEL_NAME_MAPPING/FREE_FALLBACK_MODELS
-# values or the OpenRouter model id outside this module.
+# messages). The actual provider/model mapping now lives entirely in
+# app/ai_router (registry.py + config.py) -- nothing in this file, or
+# anything that calls it, ever sees a provider model id again.
 PUBLIC_MODEL_NAME = "Vatsa AI"
 
 # Appended last to every system prompt so it has the highest priority
@@ -106,145 +74,18 @@ def detect_image_gen(query: str) -> Optional[str]:
             return cleaned.strip() or "beautiful realistic artwork"
     return None
 
+
+def _messages_contain_image(messages: List[Dict[str, Any]]) -> bool:
+    for m in messages:
+        content = m.get("content")
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "image_url":
+                    return True
+    return False
+
+
 class AIService:
-    @staticmethod
-    def map_model(preferred: Optional[str]) -> str:
-        if not preferred:
-            return "openai/gpt-4o"
-        return MODEL_NAME_MAPPING.get(preferred.lower(), preferred)
-
-    @staticmethod
-    async def call_openrouter(
-        messages: List[Dict[str, str]],
-        model: str,
-        max_tokens: int = 1500,
-        temperature: float = 0.7
-    ) -> Dict[str, Any]:
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
-            raise ValueError("OPENROUTER_API_KEY is not set in environment.")
-
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://vatsa-ai.local",
-            "X-Title": "Vatsa AI"
-        }
-        payload = {
-            "model": model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=OPENROUTER_TIMEOUT_SECONDS
-            ) as resp:
-                # Decode as UTF-8 explicitly: OpenRouter responses can contain
-                # emoji/multibyte text, and letting aiohttp guess the charset
-                # from headers has produced mojibake (each UTF-8 byte reread
-                # as a separate Latin-1 codepoint) in practice.
-                raw = await resp.read()
-                body = raw.decode("utf-8", errors="replace")
-                if resp.status != 200:
-                    raise RuntimeError(f"OpenRouter [{resp.status}]: {body}")
-                data = json.loads(body)
-                choices = data.get("choices", [])
-                if not choices:
-                    raise RuntimeError("No choices returned from OpenRouter")
-                message = choices[0].get("message", {})
-                content = message.get("content", "")
-                usage = data.get("usage", {})
-                return {
-                    "content": content,
-                    "reasoning": message.get("reasoning") or "",
-                    "model": data.get("model", model),
-                    "prompt_tokens": usage.get("prompt_tokens", 0),
-                    "completion_tokens": usage.get("completion_tokens", 0),
-                    "total_tokens": usage.get("total_tokens", 0)
-                }
-
-    @staticmethod
-    async def stream_openrouter(
-        messages: List[Dict[str, str]],
-        model: str,
-        max_tokens: int = 1500,
-        temperature: float = 0.7
-    ):
-        """
-        Async generator over one OpenRouter streaming call. Yields
-        {"type": "delta", "content": str} per text chunk and, if the
-        upstream sends it, one {"type": "usage", "usage": {...}}. Raises
-        on any transport/HTTP failure -- same error contract as
-        call_openrouter -- so the caller can fall back to the next model.
-        """
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
-            raise ValueError("OPENROUTER_API_KEY is not set in environment.")
-
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://vatsa-ai.local",
-            "X-Title": "Vatsa AI"
-        }
-        payload = {
-            "model": model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stream": True,
-            "stream_options": {"include_usage": True},
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                # sock_read (not just total) matters here: a model that
-                # hangs silently mid-stream -- connects fine, sends
-                # nothing -- needs its own gap timeout, not just an
-                # overall cap that would also cut off a legitimately
-                # long-but-continuously-streaming response.
-                timeout=aiohttp.ClientTimeout(total=90, sock_connect=10, sock_read=OPENROUTER_TIMEOUT_SECONDS),
-            ) as resp:
-                if resp.status != 200:
-                    raw = await resp.read()
-                    raise RuntimeError(f"OpenRouter [{resp.status}]: {raw.decode('utf-8', errors='replace')}")
-
-                buffer = b""
-                async for chunk in resp.content.iter_any():
-                    buffer += chunk
-                    while b"\n" in buffer:
-                        line, buffer = buffer.split(b"\n", 1)
-                        line = line.decode("utf-8", errors="replace").strip()
-                        if not line or not line.startswith("data:"):
-                            continue
-                        data_str = line[5:].strip()
-                        if data_str == "[DONE]":
-                            return
-                        try:
-                            evt = json.loads(data_str)
-                        except json.JSONDecodeError:
-                            continue
-                        choices = evt.get("choices") or []
-                        if choices:
-                            delta = choices[0].get("delta", {}) or {}
-                            reasoning = delta.get("reasoning")
-                            if reasoning:
-                                yield {"type": "thinking", "content": reasoning}
-                            content = delta.get("content")
-                            if content:
-                                yield {"type": "delta", "content": content}
-                        usage = evt.get("usage")
-                        if usage:
-                            yield {"type": "usage", "usage": usage}
-
     @staticmethod
     async def stream_response(
         db: Session,
@@ -264,18 +105,23 @@ class AIService:
         guarantees (allowance check, system prompt / identity seal via
         _build_messages, fallback-model chain, token deduction) but
         yields incremental text instead of returning one final dict.
+        Provider/model selection, fallback, retry and circuit-breaking
+        are all delegated to the Router Engine (app/ai_router) -- this
+        function never talks to a provider directly.
 
         Yields:
           {"thinking": str}                                          -- one reasoning chunk (reasoning=True only)
           {"delta": str}                                              -- one answer text chunk
-          {"error": str}                                              -- terminal
+          {"error": str, "retry_after": float | None}                 -- terminal
           {"done": True, "content": str, "reasoning": str, "usage": {...}}  -- terminal
         """
         is_code = (workspace == "code")
+        route = "reasoning" if reasoning else (model_name or "auto")
+        router = get_router()
 
         estimated_tokens = 3000 if is_code else 800
-        target_model = REASONING_MODEL if reasoning else AIService.map_model(model_name)
-        allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=target_model)
+        is_premium = router.registry.is_route_premium(route)
+        allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, premium=is_premium)
         if not allowed:
             yield {"error": reason}
             return
@@ -284,60 +130,62 @@ class AIService:
             user, db, query, conversation_history, is_code, attachments, search_context,
             project_instructions, response_style_instructions,
         )
+        required = {Capability.CHAT}
+        if _messages_contain_image(messages):
+            required.add(Capability.VISION)
         # Reasoning models spend a large share of their token budget on
         # the "thinking" phase before ever emitting the answer -- a
         # normal chat max_tokens would frequently cut them off mid-thought.
         max_tokens = 4000 if (is_code or reasoning) else 1500
-        # No fallback chain in reasoning mode: silently downgrading to a
-        # non-reasoning model would give the user a plain answer while
-        # looking like they got the reasoning they explicitly asked for.
-        candidate_models = [target_model] if reasoning else [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
+
+        request = RouteRequest(
+            messages=messages,
+            route=route,
+            max_tokens=max_tokens,
+            required=frozenset(required),
+            # No fallback in reasoning mode: silently downgrading to a
+            # non-reasoning model would give the user a plain answer while
+            # looking like they got the reasoning they explicitly asked for.
+            allow_fallback=not reasoning,
+            include_reasoning=reasoning,
+            priority=_priority_for(user, is_code),
+            user_id=user.id,
+        )
 
         full_text = ""
         thinking_text = ""
-        usage_info: Optional[Dict[str, Any]] = None
-        last_error = None
-        started = False
-
-        for cand in candidate_models:
-            full_text = ""
-            thinking_text = ""
-            usage_info = None
-            try:
-                logger.info(f"Streaming model {cand} for user {user.email} (workspace={workspace}, reasoning={reasoning})")
-                async for event in AIService.stream_openrouter(messages, cand, max_tokens=max_tokens):
-                    if event["type"] == "thinking":
-                        # Some non-reasoning models incidentally emit a
-                        # "reasoning" field on every response -- only
-                        # surface it when the user actually asked for
-                        # reasoning mode, so the toggle is a real on/off.
-                        if reasoning:
-                            started = True
-                            thinking_text += event["content"]
-                            yield {"thinking": event["content"]}
-                    elif event["type"] == "delta":
-                        started = True
-                        full_text += event["content"]
-                        yield {"delta": event["content"]}
-                    elif event["type"] == "usage":
-                        usage_info = event["usage"]
-                break
-            except Exception as e:
-                logger.warning(f"Stream model {cand} failed: {type(e).__name__}: {e}")
-                last_error = e
-                if started:
-                    # Already streamed partial content from this model to
-                    # the client -- switching models now would silently
-                    # duplicate or contradict what they've already seen.
-                    break
-                continue
-
-        if not started:
-            yield {"error": f"All AI models failed. Last error: {last_error}"}
+        usage_info = None
+        try:
+            async for event in router.stream(request):
+                if event.type.value == "thinking":
+                    thinking_text += event.content
+                    yield {"thinking": event.content}
+                elif event.type.value == "delta":
+                    full_text += event.content
+                    yield {"delta": event.content}
+                elif event.type.value == "usage":
+                    usage_info = event.usage
+                elif event.type.value == "done":
+                    if event.usage:
+                        usage_info = event.usage
+        except RouterError as e:
+            logger.warning(f"Router stream failed for user {user.email}: {type(e).__name__}: {e}")
+            yield {"error": e.public_message, "retry_after": e.retry_after}
+            return
+        except Exception:
+            # Any unexpected failure (never a provider error string -- the
+            # router already classifies and sanitizes those) still must not
+            # leak internals to the client.
+            logger.exception(f"Unexpected stream failure for user {user.email}")
+            yield {"error": "AI service is temporarily unavailable. Please try again shortly."}
             return
 
-        prompt_tokens = (usage_info or {}).get("prompt_tokens") or len(query) // 4
-        completion_tokens = (usage_info or {}).get("completion_tokens") or len(full_text + thinking_text) // 4
+        if not full_text and not thinking_text:
+            yield {"error": "AI service is temporarily unavailable. Please try again shortly."}
+            return
+
+        prompt_tokens = usage_info.prompt_tokens if usage_info else len(query) // 4
+        completion_tokens = usage_info.completion_tokens if usage_info else len(full_text + thinking_text) // 4
         total_tokens = prompt_tokens + completion_tokens
 
         TokenService.deduct_tokens(
@@ -483,11 +331,13 @@ class AIService:
         response_style_instructions: Optional[str] = None,
     ) -> Dict[str, Any]:
         is_code = (workspace == "code")
-        target_model = REASONING_MODEL if reasoning else AIService.map_model(model_name)
+        route = "reasoning" if reasoning else (model_name or "auto")
+        router = get_router()
 
         # Estimate tokens and check allowance
         estimated_tokens = 3000 if is_code else 800
-        allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=target_model)
+        is_premium = router.registry.is_route_premium(route)
+        allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, premium=is_premium)
         if not allowed:
             raise ValueError(reason)
 
@@ -495,55 +345,57 @@ class AIService:
             user, db, query, conversation_history, is_code, attachments, search_context,
             project_instructions, response_style_instructions,
         )
-
-        # 3. Call OpenRouter with fallback models (none in reasoning mode --
-        # see stream_response for why silently downgrading is worse than failing).
+        required = {Capability.CHAT}
+        if _messages_contain_image(messages):
+            required.add(Capability.VISION)
         max_tokens = 4000 if (is_code or reasoning) else 1500
-        candidate_models = [target_model] if reasoning else [target_model] + [m for m in FREE_FALLBACK_MODELS if m != target_model]
 
-        last_error = None
-        result = None
-        used_model = target_model
+        request = RouteRequest(
+            messages=messages,
+            route=route,
+            max_tokens=max_tokens,
+            required=frozenset(required),
+            allow_fallback=not reasoning,
+            include_reasoning=reasoning,
+            priority=_priority_for(user, is_code),
+            user_id=user.id,
+        )
 
-        for cand in candidate_models:
-            try:
-                logger.info(f"Calling model {cand} for user {user.email} (workspace={workspace}, reasoning={reasoning})")
-                result = await AIService.call_openrouter(messages, cand, max_tokens=max_tokens)
-                used_model = cand
-                break
-            except Exception as e:
-                logger.warning(f"Model {cand} failed: {type(e).__name__}: {e}")
-                last_error = e
+        # RouterError (including RouterOverloaded) is left to propagate: its
+        # str() and .public_message are already safe to show a user, and the
+        # caller (chat.py / the scheduled-task runner) decides how to surface it.
+        result = await router.generate(request)
 
-        if not result:
-            raise RuntimeError(f"All AI models failed. Last error: {last_error}")
+        prompt_tokens = result.usage.prompt_tokens if result.usage else 0
+        completion_tokens = result.usage.completion_tokens if result.usage else 0
+        total_tokens = result.usage.total_tokens if result.usage else (prompt_tokens + completion_tokens)
 
-        # 4. Deduct tokens from user's balance
-        prompt_tokens = result.get("prompt_tokens", len(query) // 4)
-        completion_tokens = result.get("completion_tokens", len(result["content"]) // 4)
-        total_tokens = prompt_tokens + completion_tokens
-
+        # Regression note: this call was dropped in an earlier rewrite of this
+        # method (routing generate_response through the AI Router), so a
+        # non-streaming request never deducted tokens at all. Caught by
+        # tests/test_chat_and_vision_integration.py::test_chat_non_streaming_end_to_end,
+        # which asserts a TokenTransaction actually exists after the call.
         TokenService.deduct_tokens(
             db=db,
             user_id=user.id,
             tokens=total_tokens,
             reason="AI response",
-            model=PUBLIC_MODEL_NAME
+            model=PUBLIC_MODEL_NAME,
         )
 
         return {
             "status": "success",
             "query": query,
-            "response": result["content"],
+            "response": result.content,
             # Only surface reasoning when the user actually requested it --
             # some non-reasoning models incidentally emit a "reasoning"
             # field on every response, and the toggle should be a real on/off.
-            "reasoning": result.get("reasoning", "") if reasoning else "",
+            "reasoning": result.reasoning if reasoning else "",
             "selected_model": PUBLIC_MODEL_NAME,
             "usage": {
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens
+                "total_tokens": total_tokens,
             },
             "workspace": workspace,
             "vis": 95 if is_code else 85,

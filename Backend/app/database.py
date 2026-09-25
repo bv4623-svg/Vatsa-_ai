@@ -171,4 +171,5 @@ def init_db():
     _ensure_column("users", "totp_secret", "VARCHAR")
     _ensure_column("users", "two_factor_enabled", "BOOLEAN NOT NULL DEFAULT 0", postgres_ddl_type="BOOLEAN NOT NULL DEFAULT FALSE")
     _ensure_column("users", "backup_codes", "JSON")
+    _ensure_column("users", "oauth_linked", "BOOLEAN NOT NULL DEFAULT 0", postgres_ddl_type="BOOLEAN NOT NULL DEFAULT FALSE")
 

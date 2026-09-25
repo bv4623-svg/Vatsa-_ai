@@ -31,13 +31,23 @@ _DEBUG_LOG_OTP = (os.getenv("DEBUG_LOG_OTP") or "").strip().lower() in {"1", "tr
 
 
 # ═══════════════════════════════════════════════════════════
-# OTP  (REAL EMAIL)
+# OTP -- password reset only. Sign-up and OTP-based login were removed
+# alongside email/password registration (see core.py:register); this is
+# the one surviving purpose because it is the only way back into the
+# account for an existing password-only user who forgot their password
+# and has not linked Google/GitHub yet (see User.oauth_linked). Once the
+# forced link-account gate ships, this endpoint retires too.
 # ═══════════════════════════════════════════════════════════
 @router.post("/auth/otp/send")
 @router.post("/api/auth/otp/send")
 def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
     purpose = req.purpose or "signup"
+    if purpose != "reset":
+        raise HTTPException(
+            status_code=410,
+            detail="OTP is only available for password reset. Sign-up now uses Google or GitHub.",
+        )
 
     # Per-IP cap on top of the per-email one below, so one source can't
     # spray OTP requests (and outbound emails) across many target addresses.
@@ -111,11 +121,14 @@ def resend_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_
 def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
 
-    # Latest active OTP for this email
+    # Latest active OTP for this email -- only "reset" purpose OTPs are ever
+    # issued now (send_otp above rejects anything else), so this implicitly
+    # only ever matches a password-reset code.
     record = (
         db.query(OTP)
         .filter(
             OTP.email == email,
+            OTP.purpose == "reset",
             OTP.is_used == False,       # noqa: E712
             OTP.is_verified == False,   # noqa: E712
             OTP.expires_at > datetime.utcnow(),
@@ -142,47 +155,14 @@ def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
     record.mark_as_used()
     db.commit()
 
-    # Password-reset flow: hand back a short-lived reset token, do NOT log in
-    if record.purpose == "reset":
-        reset_token = create_access_token(
-            {"sub": email, "email": email, "purpose": "password_reset"},
-            expires_delta=timedelta(minutes=10),
-        )
-        return {"verified": True, "reset_token": reset_token}
-
-    # Existing user (e.g. OTP-based login) → login token
-    user = db.query(User).filter(User.email == email).first()
-    if user:
-        if not user.is_active:
-            raise HTTPException(400, "User account is deactivated")
-
-        # "tv" (token_version) must be on every login token -- it's what lets
-        # a password reset or "sign out other devices" revoke a session (see
-        # get_current_user). Every other login path (core.py, oauth/shared.py,
-        # twofactor.py) already sets it; this one was missing it, which meant
-        # a token minted via OTP login stayed valid forever, even through a
-        # password reset that was supposed to kill it.
-        token = create_access_token(
-            {"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version}
-        )
-        return {
-            "verified": True,
-            "access_token": token,
-            "token_type": "bearer",
-            "full_name": user.full_name,
-            "profile_completed": user.profile_completed,
-            "user": user.to_dict(),
-        }
-
-    # New user (signup flow) → verification token
-    vtoken = secrets.token_hex(16)
-    try:
-        record.verification_token = vtoken
-        db.commit()
-    except Exception:
-        db.rollback()
-
-    return {"verified": True, "verification_token": vtoken}
+    # Hand back a short-lived reset token for POST /auth/reset-password.
+    # Deliberately does NOT log the caller in -- verifying you own the
+    # inbox is not the same as authenticating as the account.
+    reset_token = create_access_token(
+        {"sub": email, "email": email, "purpose": "password_reset"},
+        expires_delta=timedelta(minutes=10),
+    )
+    return {"verified": True, "reset_token": reset_token}
 
 
 @router.post("/auth/reset-password")
@@ -209,13 +189,3 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     user.token_version = (user.token_version or 0) + 1
     db.commit()
     return {"success": True, "message": "Password reset successfully"}
-
-
-@router.get("/api/auth/check-username")
-def check_username(username: str, db: Session = Depends(get_db)):
-    return {"available": db.query(User).filter(User.username == username.strip()).first() is None}
-
-
-@router.get("/api/auth/check-email")
-def check_email(email: str, db: Session = Depends(get_db)):
-    return {"available": db.query(User).filter(User.email == email.lower().strip()).first() is None}

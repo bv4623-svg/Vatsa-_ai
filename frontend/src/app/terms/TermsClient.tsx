@@ -186,7 +186,7 @@ export default function TermsClient() {
     12: "We may suspend or restrict your access to the Service without prior notice if we reasonably believe you have violated these Terms, or if we are required to do so by law. We will attempt to notify you of the suspension and provide an opportunity to resolve the issue.",
     13: "You may terminate your account at any time from your account settings. We may also terminate or suspend your account immediately, without prior notice or liability, for any reason, including if you breach these Terms. Upon termination, your right to use the Service will cease immediately.",
     14: "To the maximum extent permitted by law, Vatsa AI and its affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses, resulting from (i) your use or inability to use the Service; (ii) any conduct or content of any third party; (iii) any content obtained from the Service; or (iv) unauthorised access, use, or alteration of your transmissions or content.",
-    15: "These Terms shall be governed and construed in accordance with the laws of India, without regard to its conflict of law provisions. Any disputes arising out of or related to these Terms shall be subject to the exclusive jurisdiction of the courts at Purnea, Bihar, India.",
+    15: `These Terms shall be governed and construed in accordance with the laws of India, without regard to its conflict of law provisions. Any disputes arising out of or related to these Terms shall be subject to the exclusive jurisdiction of the courts at ${BUSINESS.locality}.`,
     16: `If you have any questions about these Terms, please contact us at: Email: ${BUSINESS.supportEmail} Address: ${legalName()}, ${postalAddress()}${BUSINESS.phone ? ` Phone: ${BUSINESS.phone}` : ""}`,
   };
 
@@ -265,7 +265,7 @@ export default function TermsClient() {
               Please read these terms carefully before using Vatsa AI.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 1, 2026
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 25, 2026
             </p>
           </div>
         </div>

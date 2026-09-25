@@ -283,7 +283,7 @@ export default function PrivacyClient() {
               Learn how we collect, use, and protect your personal information.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 1, 2026
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 25, 2026
             </p>
           </div>
         </div>

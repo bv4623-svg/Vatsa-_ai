@@ -373,7 +373,7 @@ export default function SecurityClient() {
               Learn how we protect your data and ensure your privacy.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 2, 2026
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 25, 2026
             </p>
           </div>
         </div>
@@ -438,7 +438,7 @@ export default function SecurityClient() {
 
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mt-6">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Vatsa AI is headquartered in <strong className="text-gray-700 dark:text-gray-300">Purnea, Bihar, India</strong> and operates under Indian jurisdiction.
+                  Vatsa AI is headquartered in <strong className="text-gray-700 dark:text-gray-300">{BUSINESS.locality}</strong> and operates under Indian jurisdiction.
                 </p>
               </div>
             </div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -168,6 +168,38 @@ def get_current_user_profile(user: User = Depends(get_current_user), db: Session
     }
     cache_set(cache_key, result, _PROFILE_CACHE_TTL_SECONDS)
     return result
+
+
+@router.post("/auth/logout")
+@router.post("/api/auth/logout")
+def logout(response: Response, user: User = Depends(get_current_user)):
+    """This app has no server-side session and no httpOnly cookie to clear
+    -- auth is a stateless Bearer JWT held in the frontend's localStorage,
+    validated fresh on every request (see app/auth/dependencies), and
+    session.ts's clearSession() already fully logs the browser out today
+    (drops the token, clears the vatsa_session cookie next.js's middleware
+    reads -- that cookie is deliberately NOT httpOnly, since client JS has
+    to write it; it decides "show the page or bounce to /login" for
+    proxy.ts, nothing more).
+
+    What this endpoint deliberately does NOT do: bump user.token_version.
+    That's the mechanism this app already uses for "sign out other
+    devices" (POST /api/account/sessions/sign-out-others) and password
+    reset -- it invalidates every token for the account, not just this
+    one. Wiring routine logout to it would silently sign a user out of
+    every other tab/device too, which is a worse experience than what
+    exists today, not a fix. Genuinely revoking only THIS token (a
+    denylist keyed by the token's jti) is real, separate infrastructure
+    this app doesn't have -- out of scope for a login-only fix.
+
+    Requires a valid Bearer token (get_current_user) so a logged-out
+    client gets a real 401 instead of a hollow 200, and returns a
+    Set-Cookie clearing vatsa_session as a second, redundant guard against
+    that cookie surviving a client-side bug -- belt and suspenders, not
+    the source of truth.
+    """
+    response.delete_cookie("vatsa_session", path="/")
+    return {"success": True}
 
 
 @router.patch("/auth/settings")

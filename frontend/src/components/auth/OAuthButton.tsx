@@ -1,5 +1,7 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
+
 interface OAuthButtonProps {
   provider: "google" | "github";
   onClick: () => void;
@@ -46,7 +48,11 @@ export function OAuthButton({ provider, onClick, loading = false }: OAuthButtonP
           : "border-white/10 bg-white/[0.03] text-white hover:border-white/25 hover:bg-white/[0.06] hover:shadow-[0_0_0_1px_rgba(139,92,246,0.35),0_8px_20px_-6px_rgba(139,92,246,0.35)]"
       }`}
     >
-      {isGoogle ? <GoogleLogo /> : <GitHubLogo />}
+      {loading ? (
+        <Loader2 className={`h-5 w-5 shrink-0 animate-spin ${isGoogle ? "text-gray-500" : "text-white"}`} aria-hidden="true" />
+      ) : (
+        isGoogle ? <GoogleLogo /> : <GitHubLogo />
+      )}
       {loading ? "Redirecting…" : LABELS[provider]}
     </button>
   );

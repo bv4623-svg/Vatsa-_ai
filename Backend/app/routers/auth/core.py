@@ -13,7 +13,7 @@ from app.auth.dependencies import get_current_user
 from app.routers.auth.schemas import LoginRequest, OnboardingRequest
 from sqlalchemy.orm.attributes import flag_modified
 from typing import Any, Dict
-from app.services.feature_access import user_tier, check_daily_limit
+from app.services.feature_access import user_tier, check_daily_limit, check_project_limit
 from app.utils.cache import cache_get, cache_set, cache_delete
 
 router = APIRouter(tags=["authentication"])
@@ -144,10 +144,14 @@ def get_current_user_profile(user: User = Depends(get_current_user), db: Session
     token_acc = db.query(TokenAccount).filter_by(user_id=user.id).first()
     balance = token_acc.balance if token_acc else 50000
     tier = user_tier(user)
+    # chat_messages/code_messages are gone -- chat is unlimited on every
+    # tier now, so there's no daily count worth reporting for it.
     usage = {}
-    for feature in ("chat_messages", "code_messages", "image_gen", "web_search"):
+    for feature in ("image_gen", "web_search"):
         _, used, limit = check_daily_limit(db, user, feature)
         usage[feature] = {"used": used, "limit": limit}
+    _, projects_used, projects_limit = check_project_limit(db, user)
+    usage["code_apps"] = {"used": projects_used, "limit": projects_limit}
     result = {
         "id": user.id, "email": user.email,
         "name": user.full_name or user.email.split("@")[0],

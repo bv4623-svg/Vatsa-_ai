@@ -26,6 +26,11 @@ interface SidebarProps {
   onDeleteProject: (id: string) => void;
   isFree?: boolean;
   onOpenSettings?: () => void;
+  /** Real current count vs. plan limit -- projects.length is already the
+   * real count (this hook only ever fetches workspace=code conversations),
+   * codeAppLimit comes from config/limits.ts by tier. */
+  codeAppLimit?: number;
+  onLimitReached?: () => void;
 }
 
 /** Declared at module scope: a component defined inside the render body is
@@ -46,6 +51,8 @@ export const Sidebar = ({
   onDeleteProject,
   isFree,
   onOpenSettings,
+  codeAppLimit,
+  onLimitReached,
 }: SidebarProps) => {
   const tNav = useTranslations("nav");
   const [query, setQuery] = useState("");
@@ -101,14 +108,29 @@ export const Sidebar = ({
         {!collapsed && (
           <>
             <div className="px-3 pt-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={onNewProject}
-                className="flex w-full items-center gap-2 rounded-xl border border-border bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
-              >
-                <Plus className="h-4 w-4" /> New Project
-              </motion.button>
+              {(() => {
+                const atLimit = typeof codeAppLimit === "number" && projects.length >= codeAppLimit;
+                return (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={atLimit ? onLimitReached : onNewProject}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                      atLimit
+                        ? "border-accent/30 bg-accent/10 text-accent hover:bg-accent/15"
+                        : "border-border bg-accent/5 text-foreground hover:bg-accent/10"
+                    )}
+                  >
+                    <Plus className="h-4 w-4" /> {atLimit ? "Upgrade to create more" : "New Project"}
+                  </motion.button>
+                );
+              })()}
+              {typeof codeAppLimit === "number" && (
+                <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
+                  {projects.length} / {codeAppLimit} apps used
+                </p>
+              )}
             </div>
 
             <div className="px-3 pt-3">

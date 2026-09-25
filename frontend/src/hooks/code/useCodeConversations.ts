@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { useRouter } from "next/navigation";
 import type { Conversation, ChatMessage } from "@/services/chat";
 import type { User } from "@/stores/auth";
-import { uid } from "@/lib/code/parsing";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { API_BASE } from "@/config/api";
+import { parseUpgradeGate } from "@/lib/billing/upgradeError";
 
 
 /**
@@ -110,11 +110,34 @@ export function useCodeConversations(
 
   const createProject = useCallback(
     async (title: string): Promise<string> => {
-      const localId = uid("local");
+      if (!accessToken) throw new Error("Not signed in");
+
+      const res = await fetch(`${API_BASE}/api/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ title, workspace: "code" }),
+      });
+
+      if (!res.ok) {
+        // A 403 here means the free/pro/business code-app cap was hit --
+        // surfaced to the caller as a real error so it can show the
+        // upgrade modal, never silently faked as a local-only project
+        // that would vanish the moment the page refreshes.
+        const gate = await parseUpgradeGate(res);
+        if (gate) throw gate;
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail?.message || body?.detail || `Could not create project (${res.status})`);
+      }
+
+      const data = await res.json();
       const now = new Date().toISOString();
-      const base: Conversation = {
-        id: localId,
-        title,
+      const id = data.id as string;
+      const conv: Conversation = {
+        id,
+        title: data.title || title,
         workspace: "code",
         messages: [],
         created_at: now,
@@ -123,30 +146,8 @@ export function useCodeConversations(
         updatedAt: now,
         user_id: user?.id ? Number(user.id) : 0,
       };
-      try {
-        if (!accessToken) throw new Error("No token");
-        const res = await fetch(`${API_BASE}/api/conversations`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ title, workspace: "code" }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const id = data.id || localId;
-          const conv: Conversation = { ...base, id, title: data.title || title };
-          setConversations((prev) =>
-            prev.some((c) => c.id === id) ? prev : [conv, ...prev]
-          );
-          return id;
-        }
-      } catch (err) {
-        console.warn("createProject network error:", err);
-      }
-      setConversations((prev) => [base, ...prev]);
-      return localId;
+      setConversations((prev) => (prev.some((c) => c.id === id) ? prev : [conv, ...prev]));
+      return id;
     },
     [accessToken, user]
   );

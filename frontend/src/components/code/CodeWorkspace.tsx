@@ -19,7 +19,8 @@ import { useCodeChat } from "@/hooks/code/useCodeChat";
 import { useWorkspaceTheme } from "@/hooks/code/useWorkspaceTheme";
 import { useUpgrade } from "@/components/billing/UpgradeProvider";
 import { clearSession, normalizeTier } from "@/lib/session";
-import type { UpgradeGateInfo } from "@/lib/billing/upgradeError";
+import { UpgradeRequiredError, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
+import { CODE_APP_LIMITS } from "@/config/limits";
 import type { ProjectFile, PreviewMode } from "@/types/code";
 
 const isMac =
@@ -61,7 +62,14 @@ export function CodeWorkspace() {
 
   const handleUpgradeGate = useCallback((info: UpgradeGateInfo) => {
     const featureLabel = (info.feature || "").replace(/_/g, " ");
-    if (info.error === "daily_limit_reached") {
+    if (info.error === "app_limit_reached") {
+      openUpgradeModal(
+        info.message || `You've used your ${info.limit} free code app${info.limit === 1 ? "" : "s"}.`,
+        "code_apps",
+        "pro",
+        info.used != null && info.limit != null ? { used: info.used, limit: info.limit } : undefined,
+      );
+    } else if (info.error === "daily_limit_reached") {
       openUpgradeModal(
         `You've used all ${info.limit} free ${featureLabel} today.`,
         info.feature,
@@ -138,13 +146,23 @@ export function CodeWorkspace() {
   }, [activeProjectId]);
 
   const handleNewProject = useCallback(async () => {
+    let id: string;
+    try {
+      id = await createProject("New Project");
+    } catch (err) {
+      if (err instanceof UpgradeRequiredError) {
+        handleUpgradeGate(err.info);
+      } else {
+        notify(err instanceof Error ? err.message : "Could not create a new project", "error");
+      }
+      return;
+    }
     resetForNewProject();
-    const id = await createProject("New Project");
     setActiveProjectId(id);
     activeProjectIdRef.current = id;
     resetWorkspacePanel();
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, [createProject, resetForNewProject, resetWorkspacePanel, setActiveProjectId, activeProjectIdRef]);
+  }, [createProject, resetForNewProject, resetWorkspacePanel, setActiveProjectId, activeProjectIdRef, handleUpgradeGate, notify]);
 
   const handleLogout = useCallback(() => {
     clearSession();
@@ -341,6 +359,16 @@ export function CodeWorkspace() {
               toggleSidebar={toggleSidebar}
               onDeleteProject={onDeleteProject}
               isFree={isFree}
+              codeAppLimit={CODE_APP_LIMITS[tier] ?? CODE_APP_LIMITS.free}
+              onLimitReached={() =>
+                handleUpgradeGate({
+                  error: "app_limit_reached",
+                  feature: "code_apps",
+                  suggestedTier: "pro",
+                  used: conversations.length,
+                  limit: CODE_APP_LIMITS[tier] ?? CODE_APP_LIMITS.free,
+                })
+              }
             />
 
             <div

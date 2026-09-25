@@ -25,11 +25,19 @@ export const AttachmentChip = memo(({ file, onRemove, onAnalyze, analyzing }: At
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-foreground">{file.name}</p>
-        <p className="text-[10px] text-muted-foreground">
-          {file.status === "processing" && "Processing…"}
-          {file.status === "ready" && `${(file.size / 1024).toFixed(1)} KB`}
-          {file.status === "error" && "Failed"}
-        </p>
+        {file.status === "processing" ? (
+          <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-accent/10">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-150"
+              style={{ width: `${file.progress ?? 0}%` }}
+            />
+          </div>
+        ) : (
+          <p className="text-[10px] text-muted-foreground">
+            {file.status === "ready" && `${(file.size / 1024).toFixed(1)} KB`}
+            {file.status === "error" && (file.errorMessage || "Failed")}
+          </p>
+        )}
       </div>
       {isImage && file.status === "ready" && onAnalyze && (
         <button

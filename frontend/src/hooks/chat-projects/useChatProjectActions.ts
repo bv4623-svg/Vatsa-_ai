@@ -10,9 +10,18 @@ import {
 } from "@/lib/chat-projects-client";
 import type { CreateProjectInput, UpdateProjectInput } from "@/lib/chat-projects-client";
 import type { ChatProject } from "@/types/chat-project";
+import { useUpgrade } from "@/components/billing/UpgradeProvider";
+import { useToasts } from "@/hooks/useToasts";
 
 interface UseChatProjectActionsArgs {
   refetch: () => Promise<void>;
+}
+
+interface ApiErrorBody {
+  error?: string;
+  used?: number;
+  limit?: number;
+  message?: string;
 }
 
 /** Owns the create/edit modal + delete-confirm state and their mutations
@@ -21,6 +30,8 @@ export function useChatProjectActions({ refetch }: UseChatProjectActionsArgs) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ChatProject | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChatProject | null>(null);
+  const { openUpgrade } = useUpgrade();
+  const { push: notify } = useToasts();
 
   const openCreate = useCallback(() => {
     setEditingProject(null);
@@ -36,12 +47,28 @@ export function useChatProjectActions({ refetch }: UseChatProjectActionsArgs) {
 
   const submitForm = useCallback(
     async (input: CreateProjectInput) => {
-      if (editingProject) await apiUpdateProject(editingProject.id, input as UpdateProjectInput);
-      else await apiCreateProject(input);
-      setFormOpen(false);
-      await refetch();
+      try {
+        if (editingProject) await apiUpdateProject(editingProject.id, input as UpdateProjectInput);
+        else await apiCreateProject(input);
+        setFormOpen(false);
+        await refetch();
+      } catch (err) {
+        const body = (err as Error & { body?: ApiErrorBody })?.body;
+        if (body?.error === "project_limit_reached") {
+          setFormOpen(false);
+          openUpgrade({
+            source: "feature_lock",
+            reason: body.message || `You've used your ${body.limit} free project${body.limit === 1 ? "" : "s"}.`,
+            feature: "projects",
+            suggestedTier: "pro",
+            limitInfo: body.used != null && body.limit != null ? { used: body.used, limit: body.limit } : undefined,
+          });
+        } else {
+          notify(err instanceof Error ? err.message : "Could not save the project", "error");
+        }
+      }
     },
-    [editingProject, refetch]
+    [editingProject, refetch, openUpgrade, notify]
   );
 
   const toggleArchive = useCallback(

@@ -29,6 +29,7 @@ import { useAppStore, useSettings, useSettingsActions } from "@/stores/app-store
 import { getPlan } from "@/data/plans";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { speak } from "@/lib/voice/tts";
 import Link from "next/link";
 
 // ─── Helper Components (unchanged) ───
@@ -481,12 +482,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 <button
                   type="button"
                   onClick={() => {
-                    if (!("speechSynthesis" in window)) {
-                      toast({ type: "error", message: "Speech synthesis isn't available here" });
-                      return;
-                    }
-                    speechSynthesis.cancel();
-                    speechSynthesis.speak(new SpeechSynthesisUtterance("Hi, this is Emma from Vatsa AI."));
+                    const voiceLabel = settings.assistantVoice || "Emma";
+                    const ok = speak(`Hi, this is ${voiceLabel} from Vatsa AI.`, {
+                      voiceLabel: typeof voiceLabel === "string" ? voiceLabel : undefined,
+                      onError: () => toast({ type: "error", message: "Speech synthesis failed" }),
+                    });
+                    if (!ok) toast({ type: "error", message: "Speech synthesis isn't available here" });
                   }}
                   className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-[12.5px] font-medium text-zinc-700 dark:text-zinc-300 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >

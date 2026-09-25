@@ -4,16 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { Command, Menu } from "lucide-react";
 import { VatsaMark } from "./VatsaMark";
-import { Magnetic } from "./Magnetic";
+import { Magnetic } from "@/components/pricing/Magnetic";
+import { useAppStore } from "@/stores/app-store";
 
-interface PricingHeaderProps {
-  isAuthenticated: boolean;
-  displayName?: string;
-  tier: string;
-}
-
-export function PricingHeader({ isAuthenticated, displayName, tier }: PricingHeaderProps) {
+/** The one header used on every marketing/legal page (home, pricing,
+ * privacy, terms, refund, return, disclaimer, about, contact). Not used on
+ * /login, which has its own intentional split-screen layout with no nav. */
+export function PageHeader({ active }: { active?: "home" | "pricing" }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+  const user = useAppStore((s) => s.user);
+  const userTier = useAppStore((s) => s.userTier);
+  const displayName = user?.name || user?.full_name || user?.email;
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/80">
@@ -21,8 +23,20 @@ export function PricingHeader({ isAuthenticated, displayName, tier }: PricingHea
         <VatsaMark />
 
         <nav aria-label="Main" className="hidden items-center gap-6 text-sm text-gray-600 dark:text-gray-400 lg:flex">
-          <Link href="/" className="transition-colors hover:text-gray-900 dark:hover:text-white">Home</Link>
-          <Link href="/pricing" aria-current="page" className="text-gray-900 dark:text-white">Pricing</Link>
+          <Link
+            href="/"
+            aria-current={active === "home" ? "page" : undefined}
+            className={active === "home" ? "text-gray-900 dark:text-white" : "transition-colors hover:text-gray-900 dark:hover:text-white"}
+          >
+            Home
+          </Link>
+          <Link
+            href="/pricing"
+            aria-current={active === "pricing" ? "page" : undefined}
+            className={active === "pricing" ? "text-gray-900 dark:text-white" : "transition-colors hover:text-gray-900 dark:hover:text-white"}
+          >
+            Pricing
+          </Link>
           <Link href="/home" className="transition-colors hover:text-gray-900 dark:hover:text-white">App</Link>
         </nav>
 
@@ -35,7 +49,7 @@ export function PricingHeader({ isAuthenticated, displayName, tier }: PricingHea
             <>
               <span className="hidden text-sm text-gray-600 sm:block dark:text-gray-300">{displayName}</span>
               <span className="rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-medium capitalize text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                {tier}
+                {userTier}
               </span>
               <Link href="/home" className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
                 Open app

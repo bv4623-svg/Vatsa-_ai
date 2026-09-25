@@ -4,18 +4,17 @@ import { useEffect } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { Background } from "@/components/pricing/Background";
 import { STYLES } from "@/components/pricing/pricing.styles";
-import { PricingHeader } from "@/components/pricing/PricingHeader";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PageFooter } from "@/components/layout/PageFooter";
 import { PricingBreadcrumb } from "@/components/pricing/PricingBreadcrumb";
 import { PricingHero } from "@/components/pricing/PricingHero";
 import { PlanGrid } from "@/components/pricing/PlanGrid";
 import { ModelLogos } from "@/components/pricing/ModelLogos";
 import { PricingFAQ } from "@/components/pricing/PricingFAQ";
 import { TrustBadges } from "@/components/pricing/TrustBadges";
-import { PricingFooter } from "@/components/pricing/PricingFooter";
 import { PRICING_FAQS } from "@/data/plans";
 
 export default function PricingPage() {
-  const user = useAppStore((state) => state.user);
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const userTier = useAppStore((state) => state.userTier);
 
@@ -40,11 +39,7 @@ export default function PricingPage() {
       <div className="relative z-10">
         <style>{STYLES}</style>
 
-        <PricingHeader
-          isAuthenticated={isAuthenticated}
-          displayName={user?.name || user?.full_name || user?.email}
-          tier={userTier}
-        />
+        <PageHeader active="pricing" />
 
         <PricingBreadcrumb />
         <PricingHero />
@@ -67,7 +62,7 @@ export default function PricingPage() {
           <TrustBadges />
         </section>
 
-        <PricingFooter />
+        <PageFooter />
       </div>
     </main>
   );

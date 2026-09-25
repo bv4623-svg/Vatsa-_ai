@@ -2,11 +2,11 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { AIIcon } from "@/components/brand/AIIcon";
 import { AIOrb } from "@/components/auth/AIOrb";
 import { OAuthButton } from "@/components/auth/OAuthButton";
 import { API_BASE } from "@/config/api";
@@ -61,7 +61,9 @@ function LoginContent() {
         </svg>
 
         <Link href="/" className="relative z-10 flex items-center gap-2">
-          <AIIcon size={28} />
+          <div className="relative h-7 w-7 shrink-0">
+            <Image src="/logo.png" alt="Vatsa AI" fill className="object-contain" sizes="28px" />
+          </div>
           <span className="text-sm font-semibold text-white">Vatsa AI</span>
         </Link>
 
@@ -92,7 +94,9 @@ function LoginContent() {
         >
           <div className="mb-8 flex flex-col items-center text-center">
             <Link href="/" className="mb-6 flex items-center gap-2">
-              <AIIcon size={32} />
+              <div className="relative h-8 w-8 shrink-0">
+                <Image src="/logo.png" alt="Vatsa AI" fill className="object-contain" sizes="32px" />
+              </div>
               <span className="text-lg font-semibold text-white">Vatsa AI</span>
             </Link>
             <h2 className="text-2xl font-semibold text-white">Welcome back</h2>

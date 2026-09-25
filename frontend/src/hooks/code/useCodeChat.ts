@@ -56,7 +56,16 @@ export function useCodeChat(params: UseCodeChatParams) {
       let convId = activeProjectIdRef.current;
       if (!convId) {
         const title = trimmed.slice(0, 40) + (trimmed.length > 40 ? "…" : "");
-        convId = await createProject(title || "New Project");
+        try {
+          convId = await createProject(title || "New Project");
+        } catch (err) {
+          if (err instanceof UpgradeRequiredError) {
+            onUpgradeRequired?.(err.info);
+          } else {
+            notify(err instanceof Error ? err.message : "Could not create a new project", "error");
+          }
+          return;
+        }
         setActiveProjectId(convId);
         activeProjectIdRef.current = convId;
       }

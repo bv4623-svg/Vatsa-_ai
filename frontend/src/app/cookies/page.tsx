@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { BusinessInfo } from '@/components/business/BusinessInfo';
 
 export const metadata: Metadata = {
-  title: 'Cookie Policy | Vatsa AI',
+  title: 'Cookie Policy',
   description: 'Understand how Vatsa AI uses cookies and how you can manage your preferences.',
 };
 

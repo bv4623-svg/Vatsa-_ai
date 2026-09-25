@@ -17,7 +17,7 @@ export function PricingHero() {
           Start free, upgrade anytime. No credit card required.
         </p>
         <p className="mt-3 border-b border-gray-200 pb-4 text-sm text-gray-400 dark:border-gray-800 dark:text-gray-500">
-          <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 18, 2026
+          <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 25, 2026
         </p>
       </div>
     </section>

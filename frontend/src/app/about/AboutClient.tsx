@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { Sparkles, Shield, Zap, Globe, Lock, ChevronRight, Mail } from "lucide-react";
 import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
+import { BUSINESS } from "@/config/business";
 import { BusinessInfo } from "@/components/business/BusinessInfo";
 
 // ─── Background ──────────────────────────────────────────────────────
@@ -224,7 +225,7 @@ export default function AboutClient() {
               Building the most accessible and intelligent AI assistant platform.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 2, 2026
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 25, 2026
             </p>
           </div>
         </div>
@@ -234,7 +235,7 @@ export default function AboutClient() {
           <div className="glass-card rounded-2xl p-8 md:p-12 scroll-reveal">
             <div className="prose prose-lg dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
               <p className="text-xl font-light">
-                Based in <strong className="text-gray-900 dark:text-white">Purnea, Bihar, India</strong>, Vatsa AI is on a mission to build the most accessible and intelligent AI assistant platform.
+                Based in <strong className="text-gray-900 dark:text-white">{BUSINESS.locality}</strong>, Vatsa AI is on a mission to build the most accessible and intelligent AI assistant platform.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 flex items-center gap-2 text-gray-900 dark:text-white">

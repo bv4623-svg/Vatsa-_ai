@@ -14,7 +14,7 @@ export default function CookiesPage() {
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
           Cookie Policy
         </h1>
-        <p className="text-gray-400 text-lg">Last updated: August 1, 2026</p>
+        <p className="text-gray-400 text-lg">Last updated: September 25, 2026</p>
 
         <div className="space-y-8">
           <section className="glass rounded-2xl p-6 md:p-8 border border-white/10 shadow-xl">

@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { AIOrb } from "@/components/auth/AIOrb";
+import { LoginVisual } from "@/components/auth/LoginVisual";
 import { OAuthButton } from "@/components/auth/OAuthButton";
 import { API_BASE } from "@/config/api";
 import { safeRedirect } from "@/lib/redirect";
@@ -43,45 +43,9 @@ function LoginContent() {
 
   return (
     <main className="flex min-h-screen bg-[#05050A]">
-      {/* Left: visual panel, hidden below lg */}
-      <div className="relative hidden overflow-hidden lg:flex lg:w-[58%] lg:flex-col lg:justify-between lg:p-12">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(120% 100% at 15% 10%, rgba(99,102,241,0.35), transparent 55%), radial-gradient(100% 90% at 85% 90%, rgba(139,92,246,0.28), transparent 55%), #0A0A0F",
-          }}
-        />
-        {/* Subtle noise texture for a premium, non-flat feel */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.04]" aria-hidden="true">
-          <filter id="vatsa-login-noise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#vatsa-login-noise)" />
-        </svg>
-
-        <Link href="/" className="relative z-10 flex items-center gap-2">
-          <div className="relative h-7 w-7 shrink-0">
-            <Image src="/logo.png" alt="Vatsa AI" fill className="object-contain" sizes="28px" />
-          </div>
-          <span className="text-sm font-semibold text-white">Vatsa AI</span>
-        </Link>
-
-        <div className="relative z-10 flex flex-1 items-center justify-center">
-          <AIOrb />
-        </div>
-
-        <div className="relative z-10 flex items-end justify-between gap-6">
-          <div>
-            <h1 className="max-w-md text-4xl font-bold leading-tight text-white lg:text-5xl">
-              Unlock the power of AI
-            </h1>
-            <p className="mt-3 max-w-sm text-base text-gray-400">
-              Chat with the smartest AI. Build faster with Vatsa AI.
-            </p>
-          </div>
-          <span className="hidden shrink-0 text-xs text-gray-500 xl:block">Intelligence, orchestrated.</span>
-        </div>
+      {/* Left: visual panel, hidden below lg -- mobile never loads the video */}
+      <div className="relative hidden overflow-hidden lg:block lg:w-[58%]">
+        <LoginVisual />
       </div>
 
       {/* Right: login card */}

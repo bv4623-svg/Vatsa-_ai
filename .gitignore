@@ -29,3 +29,6 @@ render-upload/
 
 # Hostinger deployment archive (generated, not source)
 frontend/frontend-deploy.zip
+
+# Full-resolution logo backup (source asset, not used at runtime -- see scripts/resize-logo.js)
+frontend/public/logo-source.png

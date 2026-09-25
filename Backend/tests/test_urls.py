@@ -68,7 +68,7 @@ def test_allowed_origins_is_read_at_call_time(fresh_urls):
 
 
 def test_oauth_error_redirect_is_built_from_the_central_frontend_url():
-    """The helper the Google/GitHub/Microsoft callbacks all use."""
+    """The helper the Google/GitHub callbacks both use."""
     from app.routers.auth.oauth import shared
 
     response = shared.redirect_with_error("google_not_configured")

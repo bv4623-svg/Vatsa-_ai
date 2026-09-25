@@ -25,6 +25,6 @@ export const FEATURE_MATRIX: FeatureRow[] = [
 // Removed from here on 2026-09-25: "Team collaboration", "SSO" and "Custom
 // SLAs" were advertised on the Business tier with no backing implementation
 // anywhere in the product (no team/org data model, no SAML/OIDC enterprise
-// login beyond the existing per-user Google/GitHub/Microsoft OAuth, no SLA
+// login beyond the existing per-user Google/GitHub OAuth, no SLA
 // monitoring/credit system) -- see the audit notes in the PR that removed
 // them. Re-add a row here only once the feature is real.

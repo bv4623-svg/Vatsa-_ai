@@ -113,7 +113,9 @@ def test_admin_lookup_refuses_a_token_that_cannot_be_revoked(client, make_user, 
     admin, _ = make_admin(db, make_user, monkeypatch)
     old_style = create_access_token({"sub": str(admin.id), "email": admin.email})  # no "tv" claim
     res = client.get("/api/admin/payments?email=x@example.com", headers={"Authorization": f"Bearer {old_style}"})
-    assert res.status_code == 403
+    # Refused before the admin check even runs: a token without "tv" can't be
+    # revoked, so get_current_user doesn't accept it as a session at all.
+    assert res.status_code == 401
 
 
 def test_admin_finds_payments_by_email_and_by_the_address_used_at_the_time(client, make_user, db, monkeypatch, fake_razorpay):

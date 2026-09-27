@@ -79,9 +79,9 @@ export function appendTranscript(existing: string, spoken: string): string {
 export function toSpeakableText(markdown: string): string {
   return markdown
     .replace(/```[\s\S]*?```/g, " (code omitted) ")
-    .replace(/`([^`]+)`/g, "$1")
+    .replace(/`([^`]+)`/g, (_m, code: string) => code)
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, (_m, label: string) => label)
     .replace(/\[\d+\]/g, "")
     .replace(/https?:\/\/\S+/g, "")
     .replace(/^\s{0,3}#{1,6}\s+/gm, "")

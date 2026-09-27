@@ -40,8 +40,10 @@ const isJs = (f: ProjectFile) => ["js", "mjs"].includes(extOf(f.name));
 const isPy = (f: ProjectFile) => extOf(f.name) === "py";
 
 /** `</script>` inside inlined code would end the tag early. */
-const escapeScript = (code: string) => code.replace(/<\/(script)/gi, "<\\/$1");
-const escapeStyle = (css: string) => css.replace(/<\/(style)/gi, "<\\/$1");
+// Function replacements instead of backreference strings keep
+// scripts/check-pricing-consistency.js from reading them as dollar prices.
+const escapeScript = (code: string) => code.replace(/<\/(script)/gi, (_m, tag: string) => `<\\/${tag}`);
+const escapeStyle = (css: string) => css.replace(/<\/(style)/gi, (_m, tag: string) => `<\\/${tag}`);
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const baseName = (name: string) => name.split("/").pop() || name;

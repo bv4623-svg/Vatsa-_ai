@@ -47,6 +47,13 @@ async function installFakeSpeech(page: Page, opts: { recognition?: boolean } = {
   }, { recognition: opts.recognition ?? true });
 }
 
+/** Start dictation and wait until the recogniser reported onstart, as a
+ * real browser does before any result or error event. */
+async function startDictation(page: Page) {
+  await page.getByRole("button", { name: "Dictate with your voice" }).click();
+  await expect(page.getByRole("button", { name: "Stop dictation" })).toHaveAttribute("aria-pressed", "true");
+}
+
 const voice = (page: Page) => ({
   say: (t: string) => page.evaluate((x) => (window as never as { __voice: { say(s: string): void } }).__voice.say(x), t),
   interim: (t: string) => page.evaluate((x) => (window as never as { __voice: { interim(s: string): void } }).__voice.interim(x), t),
@@ -59,8 +66,7 @@ test.describe("voice mode", () => {
     await installFakeSpeech(page);
     await mockBackend(page, { tier: "pro" });
     await page.goto("/home");
-    await page.getByRole("button", { name: "Dictate with your voice" }).click();
-    await expect(page.getByRole("button", { name: "Stop dictation" })).toHaveAttribute("aria-pressed", "true");
+    await startDictation(page);
     await voice(page).interim("what is the");
     await expect(page.getByRole("status").filter({ hasText: "what is the" })).toBeVisible();
     await voice(page).say("what is the weather");
@@ -73,7 +79,7 @@ test.describe("voice mode", () => {
     const api = await mockBackend(page, { tier: "pro" });
     await page.goto("/home");
     await page.getByRole("button", { name: /^Voice conversation:/ }).click();
-    await page.getByRole("button", { name: "Dictate with your voice" }).click();
+    await startDictation(page);
     await voice(page).say("tell me a joke");
     await expect(page.getByText("Hello from Vatsa.")).toBeVisible();
     expect(api.calls[0].body.message).toBe("tell me a joke");
@@ -96,7 +102,7 @@ test.describe("voice mode", () => {
     await installFakeSpeech(page);
     await mockBackend(page, { tier: "pro" });
     await page.goto("/home");
-    await page.getByRole("button", { name: "Dictate with your voice" }).click();
+    await startDictation(page);
     await voice(page).fail("not-allowed");
     await expect(page.getByRole("alert").filter({ hasText: "Microphone access is blocked" })).toBeVisible();
   });

@@ -3,6 +3,12 @@
    ======================================== */
 @import "tailwindcss";
 
+/* dark: utilities follow the app's theme (the .dark class set by
+ * THEME_BOOTSTRAP_SCRIPT / the theme switcher), not the OS preference.
+ * Tailwind v4 defaults to prefers-color-scheme, which made dark: styles
+ * ignore the in-app Light/Dark choice. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* -------- Colors (Primary) -------- */
   --color-primary-50: #eff6ff;

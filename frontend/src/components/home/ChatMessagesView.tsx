@@ -85,11 +85,11 @@ export function ChatMessagesView({
               const msgAttachments = msg.attachments || [];
               return (
                 <div key={msg.id} className="flex justify-end">
-                  <div className="max-w-[450px] rounded-[18px] bg-[#1B1B1B] px-4 py-2.5 text-sm text-foreground" style={{ wordBreak: "break-word" }}>
+                  <div className="max-w-[450px] rounded-[18px] bg-zinc-100 dark:bg-[#1B1B1B] px-4 py-2.5 text-sm text-foreground" style={{ wordBreak: "break-word" }}>
                     {msgAttachments.length > 0 && (
                       <div className="mb-1 flex flex-wrap gap-1">
                         {msgAttachments.map((a, i) => (
-                          <span key={i} className="text-[10px] bg-white/10 rounded px-1.5 py-0.5">📎 {a.name}</span>
+                          <span key={i} className="text-[10px] bg-black/5 dark:bg-white/10 rounded px-1.5 py-0.5">📎 {a.name}</span>
                         ))}
                       </div>
                     )}

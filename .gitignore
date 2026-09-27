@@ -17,3 +17,16 @@ Backend/generated_images/
 # Built static site for Netlify Drop (generated, not source)
 netlify-drop/
 render-upload/
+
+# Never commit archives of the project: they have carried .env files and
+# databases before. Share builds through the deploy pipeline instead.
+*.zip
+# Generated lint/typecheck dumps
+frontend/eslint-*.json
+frontend/lint-*.json
+frontend/lint-*.txt
+frontend/typecheck-errors.txt
+# Test output
+frontend/test-results/
+frontend/playwright-report/
+.pytest_cache/

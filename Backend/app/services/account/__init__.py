@@ -8,6 +8,8 @@ from app.services.account.twofactor import (
     generate_totp_secret,
     generate_qr_data_uri,
     verify_totp_code,
+    seal_totp_secret,
+    upgrade_totp_secret,
     generate_backup_codes,
     hash_backup_codes,
     consume_backup_code,
@@ -23,6 +25,7 @@ from app.services.account.scheduler_jobs import register_account_jobs
 
 __all__ = [
     "generate_totp_secret", "generate_qr_data_uri", "verify_totp_code",
+    "seal_totp_secret", "upgrade_totp_secret",
     "generate_backup_codes", "hash_backup_codes", "consume_backup_code",
     "generate_api_key", "verify_api_key",
     "create_link_state_token", "decode_link_state_token", "upsert_connection",

@@ -6,7 +6,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.database import get_db
 from app.models.user import User
 from app.auth.jwt import create_access_token, decode_access_token
-from app.services.account import verify_totp_code, consume_backup_code
+from app.services.account import verify_totp_code, consume_backup_code, upgrade_totp_secret
 from app.utils.rate_limit import client_ip, enforce_rate_limit, reset_rate_limit
 
 router = APIRouter(tags=["authentication"])
@@ -36,7 +36,10 @@ def verify_login_2fa(req: Verify2FALoginRequest, request: Request, db: Session =
 
     enforce_rate_limit(f"2fa-login:user:{user.id}", limit=5, window_seconds=900)
 
-    ok = verify_totp_code(user.totp_secret, req.code) or consume_backup_code(user, req.code)
+    totp_ok = verify_totp_code(user.totp_secret, req.code)
+    if totp_ok:
+        upgrade_totp_secret(user)
+    ok = totp_ok or consume_backup_code(user, req.code)
     if ok:
         reset_rate_limit(f"2fa-login:ip:{client_ip(request)}")
         reset_rate_limit(f"2fa-login:user:{user.id}")

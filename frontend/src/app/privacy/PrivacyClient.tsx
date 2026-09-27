@@ -276,9 +276,9 @@ export default function PrivacyClient() {
   const content = {
     1: "Vatsa AI (\"we\", \"our\", or \"us\") respects your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our AI platform, website, and related services (collectively, the \"Service\"). Please read this policy carefully. By using the Service, you consent to the data practices described herein.",
     2: {
-      account: "When you create an account, we collect your name, email address, password hash, and profile picture (if provided via Google Authentication). We may also store your subscription tier and billing details through our payment processor.",
-      chat: "All conversations you have with our AI are stored in encrypted form to improve response quality, train models, and provide you with a continuous experience. You can delete individual conversations or your entire history at any time.",
-      files: "Files you upload (e.g., documents, images) are processed temporarily to generate responses. They are not shared with third parties and are deleted after processing unless you explicitly save them to your account.",
+      account: "When you create an account, we collect your name, email address, password hash, and profile picture (if you sign in with Google, GitHub or Microsoft). We may also store your subscription tier and billing details through our payment processor.",
+      chat: "Your conversations are stored so you can return to them and so the assistant has context. We do not use them to train AI models. You can delete individual conversations or your entire history at any time, and you can turn off saving chats in Settings.",
+      files: "Files you upload (documents and images) are stored in your Library so you can reuse them, until you delete them or your account. To answer you, the text of a document, or the image itself, is sent to the AI model provider along with your message.",
       analytics: "We collect anonymous usage data such as feature usage, session duration, and error reports to improve performance and user experience. This data is aggregated and cannot be linked back to you personally.",
       device: "We automatically collect device type, operating system, browser version, IP address, and referring URLs to ensure compatibility and security.",
       cookies: "We use essential and functional cookies to operate the Service. You can manage your cookie preferences in our Cookie Policy.",
@@ -294,10 +294,14 @@ export default function PrivacyClient() {
       "Comply with legal obligations and enforce our Terms of Service"
     ],
     4: "We retain your personal data only for as long as necessary to fulfil the purposes outlined in this policy, unless a longer retention period is required by law. Chat history and uploaded files are kept until you delete them or request account deletion. Usage analytics are anonymised and retained indefinitely for statistical analysis.",
-    5: "We implement industry‑standard security measures, including encryption in transit (TLS) and at rest (AES‑256), to protect your data. However, no method of transmission over the internet is 100% secure; we cannot guarantee absolute security. We regularly review our security practices and update them as needed.",
+    5: "We implement industry‑standard security measures, including encryption in transit (TLS), hashed passwords, and encryption of two‑factor authentication secrets at rest, to protect your data. However, no method of transmission over the internet is 100% secure; we cannot guarantee absolute security. We regularly review our security practices and update them as needed.",
     6: {
       providers: [
-        "Google Authentication – for sign‑in and identity verification",
+        "Google, GitHub and Microsoft – for sign‑in and identity verification, if you choose them",
+        "AI model providers (accessed through OpenRouter) – receive your messages, attached document text and images in order to generate replies",
+        "Image generation provider – receives the text of image prompts",
+        "Web search providers – receive your search queries when web search or deep research is on",
+        "Your browser's speech service – voice input and read‑aloud use your browser's built‑in speech features; in some browsers (e.g. Chrome) audio is processed by the browser vendor, never by our servers",
         "Razorpay (payment processor) – takes payments on our behalf; card, UPI and bank details go to Razorpay and we do not store them",
         "Cloud Infrastructure – for hosting and data storage",
         "Analytics Providers – to understand user behaviour (anonymised)"
@@ -432,7 +436,7 @@ export default function PrivacyClient() {
               Learn how we collect, use, and protect your personal information.
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 1, 2026
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 27, 2026
             </p>
           </div>
         </div>

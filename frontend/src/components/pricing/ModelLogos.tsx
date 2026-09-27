@@ -20,7 +20,7 @@ export const modelLogos = [
 export function ModelLogos() {
   return (
     <div className="scroll-reveal py-12">
-      <h3 className="text-center text-sm font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-8">
+      <h3 className="text-center text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-8">
         Powered by leading AI models
       </h3>
       <div className="flex flex-wrap items-center justify-center gap-8 gap-y-6 max-w-5xl mx-auto">
@@ -35,7 +35,7 @@ export function ModelLogos() {
                 sizes="64px"
               />
             </div>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
               {logo.name}
             </span>
           </div>

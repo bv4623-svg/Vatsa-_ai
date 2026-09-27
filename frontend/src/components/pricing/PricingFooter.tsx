@@ -10,7 +10,7 @@ export function PricingFooter() {
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <VatsaMark compact />
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             © 2026 Vatsa AI. Intelligence, orchestrated.
           </p>
           <nav aria-label="Footer" className="flex flex-wrap gap-4">

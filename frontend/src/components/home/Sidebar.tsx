@@ -89,7 +89,7 @@ export const Sidebar = memo(({
               <IconBtn tip={t("newChat")} side="right" onClick={onNewChat} className="h-9 w-9"><Plus className="h-5 w-5" /></IconBtn>
             ) : (
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onNewChat} className="flex w-full items-center gap-2 rounded-xl border border-border bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10">
-                <Plus className="h-4 w-4" /> {t("newChat")} <kbd className="ml-auto text-[10px] text-muted-foreground">⌘K</kbd>
+                <Plus className="h-4 w-4" /> {t("newChat")} <kbd className="ml-auto text-[11px] text-foreground/70">⌘K</kbd>
               </motion.button>
             )}
           </div>
@@ -129,7 +129,7 @@ export const Sidebar = memo(({
                         <span className="truncate">{c.title || "Untitled"}</span>
                         {c.pinned && <Pin className="h-3 w-3 ml-1 text-accent" />}
                         {c.favorite && <Star className="h-3 w-3 ml-1 text-yellow-400 fill-yellow-400" />}
-                        <span className="ml-auto text-[10px] text-muted-foreground/50">
+                        <span className="ml-auto text-[10px] text-foreground/70">
                           {new Date(c.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                         {hoveredChatId === c.id && (
@@ -175,7 +175,7 @@ export const Sidebar = memo(({
                     <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                       <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" />
                       <p className="text-sm font-medium text-foreground/70">No conversations yet</p>
-                      <p className="text-xs text-muted-foreground/60">Start a new chat to begin</p>
+                      <p className="text-xs text-muted-foreground">Start a new chat to begin</p>
                     </div>
                   )
                 ) : (
@@ -213,7 +213,7 @@ export const Sidebar = memo(({
                     <p className="text-sm font-medium text-foreground truncate leading-tight">{userProfile?.full_name || "User"}</p>
                     <p className="text-xs text-muted-foreground truncate">{userProfile?.email || "user@email.com"}</p>
                   </div>
-                  <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground">
+                  <button onClick={onOpenSettings} aria-label="Settings" className="p-1.5 rounded-lg hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground">
                     <Settings className="w-4 h-4" />
                   </button>
                 </div>
@@ -221,7 +221,7 @@ export const Sidebar = memo(({
                   <button onClick={onOpenSettings} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground">
                     <Settings className="w-3.5 h-3.5" /> {t("settings")}
                   </button>
-                  <button onClick={onLogout} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-red-400 hover:bg-red-400/10 transition-colors">
+                  <button onClick={onLogout} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-400/10 transition-colors">
                     <LogOut className="w-3.5 h-3.5" /> {t("signOut")}
                   </button>
                 </div>

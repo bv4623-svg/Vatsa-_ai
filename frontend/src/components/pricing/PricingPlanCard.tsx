@@ -58,7 +58,7 @@ export function PricingPlanCard({ plan, ctaLabel, isCurrent, onSelect }: Pricing
           </button>
         </Magnetic>
         {plan.note && (
-          <p className="mt-3 text-center text-xs text-gray-400 dark:text-gray-500">{plan.note}</p>
+          <p className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">{plan.note}</p>
         )}
       </div>
     </div>

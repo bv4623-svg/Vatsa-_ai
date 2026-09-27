@@ -188,7 +188,7 @@ const modelLogos = [
 function ModelLogos() {
   return (
     <div className="scroll-reveal py-12">
-      <h3 className="text-center text-sm font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-8">
+      <h3 className="text-center text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-8">
         Powered by leading AI models
       </h3>
       <div className="flex flex-wrap items-center justify-center gap-8 gap-y-6 max-w-5xl mx-auto">
@@ -203,7 +203,7 @@ function ModelLogos() {
                 sizes="64px"
               />
             </div>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
               {logo.name}
             </span>
           </div>
@@ -232,7 +232,7 @@ function VatsaMark({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <span className="text-[17px] font-semibold tracking-[-.04em] text-gray-900 dark:text-white">
-          vatsa<span className="text-gray-400 dark:text-gray-500">.ai</span>
+          vatsa<span className="text-gray-500 dark:text-gray-400">.ai</span>
         </span>
       )}
     </Link>
@@ -294,9 +294,12 @@ export default function DisclaimerClient() {
             border-color: rgba(255,255,255,0.06);
           }
           .footer-link {
-            color: #9ca3af;
+            color: #6b7280;
             transition: color 0.15s ease;
             font-size: 0.8rem;
+          }
+          .dark .footer-link {
+            color: #9ca3af;
           }
           .footer-link:hover {
             color: #111827;
@@ -371,7 +374,7 @@ export default function DisclaimerClient() {
             <p className="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-2xl mx-auto">
               Important information about AI-generated content and your responsibilities.
             </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 border-b border-gray-200 dark:border-gray-800 pb-4">
               <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> August 2, 2026
             </p>
           </div>
@@ -442,7 +445,7 @@ export default function DisclaimerClient() {
           <div className="max-w-7xl mx-auto px-5 lg:px-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <VatsaMark compact />
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 © 2026 Vatsa AI. Intelligence, orchestrated.
               </p>
               <div className="flex flex-wrap gap-4">

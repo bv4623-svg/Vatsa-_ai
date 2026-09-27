@@ -13,7 +13,7 @@ export function VatsaMark({ compact = false }: { compact?: boolean }) {
       <AIIcon size={28} />
       {!compact && (
         <span className="text-[17px] font-semibold tracking-[-.04em] text-gray-900 dark:text-white">
-          vatsa<span className="text-gray-400 dark:text-gray-500">.ai</span>
+          vatsa<span className="text-gray-500 dark:text-gray-400">.ai</span>
         </span>
       )}
     </Link>

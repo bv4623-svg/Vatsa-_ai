@@ -16,10 +16,10 @@ Round 2 (follow-up, same day) re-ran everything from a clean state, then added s
 | Production build | `next build` | – | **passes** |
 | Pricing gate | `npm run check:pricing` | – | **passes** |
 | Secret scan, tree | `forbidden_files.py --tracked` + gitleaks 8.28 | – | **clean** |
-| Secret scan, history | `scan_history.py --baseline` (all refs, archive listings, gitleaks) | 163 commits, all refs | **9 known items, 0 new, 0 gitleaks findings**. The 9 are the archives in SECURITY_ACTIONS.md, waiting for the owner's purge (KI-01) |
+| Secret scan, history | `scan_history.py --baseline` (all refs, archive listings, gitleaks) | 167 commits, all refs, after the purge | **0 secret-bearing items, 0 gitleaks findings, empty baseline**. The 3 archives were purged from every branch on 2026-09-27 (SECURITY_ACTIONS.md §5) |
 | Route latency | `Backend/scripts/profile_routes.py` (heavy account) | 33 GET routes | **all under 500 ms**; slowest ~200 ms (§6) |
 | Business-info gate | `npm run check:business` | – | **fails, as before the audit**: legal name, postal address and phone must come from the owner (KI-10) |
-| CI | GitHub Actions on PR #2 | backend, frontend, e2e, secret-scan | runs 1–4 green. Run 5 (`100d560`) failed: the dark-theme axe test (one test for 10 scans) timed out at 120 s on the CI runner. It was split into 20 tests (`a11y.spec.ts`). **Run 36306429383 on `9e5dc53`: all 4 jobs green** (backend, frontend, E2E in 3m27s, secret scan) |
+| CI | GitHub Actions on PR #2 | backend, frontend, e2e, secret-scan | runs 1–4 green. Run 5 (`24f9660`) failed: the dark-theme axe test (one test for 10 scans) timed out at 120 s on the CI runner. It was split into 20 tests (`a11y.spec.ts`). **Run 36306429383 on `014d4fb`: all 4 jobs green** (backend, frontend, E2E in 3m27s, secret scan) |
 
 Environment: Python 3.11.15, FastAPI 0.141.1, Starlette 1.7.0, Node 22.22.2, Chromium 141 (Playwright 1.56.1).
 
@@ -330,7 +330,7 @@ The ~246 KB common to every page is the framework and shared layout. Every page'
 
 ## 8. README verified on a clean machine
 
-A fresh `git clone` of `100d560` into an empty temp directory, following README.md's commands exactly:
+A fresh `git clone` of `24f9660` into an empty temp directory, following README.md's commands exactly:
 
 | Step (as written in the README) | Result |
 |---|---|
@@ -340,7 +340,7 @@ A fresh `git clone` of `100d560` into an empty temp directory, following README.
 | `python -m pytest -q` in the clone | 262 passed, 12 skipped |
 | `npm ci`, `cp .env.example .env.local`, `npm run dev` | predev copied Pyodide (5 files). `/`, `/login`, `/pricing`, `/pyodide/pyodide.js` all 200. `/health` through the Next proxy reached the API |
 | `scripts/create_verified_user.py` (with `VATSA_NEW_USER_PASSWORD`), then sign in through the real `/login` UI in Chromium | landed on `/home`; sending "hello" without an OpenRouter key showed "AI service is temporarily unavailable. Please try again." with Try again; no page errors |
-| `git status` in the clone afterwards | only `Backend/.venv/` was untracked but not ignored → fixed (BUG-059, 55bcb41). `.env`, `.env.local`, `vatsa.db` and `public/pyodide/` were already ignored |
+| `git status` in the clone afterwards | only `Backend/.venv/` was untracked but not ignored → fixed (BUG-059, 616adb3). `.env`, `.env.local`, `vatsa.db` and `public/pyodide/` were already ignored |
 
 ## Appendix A: every automated test case (generated from the runners)
 

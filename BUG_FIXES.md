@@ -4,48 +4,48 @@ Every bug found during the end-to-end audit, with severity, reproduction, expect
 
 **Severity scale:** **P0** security or data exposure, or a core feature unusable · **P1** a major feature broken, missing or misleading · **P2** a real defect with a workaround or limited blast radius · **P3** minor, cosmetic, or hardening.
 
-**Summary:** 59 issues logged (36 in round 1, 23 in round 2). Every P0, P1 and P2 is fixed. BUG-024 (P3) is an accepted risk, tracked as KNOWN_ISSUES.md KI-02. BUG-001 is fixed in the working tree, but git history still holds the archives: the purge and secret rotation need the owner (SECURITY_ACTIONS.md, KI-01).
+**Summary:** 59 issues logged (36 in round 1, 23 in round 2). Every P0, P1 and P2 is fixed. BUG-024 (P3) is an accepted risk, tracked as KNOWN_ISSUES.md KI-02. BUG-001 is fixed in the tree and in history (purged from every branch on 2026-09-27). Rotating the leaked secrets still needs the owner (SECURITY_ACTIONS.md §4, KI-01).
 
 Every round-2 fix has a test that was run against the old code and failed, then passed with the fix. Round 2 is [below](#round-2-2026-09-27-follow-up).
 
 | ID | Sev | Area | Title | Status | Commit |
 |---|---|---|---|---|---|
-| BUG-001 | P0 | Security | Archive with `.env` files and a database committed to the repo | Fixed in tree; **owner action required** ([SECURITY_ACTIONS.md](SECURITY_ACTIONS.md)) | 82bd096 |
-| BUG-002 | P1 | Chat | Streaming error leaked provider name, model id and upstream body | Fixed | 7542d94 |
-| BUG-003 | P0 | Code | Preview iframe `allow-scripts allow-same-origin` let generated code read the session token | Fixed | 236f218 |
-| BUG-004 | P1 | Code | "Open in new tab" ran generated code on a same-origin `blob:` URL | Fixed | 236f218 |
-| BUG-005 | P1 | Image gen | Intent detection misrouted 13 of 28 cases (e.g. "draw conclusions", "image carousel component", code workspace) | Fixed | 409af5b |
-| BUG-006 | P1 | Uploads | Anonymous uploads accepted; every upload's text kept forever in an unused in-memory dict | Fixed | 16df05e |
-| BUG-007 | P1 | Uploads | PDF/DOCX/XLSX parsed synchronously on the event loop (a big file stalls every request) | Fixed | 16df05e |
-| BUG-008 | P2 | PDF | Scanned PDF returned empty text silently; the model saw nothing | Fixed | 16df05e |
-| BUG-009 | P2 | Uploads | Corrupted/password-protected files returned empty text or echoed parser exceptions | Fixed | 16df05e |
-| BUG-010 | P2 | Uploads | No zip-bomb guard for DOCX/XLSX; no PDF page cap; unbounded sheet iteration | Fixed | 16df05e |
-| BUG-011 | P1 | Research | Deep research advertised (Business plan) but not implemented | Implemented | fc1e916, 625eb38 |
-| BUG-012 | P1 | Voice | Voice mode was a UI stub (mic and "Start Recording" did nothing) | Implemented | 4aead04, 625eb38 |
-| BUG-013 | P1 | Code | Multi-file projects previewed unstyled and without scripts | Fixed | 236f218 |
-| BUG-014 | P2 | Code | No way to run JavaScript or Python output ("code execution") | Implemented | 236f218 |
-| BUG-015 | P2 | Search | Search query included inlined attachment text (up to 50k chars) | Fixed | 7542d94 |
-| BUG-016 | P2 | Search | Search silently skipped when the limit was hit or providers failed | Fixed | 7542d94, 625eb38 |
-| BUG-017 | P2 | Search | Snippet enrichment fetched any URL server-side and followed redirects (SSRF) | Fixed | 7542d94 |
-| BUG-018 | P2 | Billing | Daily allowance charged even when chat, image or vision failed | Fixed | 409af5b, 16df05e |
-| BUG-019 | P2 | Image gen | Images in chats older than 7 days broke (expired media token baked into stored URL) | Fixed | 409af5b |
-| BUG-020 | P3 | Image gen | Regenerate returned the identical image (provider caches by URL) | Fixed | 409af5b |
-| BUG-021 | P2 | Uploads | Unsupported attachments (zip, pptx, svg…) silently dropped while shown as attached | Fixed | 16df05e |
-| BUG-022 | P2 | Vision | Free plan "Analyze" showed "[object Object]" instead of the upgrade flow | Fixed | 16df05e |
-| BUG-023 | P2 | Chat | Retry and Regenerate duplicated the user's message | Fixed | 625eb38 |
+| BUG-001 | P0 | Security | Archive with `.env` files and a database committed to the repo | Fixed in tree and **purged from history**; owner must rotate secrets ([SECURITY_ACTIONS.md](SECURITY_ACTIONS.md)) | 6e82980 |
+| BUG-002 | P1 | Chat | Streaming error leaked provider name, model id and upstream body | Fixed | 901f8c9 |
+| BUG-003 | P0 | Code | Preview iframe `allow-scripts allow-same-origin` let generated code read the session token | Fixed | b6766c6 |
+| BUG-004 | P1 | Code | "Open in new tab" ran generated code on a same-origin `blob:` URL | Fixed | b6766c6 |
+| BUG-005 | P1 | Image gen | Intent detection misrouted 13 of 28 cases (e.g. "draw conclusions", "image carousel component", code workspace) | Fixed | c93687b |
+| BUG-006 | P1 | Uploads | Anonymous uploads accepted; every upload's text kept forever in an unused in-memory dict | Fixed | 0be5a5a |
+| BUG-007 | P1 | Uploads | PDF/DOCX/XLSX parsed synchronously on the event loop (a big file stalls every request) | Fixed | 0be5a5a |
+| BUG-008 | P2 | PDF | Scanned PDF returned empty text silently; the model saw nothing | Fixed | 0be5a5a |
+| BUG-009 | P2 | Uploads | Corrupted/password-protected files returned empty text or echoed parser exceptions | Fixed | 0be5a5a |
+| BUG-010 | P2 | Uploads | No zip-bomb guard for DOCX/XLSX; no PDF page cap; unbounded sheet iteration | Fixed | 0be5a5a |
+| BUG-011 | P1 | Research | Deep research advertised (Business plan) but not implemented | Implemented | e1f387b, 9e38185 |
+| BUG-012 | P1 | Voice | Voice mode was a UI stub (mic and "Start Recording" did nothing) | Implemented | 4c97870, 9e38185 |
+| BUG-013 | P1 | Code | Multi-file projects previewed unstyled and without scripts | Fixed | b6766c6 |
+| BUG-014 | P2 | Code | No way to run JavaScript or Python output ("code execution") | Implemented | b6766c6 |
+| BUG-015 | P2 | Search | Search query included inlined attachment text (up to 50k chars) | Fixed | 901f8c9 |
+| BUG-016 | P2 | Search | Search silently skipped when the limit was hit or providers failed | Fixed | 901f8c9, 9e38185 |
+| BUG-017 | P2 | Search | Snippet enrichment fetched any URL server-side and followed redirects (SSRF) | Fixed | 901f8c9 |
+| BUG-018 | P2 | Billing | Daily allowance charged even when chat, image or vision failed | Fixed | c93687b, 0be5a5a |
+| BUG-019 | P2 | Image gen | Images in chats older than 7 days broke (expired media token baked into stored URL) | Fixed | c93687b |
+| BUG-020 | P3 | Image gen | Regenerate returned the identical image (provider caches by URL) | Fixed | c93687b |
+| BUG-021 | P2 | Uploads | Unsupported attachments (zip, pptx, svg…) silently dropped while shown as attached | Fixed | 0be5a5a |
+| BUG-022 | P2 | Vision | Free plan "Analyze" showed "[object Object]" instead of the upgrade flow | Fixed | 0be5a5a |
+| BUG-023 | P2 | Chat | Retry and Regenerate duplicated the user's message | Fixed | 9e38185 |
 | BUG-024 | P3 | Plans | Free users get image understanding through chat attachments (plans list Vision as Pro) | **Accepted risk** (KI-02: at most 100 images per free user per day) | – |
-| BUG-025 | P3 | API | API-keys gate returns `403 feature_requires_upgrade` instead of standard `402 upgrade_required` | Fixed (round 2) | cb71c44 |
-| BUG-026 | P2 | Chat | No limit on message length or attachment count | Fixed | 7542d94 |
-| BUG-027 | P2 | Uploads | Attachment chips: all files waited for the slowest; same-name files collided; removed files came back | Fixed | 16df05e |
-| BUG-028 | P3 | Chat | Text attachments sent twice in every request | Fixed | 16df05e |
-| BUG-029 | P3 | Frontend | `useDebounce` hook was an empty stub | Fixed | 236f218 |
-| BUG-030 | P3 | Privacy | Chat request sent the user's email as `userId` (ignored by the server) | Fixed | 625eb38 |
-| BUG-031 | P3 | Chat | SSE parser dropped a final event not followed by a newline | Fixed | 625eb38 |
-| BUG-032 | P2 | Uploads | Image data URLs not validated server-side (type, encoding, size, count) | Fixed | 16df05e |
-| BUG-033 | P2 | Vision | Vision trusted the client's declared content type | Fixed | 16df05e |
-| BUG-034 | P2 | Chat | HTTP errors rendered as `⚠️ Failed: HTTP 500: {"detail":…}` raw JSON | Fixed | 625eb38 |
-| BUG-035 | P3 | Tooling | 9 ESLint errors; no CI at all | Fixed | 8a437b0, 99b7d5a |
-| BUG-036 | P3 | Tests | Test runs wrote uploads into `Backend/uploads/` | Fixed | 99b7d5a |
+| BUG-025 | P3 | API | API-keys gate returns `403 feature_requires_upgrade` instead of standard `402 upgrade_required` | Fixed (round 2) | b97ae91 |
+| BUG-026 | P2 | Chat | No limit on message length or attachment count | Fixed | 901f8c9 |
+| BUG-027 | P2 | Uploads | Attachment chips: all files waited for the slowest; same-name files collided; removed files came back | Fixed | 0be5a5a |
+| BUG-028 | P3 | Chat | Text attachments sent twice in every request | Fixed | 0be5a5a |
+| BUG-029 | P3 | Frontend | `useDebounce` hook was an empty stub | Fixed | b6766c6 |
+| BUG-030 | P3 | Privacy | Chat request sent the user's email as `userId` (ignored by the server) | Fixed | 9e38185 |
+| BUG-031 | P3 | Chat | SSE parser dropped a final event not followed by a newline | Fixed | 9e38185 |
+| BUG-032 | P2 | Uploads | Image data URLs not validated server-side (type, encoding, size, count) | Fixed | 0be5a5a |
+| BUG-033 | P2 | Vision | Vision trusted the client's declared content type | Fixed | 0be5a5a |
+| BUG-034 | P2 | Chat | HTTP errors rendered as `⚠️ Failed: HTTP 500: {"detail":…}` raw JSON | Fixed | 9e38185 |
+| BUG-035 | P3 | Tooling | 9 ESLint errors; no CI at all | Fixed | d74c6bd, 31d7048 |
+| BUG-036 | P3 | Tests | Test runs wrote uploads into `Backend/uploads/` | Fixed | 31d7048 |
 
 ---
 
@@ -59,7 +59,7 @@ Every round-2 fix has a test that was run against the old code and failed, then 
 - **Owner action still required (cannot be done from a PR):**
   1. Rotate everything those `.env` files could have held: `JWT_SECRET_KEY` (rotating signs everyone out), `OPENROUTER_API_KEY`, SMTP password, OAuth client secrets (Google/GitHub/Microsoft), search API keys, and Razorpay key secret and webhook secret.
   2. Treat the users in `vatsa.db` as exposed (emails, password hashes) and decide on user notification.
-  3. Purge history: `git filter-repo --path vatsaai.com/vatsaai.zip --invert-paths` (and the other removed archives), force-push, then ask GitHub support to clear cached views.
+  3. ~~Purge history~~ **Done 2026-09-27:** `git filter-repo` removed all three archives (and any `*.env`, `*.db`, `*.sqlite*`, `*.zip`, `*.tar*`, `*.pem`, `*.key` path) from every branch, then force-pushed. `git log --all --full-history -- '*.zip' '*.env' '*.db' '*.sqlite'` is empty in a fresh clone. Still to do: ask GitHub Support to clear cached views of the old SHAs (SECURITY_ACTIONS.md §5).
 
 ### BUG-002 · P1 · Provider details leaked in stream errors
 - **Steps:** make every model fail (e.g. no OpenRouter credit), send a chat with `stream: true`.
@@ -239,7 +239,7 @@ A script uploaded with `Content-Type: image/png` was base64-encoded and sent to 
 9 `react-hooks/set-state-in-effect` errors. The four with a clean alternative were fixed properly (`useHydrated`, derived ThinkingBox state, CommandPalette reset during render); four one-time localStorage/initial-fetch effects carry a targeted disable with a reason. `.github/workflows/ci.yml` added.
 
 ### BUG-036 · P3 · Test output in the source tree
-`tests/conftest.py` didn't set `DATA_DIR`, so upload tests wrote into `Backend/uploads/`. During this audit that output was committed once by mistake (16df05e) and removed in 99b7d5a; conftest now isolates `DATA_DIR` and `Backend/uploads/` is gitignored.
+`tests/conftest.py` didn't set `DATA_DIR`, so upload tests wrote into `Backend/uploads/`. During this audit that output was committed once by mistake (0be5a5a) and removed in 31d7048; conftest now isolates `DATA_DIR` and `Backend/uploads/` is gitignored.
 
 ---
 
@@ -247,29 +247,29 @@ A script uploaded with `Content-Type: image/png` was base64-encoded and sent to 
 
 | ID | Sev | Area | Title | Status | Commit |
 |---|---|---|---|---|---|
-| BUG-037 | P1 | Security | 2FA TOTP secrets stored in plaintext; backup codes stored as unsalted SHA-256 (a DB copy was already in git history) | Fixed | 56d7b7c |
-| BUG-038 | P2 | Privacy | Hard account deletion removed DB rows but left the user's uploads and generated images on disk | Fixed | 8efd6b0 |
-| BUG-039 | P2 | Security | Two concurrent logins could both redeem the same 2FA backup code | Fixed | 667ab18 |
-| BUG-040 | P2 | Legal | Privacy policy claimed uploads are deleted after processing, "train models" opt-outs and AES-256 storage; none true | Fixed (legal review still needed, KI-11) | d3a23e0 |
-| BUG-041 | P2 | Security | Per-IP login rate limit trusted the client-controlled first `X-Forwarded-For` entry: rotating fake IPs gave unlimited attempts | Fixed | 83d8371 |
-| BUG-042 | P3 | Reliability | Rate-limit buckets were never removed: one entry per IP/email ever seen, for the life of the process | Fixed | 83d8371 |
-| BUG-043 | P3 | Perf | `GET /api/projects` ran 2 extra queries per project (N+1: 42 statements for 20 projects) | Fixed | 9ea0e9d |
-| BUG-044 | P3 | Code | Python ran from a third-party CDN (jsdelivr); where that host is blocked, Python never started | Fixed (self-hosted) | 563d1fa |
-| BUG-045 | P3 | UI | Clipboard write failures were unhandled rejections; "Copied" showed even when nothing was copied | Fixed | 6ca7d81 |
-| BUG-046 | P3 | Mobile | Chat controls under 44×44 px on touch screens; attach/reasoning/settings buttons had no accessible name | Fixed | 0b13caf |
-| BUG-047 | P3 | Mobile | On-screen keyboard covered the composer; the home indicator overlapped it | Fixed | fd2c86d |
-| BUG-048 | P3 | Theme | `dark:` styles followed the OS setting instead of the in-app theme; the light-mode user bubble was near-black | Fixed | 522d4a7 |
-| BUG-049 | P3 | A11y | Serious axe violations on the main screens (contrast, unnamed buttons) | Fixed | ab79c77 |
-| BUG-050 | P2 | UI | API errors shown as "[object Object]" (422), "Login failed" (502 HTML), raw codes such as `storage_limit_reached`, and raw backend JSON in the code chat | Fixed | 0ebf7a5 |
-| BUG-051 | P2 | Settings | Revoking an API key happened on one click with no confirmation; create/revoke failures were silently swallowed | Fixed | 071abbf |
-| BUG-052 | P3 | UI | Library/Projects/Scheduled showed "Create your first…" next to a load error and while loading; no retry | Fixed | a3b089a |
-| BUG-053 | P3 | A11y | White text on the accent fill was 4.0:1 on every primary button; storage progressbar unnamed | Fixed | c18ea41 |
-| BUG-054 | P3 | Landing | Landing page: 92 (light) / 57 (dark) serious axe violations, cards were role=button wrapping a button, and "Launch Workspace" did nothing | Fixed | 20f6ee2 |
-| BUG-055 | P3 | Perf | API responses were never compressed (5.4 MB conversation list for a heavy account) | Fixed (gzip, 3.0× smaller) | 74160c8 |
-| BUG-056 | P3 | Perf | Signed-in visitors to `/` downloaded and rendered the whole landing page before a client redirect | Fixed | 100d560 |
-| BUG-057 | P3 | Perf | 16 landing images below the fold loaded eagerly; 45 had no dimensions | Fixed | e183365 |
-| BUG-058 | P2 | Security | `.gitignore` covered `.env` and `.env.local` only; `.env.production.local` and other variants could be committed | Fixed | f4311cd |
-| BUG-059 | P3 | Tooling | `Backend/.venv/`, created by the README quick start, wasn't gitignored | Fixed | 55bcb41 |
+| BUG-037 | P1 | Security | 2FA TOTP secrets stored in plaintext; backup codes stored as unsalted SHA-256 (a DB copy was already in git history) | Fixed | c7ef6ba |
+| BUG-038 | P2 | Privacy | Hard account deletion removed DB rows but left the user's uploads and generated images on disk | Fixed | 9abcdbe |
+| BUG-039 | P2 | Security | Two concurrent logins could both redeem the same 2FA backup code | Fixed | ba1d776 |
+| BUG-040 | P2 | Legal | Privacy policy claimed uploads are deleted after processing, "train models" opt-outs and AES-256 storage; none true | Fixed (legal review still needed, KI-11) | 6f936f1 |
+| BUG-041 | P2 | Security | Per-IP login rate limit trusted the client-controlled first `X-Forwarded-For` entry: rotating fake IPs gave unlimited attempts | Fixed | dbbe8a4 |
+| BUG-042 | P3 | Reliability | Rate-limit buckets were never removed: one entry per IP/email ever seen, for the life of the process | Fixed | dbbe8a4 |
+| BUG-043 | P3 | Perf | `GET /api/projects` ran 2 extra queries per project (N+1: 42 statements for 20 projects) | Fixed | ee5d1dc |
+| BUG-044 | P3 | Code | Python ran from a third-party CDN (jsdelivr); where that host is blocked, Python never started | Fixed (self-hosted) | 3a23fb6 |
+| BUG-045 | P3 | UI | Clipboard write failures were unhandled rejections; "Copied" showed even when nothing was copied | Fixed | 36ceb86 |
+| BUG-046 | P3 | Mobile | Chat controls under 44×44 px on touch screens; attach/reasoning/settings buttons had no accessible name | Fixed | e2833ad |
+| BUG-047 | P3 | Mobile | On-screen keyboard covered the composer; the home indicator overlapped it | Fixed | a18f599 |
+| BUG-048 | P3 | Theme | `dark:` styles followed the OS setting instead of the in-app theme; the light-mode user bubble was near-black | Fixed | 3240d1e |
+| BUG-049 | P3 | A11y | Serious axe violations on the main screens (contrast, unnamed buttons) | Fixed | 8958a8c |
+| BUG-050 | P2 | UI | API errors shown as "[object Object]" (422), "Login failed" (502 HTML), raw codes such as `storage_limit_reached`, and raw backend JSON in the code chat | Fixed | 64d1a6e |
+| BUG-051 | P2 | Settings | Revoking an API key happened on one click with no confirmation; create/revoke failures were silently swallowed | Fixed | 9ebaad9 |
+| BUG-052 | P3 | UI | Library/Projects/Scheduled showed "Create your first…" next to a load error and while loading; no retry | Fixed | 84b7297 |
+| BUG-053 | P3 | A11y | White text on the accent fill was 4.0:1 on every primary button; storage progressbar unnamed | Fixed | 2bba0dc |
+| BUG-054 | P3 | Landing | Landing page: 92 (light) / 57 (dark) serious axe violations, cards were role=button wrapping a button, and "Launch Workspace" did nothing | Fixed | 65de7b6 |
+| BUG-055 | P3 | Perf | API responses were never compressed (5.4 MB conversation list for a heavy account) | Fixed (gzip, 3.0× smaller) | 7ba0e84 |
+| BUG-056 | P3 | Perf | Signed-in visitors to `/` downloaded and rendered the whole landing page before a client redirect | Fixed | 24f9660 |
+| BUG-057 | P3 | Perf | 16 landing images below the fold loaded eagerly; 45 had no dimensions | Fixed | 57f603b |
+| BUG-058 | P2 | Security | `.gitignore` covered `.env` and `.env.local` only; `.env.production.local` and other variants could be committed | Fixed | cec25b8 |
+| BUG-059 | P3 | Tooling | `Backend/.venv/`, created by the README quick start, wasn't gitignored | Fixed | 616adb3 |
 
 ### BUG-037 · P1 · 2FA secrets readable from a database copy
 - **Steps:** enable 2FA, then read `users.totp_secret` and `users.backup_codes`.
@@ -359,5 +359,5 @@ Found by running the README on a clean clone (TEST_REPORT.md §8): afterwards, `
 
 - `fastapi>=0.118` pinned: on 0.106–0.117, yield-dependencies close before a `StreamingResponse` runs, which would detach the DB session used to save streamed chats. On the installed 0.141 streaming persistence works (`test_streaming_happy_path_persists`); the pin prevents a regression on older installs. Not reproduced on an old version.
 - Search results cached 10 minutes; image provider responses validated; code-workspace prompt asks for named fences.
-- A blank `IMAGE_PROVIDER_URL=` / `SEARCH_CACHE_TTL_SECONDS=` (both introduced during this audit) now means "unset" (3315954).
-- Round 2: deleted the unused `components/ChatPanel.tsx`, which answered with a hard-coded mock reply (b768be2). E2E tests now fail on any uncaught page error or unhandled rejection (77342da). Playwright retries were removed from CI so flaky tests show up (e2c3b55). The backend suite hashes test passwords at bcrypt cost 4 (94 s → 10 s); production stays at cost 12, which `test_production_password_hashing_uses_cost_12` asserts (d743c9e).
+- A blank `IMAGE_PROVIDER_URL=` / `SEARCH_CACHE_TTL_SECONDS=` (both introduced during this audit) now means "unset" (e02392c).
+- Round 2: deleted the unused `components/ChatPanel.tsx`, which answered with a hard-coded mock reply (7ecf5f9). E2E tests now fail on any uncaught page error or unhandled rejection (20d95af). Playwright retries were removed from CI so flaky tests show up (7c21a76). The backend suite hashes test passwords at bcrypt cost 4 (94 s → 10 s); production stays at cost 12, which `test_production_password_hashing_uses_cost_12` asserts (5469216).

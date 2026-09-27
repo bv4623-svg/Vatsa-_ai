@@ -129,4 +129,4 @@ Frontend on Netlify, API on Render with a persistent disk: see [DEPLOYMENT.md](D
 
 Report vulnerabilities privately to the support email set in `frontend/src/config/business.json` (`supportEmail`). See PRD §8 for the security model (sandboxed code preview, ownership checks, upload validation, SSRF guard, encrypted 2FA secrets, secret handling).
 
-**Open action:** old archives containing `.env` files and databases are still in git history. [SECURITY_ACTIONS.md](SECURITY_ACTIONS.md) lists what to rotate and the exact purge commands. They have not been run.
+**Open action:** archives containing `.env` files and databases were in git history until 2026-09-27, when they were purged from every branch. Anyone who cloned before then still has them: **re-clone**. The leaked values must be rotated; see [SECURITY_ACTIONS.md](SECURITY_ACTIONS.md) §4 for each secret and its dashboard.

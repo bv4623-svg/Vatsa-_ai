@@ -5,6 +5,7 @@ All notable changes to Vatsa AI. Format based on [Keep a Changelog](https://keep
 ## [Unreleased]: round-2 follow-up, 2026-09-27
 
 ### Security
+- **Git history purged:** the three archives (one with `.env` files and databases) are gone from every branch. Everyone must re-clone; the leaked secrets must still be rotated (SECURITY_ACTIONS.md §4).
 - **2FA secrets encrypted at rest:** TOTP seeds use Fernet (`DATA_ENCRYPTION_KEY`, rotation via `DATA_ENCRYPTION_KEYS_OLD`; fallback key derived from `JWT_SECRET_KEY`), and backup codes are HMAC'd. `Backend/scripts/reencrypt_two_factor.py` migrates existing rows (BUG-037).
 - Backup codes can no longer be redeemed twice by concurrent logins (BUG-039).
 - Per-IP rate limits read the client IP from the trusted proxy's `X-Forwarded-For` entry (`TRUSTED_PROXY_COUNT`, default 1), not the forgeable first entry. Expired buckets are pruned (BUG-041, BUG-042).

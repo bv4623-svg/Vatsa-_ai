@@ -1,12 +1,12 @@
 # Known issues
 
-Everything open or deliberately accepted after the round-2 audit (2026-09-27), KI-01 to KI-18. **No P0, P1 or P2 code defect is open.** The one P1-rated item, KI-01 (secrets in git history), can only be closed by the owner running SECURITY_ACTIONS.md. Each entry has a severity (same scale as BUG_FIXES.md), an owner, and either the plan or the reason it's accepted.
+Everything open or deliberately accepted after the round-2 audit (2026-09-27), KI-01 to KI-18. **No P0, P1 or P2 code defect is open.** KI-01's history purge is done; what remains is secret rotation, which only the owner can do. Each entry has a severity (same scale as BUG_FIXES.md), an owner, and either the plan or the reason it's accepted.
 
 Owners: **Owner** = repository owner / product decision · **Backend** / **Frontend** = engineering · **Ops** = hosting and deployment.
 
 | ID | Sev | Area | Issue | Status | Owner |
 |---|---|---|---|---|---|
-| KI-01 | P1* | Security | Secrets and databases are still in **git history** (3 archives). The code side is done; the purge and rotations need owner action | Waiting on owner: [SECURITY_ACTIONS.md](SECURITY_ACTIONS.md) | Owner |
+| KI-01 | P1* | Security | Archives with `.env` files and databases were in git history. **Purged from every branch on 2026-09-27** (SECURITY_ACTIONS.md §5). The leaked values must still be rotated, and GitHub Support asked to drop cached old commits | Waiting on owner: rotation (SECURITY_ACTIONS.md §4) | Owner |
 | KI-02 | P3 | Plans | Free users can attach images to chat (image understanding), though the plans table lists Vision as Pro (was BUG-024) | Accepted risk | Owner |
 | KI-03 | P3 | Scale | Rate limiter and search cache are per process: with N workers, limits are ×N and the cache isn't shared | Accepted for a single worker (the current Render setup) | Backend |
 | KI-04 | P3 | Data | Daily limits are check-then-increment: simultaneous requests can exceed a cap by the number in flight | Accepted | Backend |
@@ -25,7 +25,7 @@ Owners: **Owner** = repository owner / product decision · **Backend** / **Front
 | KI-17 | P3 | i18n | Server render of `/library` logs next-intl `ENVIRONMENT_FALLBACK` (no `timeZone` configured, so dates format in the server's zone before hydration). Log noise; the page renders | Open: pass the viewer's time zone to `NextIntlClientProvider` without causing a hydration mismatch | Frontend |
 | KI-18 | P3 | Perf | Signed-out landing page has one layout shift of ~0.07 about 1 s after load, from the hero "Live Router" panel (CLS 0.066–0.082; "good" is < 0.1) | Watch; reserve the panel's final height if it grows | Frontend |
 
-\* KI-01 is rated P1 only because the exposure is live until the purge and rotations happen; no code change can fix it.
+\* KI-01 stays P1 until the secrets are rotated: the values were public before the purge, and removing them from history doesn't un-leak them.
 
 ## Details
 

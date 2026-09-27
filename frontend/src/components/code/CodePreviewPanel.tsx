@@ -131,11 +131,14 @@ export const CodePreviewPanel = ({
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }, [preview.html]);
 
-  const handleCopyAll = useCallback(() => {
+  const handleCopyAll = useCallback(async () => {
     const current = files.find((f) => f.name === activeFile);
-    if (current) {
-      navigator.clipboard.writeText(current.content);
+    if (!current) return;
+    try {
+      await navigator.clipboard.writeText(current.content);
       notify("File copied", "success");
+    } catch {
+      notify("Couldn't copy: the browser blocked clipboard access.", "error");
     }
   }, [files, activeFile, notify]);
 

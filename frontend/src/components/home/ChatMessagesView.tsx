@@ -11,6 +11,7 @@ import { AttachmentChip } from "@/components/home/AttachmentChip";
 import { AttachmentMenu } from "@/components/home/AttachmentMenu";
 import { ImageLoadingGrid } from "@/components/home/ImageLoadingGrid";
 import { SourcesList } from "@/components/home/SourcesList";
+import { CodeCopyButton } from "@/components/home/CodeCopyButton";
 import { ThinkingBox } from "@/components/home/ThinkingBox";
 import { linkifyCitations } from "@/lib/home/citations";
 import {
@@ -140,12 +141,7 @@ export function ChatMessagesView({
                           return isBlock ? (
                             <div className="relative">
                               <div className="absolute top-2 right-2 flex gap-1">
-                                <button
-                                  onClick={() => navigator.clipboard.writeText(String(children).replace(/\n$/, ''))}
-                                  className="p-1 rounded bg-black/20 hover:bg-black/40 text-white/60 hover:text-white"
-                                >
-                                  <Copy className="w-4 h-4" />
-                                </button>
+                                <CodeCopyButton text={String(children).replace(/\n$/, '')} />
                               </div>
                               <code className={className} {...props}>{children}</code>
                             </div>

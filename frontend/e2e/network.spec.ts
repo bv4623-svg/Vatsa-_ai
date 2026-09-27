@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { fulfillSse, mockBackend } from "./mock-api";
 
 /** M-09 from TEST_REPORT (automated): slow and failing networks. The mock

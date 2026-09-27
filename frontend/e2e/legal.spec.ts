@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 /** The privacy policy must describe what the code actually does. Each
  * assertion maps to verified behaviour (see BUG_FIXES.md BUG-040). */

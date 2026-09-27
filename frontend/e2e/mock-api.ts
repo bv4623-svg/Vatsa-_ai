@@ -58,6 +58,9 @@ export async function mockBackend(page: Page, opts: { tier?: Tier } = {}): Promi
   // proxy.ts only lets a request into protected pages with this cookie.
   await page.context().addCookies([{ name: "vatsa_session", value: "e2e", url: APP_ORIGIN }]);
   await page.addInitScript(() => {
+    // Init scripts run in every frame, including the sandboxed code preview,
+    // where storage access is (correctly) refused. Only seed the app itself.
+    if (window.top !== window) return;
     localStorage.setItem("access_token", "e2e-token");
     localStorage.setItem("cookie-consent", JSON.stringify({ status: "accepted", preferences: {} }));
   });

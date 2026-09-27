@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { fulfillJson, mockBackend, PNG_1PX } from "./mock-api";
 
 const PDF = Buffer.from("%PDF-1.4\n% e2e fixture\n");

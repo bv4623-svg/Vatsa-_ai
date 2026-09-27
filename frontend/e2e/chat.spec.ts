@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { fulfillJson, fulfillSse, mockBackend } from "./mock-api";
 
 const composer = (page: import("@playwright/test").Page) => page.getByRole("textbox", { name: "Message" });

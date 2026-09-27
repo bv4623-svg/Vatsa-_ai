@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { API, fulfillJson, mockBackend } from "./mock-api";
 
 test.describe("image generation", () => {

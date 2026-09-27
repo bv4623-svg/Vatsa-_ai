@@ -32,6 +32,13 @@ jobs:
       # tests/conftest.py points the app at a throwaway SQLite database and
       # fake credentials; every model/search/image provider is mocked.
       - run: python -m pytest -q
+      # The same gate Render runs before starting the server (render.yaml),
+      # here with a throwaway secret and data directory.
+      - name: Pre-deploy check (smoke)
+        run: python -m scripts.predeploy_check
+        env:
+          JWT_SECRET_KEY: ci-only-secret-for-the-predeploy-smoke-run
+          DATA_DIR: ${{ runner.temp }}
 
   frontend:
     name: Frontend lint, types, unit tests, build

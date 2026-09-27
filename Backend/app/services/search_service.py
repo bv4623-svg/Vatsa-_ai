@@ -477,6 +477,20 @@ class SearchService:
         except Exception:
             pass  # best-effort only
 
+    # Hard floor: _rank_score alone lets an off-topic page win on authority/length/recency.
+    MIN_RELEVANT_OVERLAP = 1
+
+    @staticmethod
+    def _overlap_count(query_tokens: set, r: Dict[str, Any]) -> int:
+        content = f"{r.get('title', '')} {r.get('snippet', '')}".lower()
+        return len(query_tokens & set(_tokenize(content)))
+
+    @staticmethod
+    def _relevant(query_tokens: set, r: Dict[str, Any]) -> bool:
+        if not query_tokens:
+            return True  # nothing to compare against (e.g. a single stopword query)
+        return SearchService._overlap_count(query_tokens, r) >= SearchService.MIN_RELEVANT_OVERLAP
+
     @staticmethod
     def _rank_score(query_tokens: set, r: Dict[str, Any]) -> float:
         score = 0.0
@@ -567,8 +581,9 @@ class SearchService:
                 deduped.append(r)
 
             query_tokens = set(_tokenize(query))
-            deduped.sort(key=lambda r: SearchService._rank_score(query_tokens, r), reverse=True)
-            top = deduped[:max_results]
+            relevant = [r for r in deduped if SearchService._relevant(query_tokens, r)]
+            relevant.sort(key=lambda r: SearchService._rank_score(query_tokens, r), reverse=True)
+            top = relevant[:max_results]
 
             # Best-effort snippet enrichment for the top 3 non-Wikipedia
             # results with thin snippets -- run after ranking so we only
@@ -629,8 +644,14 @@ class SearchService:
             deduped.append(r)
 
         query_tokens = set(_tokenize(query))
-        deduped.sort(key=lambda r: SearchService._rank_score(query_tokens, r), reverse=True)
-        top = deduped[:max_results]
+        relevant = [r for r in deduped if SearchService._relevant(query_tokens, r)]
+        if not relevant:
+            raise RuntimeError(
+                "No search results were relevant to the query (all candidates shared zero "
+                "meaningful terms with it) -- treated the same as no results at all."
+            )
+        relevant.sort(key=lambda r: SearchService._rank_score(query_tokens, r), reverse=True)
+        top = relevant[:max_results]
 
         for i, r in enumerate(top, 1):
             r["index"] = i

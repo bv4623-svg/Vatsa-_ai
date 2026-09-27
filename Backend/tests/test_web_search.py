@@ -106,13 +106,14 @@ def test_search_returns_ranked_citation_ready_results(fake_providers):
 
 def test_search_dedupes_same_url(fake_providers):
     fake_providers["results"] = [
-        _result("A", "https://example.com/page"),
-        _result("A copy", "https://www.example.com/page/"),
+        _result("Example page", "https://example.com/page"),
+        _result("Example page copy", "https://www.example.com/page/"),
     ]
     assert len(asyncio.run(SearchService.search("example page"))) == 1
 
 
 def test_search_cache_hits_skip_providers(fake_providers):
+    fake_providers["results"] = [_result("Tokio: an async runtime for Rust", "https://tokio.rs/")]
     asyncio.run(SearchService.search("rust async runtime"))
     first = fake_providers["ddg"]
     again = asyncio.run(SearchService.search("  Rust   ASYNC runtime "))
@@ -190,3 +191,57 @@ def test_sources_never_name_the_backend(client, make_user, fake_llm, fake_provid
     _, headers = make_user()
     res = client.post("/api/chat", json={"message": "capital of Japan", "web_search": True}, headers=headers)
     assert "duckduckgo" not in json.dumps(res.json()["sources"]).lower()
+
+
+# ---- relevance floor ---------------------------------------------------------
+
+HINDI_QUERY = "Explain quantum computing in simple Hindi"
+OFF_TOPIC = [
+    _result("Best Summer Vacation Spots 2026", "https://travel.example.com/1", "Beaches and mountains to visit."),
+    _result("Summer Vacation Packing List", "https://travel.example.com/2", "Sunscreen, hats and sandals."),
+]
+
+
+def test_zero_overlap_result_is_not_relevant():
+    query_tokens = set(search_service._tokenize(HINDI_QUERY))
+    assert SearchService._relevant(query_tokens, OFF_TOPIC[0]) is False
+
+
+def test_on_topic_hindi_result_is_relevant():
+    query_tokens = set(search_service._tokenize(HINDI_QUERY))
+    on_topic = _result("Quantum Computing in Hindi", "https://hi.example.com/q", "क्वांटम कम्प्यूटिंग की पूरी जानकारी")
+    assert SearchService._relevant(query_tokens, on_topic) is True
+
+
+def test_off_topic_result_cannot_pass_on_authority_alone():
+    query_tokens = set(search_service._tokenize(HINDI_QUERY))
+    authoritative = _result("Annual Tax Filing Guide", "https://www.irs.gov/filing", "Filing deadlines and forms. " * 20)
+    assert SearchService._rank_score(query_tokens, authoritative) > 0
+    assert SearchService._relevant(query_tokens, authoritative) is False
+
+
+def test_search_raises_when_every_result_is_off_topic(fake_providers):
+    fake_providers["results"] = OFF_TOPIC
+    with pytest.raises(RuntimeError):
+        asyncio.run(SearchService.search(HINDI_QUERY))
+
+
+def test_search_drops_off_topic_results(fake_providers):
+    fake_providers["results"] = OFF_TOPIC + [
+        _result("Quantum Computing Explained Simply", "https://example.com/quantum", "Qubits and superposition."),
+    ]
+    results = asyncio.run(SearchService.search(HINDI_QUERY))
+    assert [r["url"] for r in results] == ["https://example.com/quantum"]
+
+
+def test_chat_answers_normally_when_search_is_all_off_topic(client, make_user, fake_llm, fake_providers):
+    fake_providers["results"] = OFF_TOPIC
+    fake_llm["default"] = "Quantum computing qubits ka use karta hai."
+    _, headers = make_user()
+    res = client.post("/api/chat", json={"message": HINDI_QUERY, "web_search": True}, headers=headers)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["response"] == fake_llm["default"]
+    assert not body.get("sources")
+    prompt = json.dumps(fake_llm["messages"][-1])
+    assert "Summer Vacation" not in prompt and "LIVE WEB SEARCH RESULTS" not in prompt

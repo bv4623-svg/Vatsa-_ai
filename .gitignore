@@ -41,3 +41,7 @@ frontend/test-results/
 frontend/playwright-report/
 .pytest_cache/
 frontend/public/pyodide/
+
+# Virtualenvs (the README quick start creates Backend/.venv)
+.venv/
+venv/

@@ -126,11 +126,9 @@ export function normalizeResponse(data: any): {
     return { text: candidate, files: [] };
   }
 
+  // Never echo the raw payload: it can carry internal fields and isn't a reply.
   return {
-    text:
-      "**Backend response:**\n\n```json\n" +
-      JSON.stringify(data, null, 2) +
-      "\n```",
+    text: "_Unexpected response from the server. Please try again._",
     files: [],
   };
 }

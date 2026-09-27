@@ -10,6 +10,7 @@ import { API_BASE, establishSession, normalizeTier } from "@/lib/session";
 import { getToken } from "@/lib/auth";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import type { RazorpayHandlerResponse } from "@/types/razorpay";
+import { describeApiError } from "@/lib/api-client/errors";
 
 export interface PaymentConfig {
   configured: boolean;
@@ -91,7 +92,7 @@ export function useRazorpayCheckout(plan: Plan | undefined, currency: Currency) 
       });
       if (!orderRes.ok) {
         const body = await orderRes.json().catch(() => null);
-        throw new Error(body?.detail || `Could not start checkout (${orderRes.status}).`);
+        throw new Error(describeApiError(body, orderRes.status, `Could not start checkout (${orderRes.status}).`));
       }
       const order = await orderRes.json();
 
@@ -129,11 +130,8 @@ export function useRazorpayCheckout(plan: Plan | undefined, currency: Currency) 
 
             if (!verifyRes.ok || !result?.success) {
               setStatus("ready");
-              setError(
-                result?.detail ||
-                  result?.message ||
-                  "We could not verify that payment. If you were charged, contact support and quote your payment id."
-              );
+              const fallback = "We could not verify that payment. If you were charged, contact support and quote your payment id.";
+              setError(verifyRes.ok ? fallback : describeApiError(result, verifyRes.status, fallback));
               return;
             }
 

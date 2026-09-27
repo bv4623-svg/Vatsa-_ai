@@ -5,6 +5,7 @@ import { uid, normalizeResponse } from "@/lib/code/parsing";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { parseUpgradeGate, UpgradeRequiredError, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
 import { API_BASE } from "@/config/api";
+import { describeApiError } from "@/lib/api-client/errors";
 
 
 interface UseCodeChatParams {
@@ -129,12 +130,8 @@ export function useCodeChat(params: UseCodeChatParams) {
         if (!response.ok) {
           const upgradeError = await parseUpgradeGate(response);
           if (upgradeError) throw upgradeError;
-          let msg = "Failed to get response from AI";
-          try {
-            const err = await response.json();
-            msg = err.message || err.detail || msg;
-          } catch {}
-          throw new Error(msg);
+          const body = await response.json().catch(() => null);
+          throw new Error(describeApiError(body, response.status, "Failed to get response from AI"));
         }
 
         const contentType = response.headers.get("content-type") || "";

@@ -13,6 +13,7 @@ import type {
   FeatureFlags, AppSettings,
 } from "@/types";
 import { API_BASE } from "@/config/api";
+import { describeApiError } from "@/lib/api-client/errors";
 
 // ─── DEFAULT_SETTINGS inlined to avoid missing file dependency ─────────────
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -196,8 +197,8 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true });
         try {
           const res = await fetch(`${API_BASE}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || "Login failed");
+          const data = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(describeApiError(data, res.status, "Login failed"));
           localStorage.setItem("access_token", data.access_token);
           set({ user: data.user, isAuthenticated: true, userId: data.user.id, userTier: data.tier || "free", isLoading: false });
           await get().fetchAllData();

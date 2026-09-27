@@ -12,6 +12,8 @@ upstream flag, every image is downloaded server-side, has its outer
 border trimmed and upscaled back to remove any edge watermark, and is
 re-hosted from our own storage.
 """
+from __future__ import annotations
+
 import os
 import io
 import uuid
@@ -19,16 +21,17 @@ import logging
 import urllib.parse
 from typing import Dict, Any, Optional
 import aiohttp
-from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm import Session
 
 from app.models.generated_image import GeneratedImage
 from app.services.library import register_item
+from app.services.storage import get_storage_backend
 
 logger = logging.getLogger("ImageService")
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STORAGE_ROOT = os.path.join(os.getenv("DATA_DIR") or BACKEND_DIR, "generated_images")
+_storage = get_storage_backend(STORAGE_ROOT)
 
 # Empirically, the watermark sits within the outer ~12% border of the
 # image regardless of exact placement (corner varies). Trimming that
@@ -60,6 +63,7 @@ async def _fetch_raw_image(prompt: str) -> bytes:
 
 
 def _load_brand_font(size: int) -> ImageFont.FreeTypeFont:
+    from PIL import ImageFont
     for path in BRAND_FONT_CANDIDATES:
         if os.path.isfile(path):
             try:
@@ -75,6 +79,8 @@ def _add_branding(img: Image.Image) -> Image.Image:
     relative to the image so it looks right at any resolution. White
     fill + black stroke so it stays legible over any background.
     """
+    from PIL import Image, ImageDraw
+
     w, h = img.size
     font_size = max(14, int(h * 0.035))
     font = _load_brand_font(font_size)
@@ -97,6 +103,7 @@ def _add_branding(img: Image.Image) -> Image.Image:
 
 
 def _process_image(raw: bytes) -> bytes:
+    from PIL import Image
     img = Image.open(io.BytesIO(raw)).convert("RGB")
     w, h = img.size
     trim_x = int(w * WATERMARK_TRIM_FRACTION)
@@ -120,13 +127,8 @@ async def generate_and_store_image(db: Session, user_id: int, prompt: str) -> Di
     processed = _process_image(raw)
 
     image_id = uuid.uuid4().hex
-    user_dir = os.path.join(STORAGE_ROOT, str(user_id))
-    os.makedirs(user_dir, exist_ok=True)
-    abs_path = os.path.join(user_dir, f"{image_id}.png")
-    with open(abs_path, "wb") as f:
-        f.write(processed)
-
     relative_path = os.path.join(str(user_id), f"{image_id}.png")
+    _storage.put(relative_path, processed)
     record = GeneratedImage(id=image_id, user_id=user_id, file_path=relative_path, prompt=prompt)
     db.add(record)
     db.commit()
@@ -145,4 +147,10 @@ async def generate_and_store_image(db: Session, user_id: int, prompt: str) -> Di
 
 
 def resolve_image_path(file_path: str) -> str:
-    return os.path.join(STORAGE_ROOT, file_path)
+    # Identical to the pre-abstraction `os.path.join(STORAGE_ROOT, file_path)`
+    # when STORAGE_BACKEND=local (the default). With STORAGE_BACKEND=s3 this
+    # returns an object URL instead of a local path -- app/routers/files.py's
+    # FileResponse(...) still expects a local path either way, so S3-mode
+    # read-serving through that route is not wired up yet; only the write
+    # side (generate_and_store_image below) is migrated to the abstraction.
+    return _storage.url(file_path)

@@ -370,6 +370,7 @@ export default function HomePage() {
                   folderInputRef={folderInputRef}
                   onFileUpload={handleFileUpload}
                   modKey={MOD_KEY}
+                  onVoiceTranscript={setInputValue}
                   banner={
                     showUpgradeBanner ? (
                       <UpgradeBanner onDismiss={() => setBannerDismissedAtCount(messages.length)} />

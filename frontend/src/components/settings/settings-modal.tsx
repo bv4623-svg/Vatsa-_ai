@@ -29,6 +29,7 @@ import { useAppStore, useSettings, useSettingsActions } from "@/stores/app-store
 import { getPlan } from "@/data/plans";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { speak } from "@/lib/voice/tts";
 import Link from "next/link";
 
 // ─── Helper Components (unchanged) ───
@@ -62,8 +63,15 @@ const LANGUAGES = [
   { value: "zh", label: "Chinese" },
   // ... add all languages you support
 ];
+// These ids are the actual route names the backend's AI Router understands
+// (see Backend/app/ai_router/config.py's builtin_registry) -- keep them in
+// sync with that file, not with any specific underlying provider/model,
+// which is never exposed here (see Backend/app/ai_router/sanitize.py).
 const MODELS: Array<{ id: string; name: string; desc: string; badge: string }> = [
-  // ... real model list from your backend or store
+  { id: "auto", name: "Vatsa AI", desc: "Balanced for everyday chat and coding", badge: "Recommended" },
+  { id: "vatsa-pro", name: "Vatsa AI Pro", desc: "Strongest reasoning for complex work", badge: "Pro" },
+  { id: "vatsa-advanced", name: "Vatsa AI Advanced", desc: "Deep, nuanced responses", badge: "Advanced" },
+  { id: "vatsa-fast", name: "Vatsa AI Fast", desc: "Fastest responses for quick tasks", badge: "Fast" },
 ];
 const VOICES = ["Amy", "Brian", "Emma", "James", "Sofia"];
 
@@ -407,7 +415,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             </>
           )}
 
-          {/* ─── Models (real model list from store) ─── */}
+          {/* ─── Models ─── */}
           {section === "models" && (
             <>
               <Row title="Default model" desc="Applied to every new conversation." stacked>
@@ -474,12 +482,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 <button
                   type="button"
                   onClick={() => {
-                    if (!("speechSynthesis" in window)) {
-                      toast({ type: "error", message: "Speech synthesis isn't available here" });
-                      return;
-                    }
-                    speechSynthesis.cancel();
-                    speechSynthesis.speak(new SpeechSynthesisUtterance("Hi, this is Emma from Vatsa AI."));
+                    const voiceLabel = settings.assistantVoice || "Emma";
+                    const ok = speak(`Hi, this is ${voiceLabel} from Vatsa AI.`, {
+                      voiceLabel: typeof voiceLabel === "string" ? voiceLabel : undefined,
+                      onError: () => toast({ type: "error", message: "Speech synthesis failed" }),
+                    });
+                    if (!ok) toast({ type: "error", message: "Speech synthesis isn't available here" });
                   }}
                   className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 text-[12.5px] font-medium text-zinc-700 dark:text-zinc-300 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >

@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
 from app.services.library import delete_conversation_item
+from app.services.feature_access import check_code_app_limit
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 
@@ -42,6 +43,17 @@ def create_conversation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    if (payload.workspace or "chat") == "code":
+        allowed, used, limit = check_code_app_limit(db, current_user)
+        if not allowed:
+            raise HTTPException(status_code=403, detail={
+                "error": "app_limit_reached",
+                "used": used,
+                "limit": limit,
+                "message": f"Code app limit reached ({used}/{limit}). Upgrade for more, or delete an existing app.",
+                "upgrade_url": "/pricing",
+            })
+
     conv_id = f"conv_{uuid.uuid4().hex[:12]}"
     conv = Conversation(
         id=conv_id,

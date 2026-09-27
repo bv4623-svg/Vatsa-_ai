@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ACCESS_NOTE, formatBothPrices, getPlan, type PlanId } from "@/data/plans";
+import { ACCESS_NOTE, formatPrice, getPlan, type PlanId } from "@/data/plans";
+import { useLiveInrPrices } from "@/hooks/useLiveInrPrices";
 
 interface UpgradeModalActionsProps {
   onSelect: (planId: PlanId) => void;
@@ -9,11 +10,17 @@ interface UpgradeModalActionsProps {
   currentTier?: string;
 }
 
-/** The two upgrade buttons. Prices are read from data/plans.ts, the same
- * source the /pricing cards use, and always quote both currencies. */
+/** The two upgrade buttons. USD is read from data/plans.ts; INR is the
+ * live rate (GET /api/pricing/exchange-rate, same as the pricing page and
+ * checkout) so this modal never quotes a different INR figure than what
+ * checkout actually charges. */
 export function UpgradeModalActions({ onSelect, currentTier }: UpgradeModalActionsProps) {
   const pro = getPlan("pro");
   const business = getPlan("business");
+  const { prices: liveInr } = useLiveInrPrices();
+
+  const label = (plan: ReturnType<typeof getPlan>, verb: string) =>
+    plan ? `${verb} ${plan.name} — ${formatPrice(plan.priceUSD, "USD")} (${formatPrice(liveInr[plan.id as "pro" | "business"], "INR")})/mo` : `${verb}`;
 
   return (
     <>
@@ -27,9 +34,7 @@ export function UpgradeModalActions({ onSelect, currentTier }: UpgradeModalActio
             currentTier === "pro" ? "cursor-not-allowed opacity-60" : "hover:scale-[1.02]"
           )}
         >
-          {currentTier === "pro"
-            ? "Current plan"
-            : pro ? `Upgrade to ${pro.name} — ${formatBothPrices(pro)}/mo` : "Upgrade to Pro"}
+          {currentTier === "pro" ? "Current plan" : label(pro, "Upgrade to")}
         </button>
         <button
           type="button"
@@ -40,11 +45,12 @@ export function UpgradeModalActions({ onSelect, currentTier }: UpgradeModalActio
             currentTier === "business" ? "cursor-not-allowed opacity-60" : "hover:bg-cyan-500/20"
           )}
         >
-          {currentTier === "business"
-            ? "Current plan"
-            : business ? `Go ${business.name} — ${formatBothPrices(business)}/mo` : "Go Business"}
+          {currentTier === "business" ? "Current plan" : label(business, "Go")}
         </button>
       </div>
+      {currentTier !== "business" && (
+        <p className="mt-2 text-center text-[11px] font-medium text-purple-500">⚡ Business is 5x more power than Pro</p>
+      )}
       <p className="mt-3 text-center text-[11px] text-muted-foreground/60">{ACCESS_NOTE}</p>
     </>
   );

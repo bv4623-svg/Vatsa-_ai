@@ -14,7 +14,15 @@ class User(Base):
 
     # Password is nullable to support OTP / Google OAuth users
     hashed_password = Column(String, nullable=True)
-    google_id = Column(String, unique=True, nullable=True)
+    google_id = Column(String, unique=True, nullable=True)  # dead: OAuth login matches by email, never set/read
+
+    # True the moment this account has a proven Google/GitHub identity --
+    # set at creation for an OAuth signup, or the first time an existing
+    # password account logs in via OAuth with the same (provider-verified)
+    # email. Existing password-only accounts start false; the pending
+    # "link your account" gate (alongside onboarding) uses this to decide
+    # who still needs to migrate off password login.
+    oauth_linked = Column(Boolean, nullable=False, default=False)
 
     # Status flags
     is_verified = Column(Boolean, default=False)      # email verified?

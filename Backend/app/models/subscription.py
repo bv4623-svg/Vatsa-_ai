@@ -6,7 +6,12 @@ from datetime import datetime
 class Subscription(Base):
     __tablename__ = "subscriptions"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # index=True: every lookup of a user's current/renewal subscription
+    # filters by this column (payment_service.py's renewal and refund
+    # checks) -- verified live (EXPLAIN ANALYZE) that this was a sequential
+    # scan without it. Every other FK column in this schema already has an
+    # index; this one was the one exception.
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     plan = Column(String, nullable=False)
     order_id = Column(String, unique=True, index=True, nullable=True)
     payment_id = Column(String, unique=True, index=True, nullable=True)

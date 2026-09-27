@@ -8,9 +8,15 @@
  * ever disagree.
  *
  * Only two things can be bought: Pro and Business, each as one prepaid
- * 30-day period. Prices are tax-inclusive, so the amount charged is exactly
- * the amount shown. INR is always the USD price times the single fixed
- * USD_TO_INR rate below -- never an independently typed number.
+ * 30-day period. USD is the actual source of truth (PRICES_USD below). INR
+ * is no longer this fixed rate times USD -- the pricing page and checkout
+ * both fetch GET /api/pricing/exchange-rate, which the backend computes
+ * from a live rate cached hourly (Backend/app/services/exchange_rate.py)
+ * and which Razorpay actually charges too, so what's shown is what's
+ * charged. USD_TO_INR below is kept only as the historical, disclosed
+ * reference rate this feature replaced -- PRICES_INR/formatBothPrices'
+ * static INR figures are display fallbacks for before that fetch resolves,
+ * not the live price.
  */
 
 export const PRICES_USD = { pro: 24, business: 99 } as const;

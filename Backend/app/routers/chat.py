@@ -24,11 +24,23 @@ from app.services.chat_projects import get_project_instructions_for_conversation
 from app.services.memory_service import MemoryService
 from app.services.search_service import SearchService
 from app.services.feature_access import check_daily_limit, increment_usage
+from app.ai_router.errors import RouterError
+from app.utils.rate_limit import enforce_rate_limit
 
 from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else the live API
 
 logger = logging.getLogger("ChatRouter")
 router = APIRouter(prefix="/api", tags=["chat"])
+
+# Short-window burst guard. Chat itself has no daily cap on any tier
+# (feature_access.py's DAILY_LIMITS no longer has a chat_messages/
+# code_messages entry -- "unlimited" is a real, enforced fact, not just
+# display copy), which makes this the ONLY thing standing between a script
+# and firing requests as fast as the network allows. Redis-backed when
+# REDIS_URL is set (see app/utils/rate_limit.py), so it holds across every
+# API instance, not just the one that happens to receive the burst.
+CHAT_BURST_LIMIT = 30
+CHAT_BURST_WINDOW_SECONDS = 60
 
 
 def _extract_and_save_memory(user_id: int, message_text: str) -> None:
@@ -270,7 +282,10 @@ async def _stream_chat_response(
                 yield f"data: {json.dumps({'delta': event['delta']})}\n\n"
             elif "error" in event:
                 logger.warning(f"Stream error for user {user.id}: {event['error']}")
-                yield f"data: {json.dumps({'error': event['error']})}\n\n"
+                payload = {"error": event["error"]}
+                if event.get("retry_after"):
+                    payload["retry_after"] = event["retry_after"]
+                yield f"data: {json.dumps(payload)}\n\n"
                 return
             elif event.get("done"):
                 full_text = event["content"]
@@ -304,6 +319,8 @@ async def chat_endpoint(
 ):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    enforce_rate_limit(f"chat-burst:user:{user.id}", limit=CHAT_BURST_LIMIT, window_seconds=CHAT_BURST_WINDOW_SECONDS)
 
     user_settings = user.settings or {}
     chosen_model = req.model or req.preferred_model or user_settings.get("defaultModel") or "auto"
@@ -388,6 +405,13 @@ async def chat_endpoint(
         )
     except ValueError as ve:
         raise HTTPException(status_code=402, detail=str(ve))
+    except RouterError as e:
+        # e.public_message / str(e) are already safe to show a user -- the
+        # router never lets a raw provider error or model name reach here.
+        logger.warning(f"Router error for user {user.id}: {type(e).__name__}: {e}")
+        status_code = 503 if e.code == "ai_busy" else 502
+        headers = {"Retry-After": str(int(e.retry_after))} if e.retry_after else None
+        raise HTTPException(status_code=status_code, detail=e.public_message, headers=headers)
     except Exception as e:
         # Log the real error (may name a provider/model) server-side only;
         # never forward exception text to the client -- it can contain

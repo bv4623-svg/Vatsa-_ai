@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -7,17 +7,22 @@ from app.utils.rate_limit import client_ip, enforce_rate_limit, reset_rate_limit
 
 from app.database import get_db
 from app.models.user import User
-from app.models.otp import OTP
-from app.models.token import TokenAccount, TokenTransaction
-from app.auth.jwt import get_password_hash, verify_password, needs_rehash, create_access_token
+from app.models.token import TokenAccount
+from app.auth.jwt import verify_password, needs_rehash, get_password_hash, create_access_token
 from app.auth.dependencies import get_current_user
-from app.routers.auth.schemas import RegisterRequest, LoginRequest, OnboardingRequest
-from app.services.password_policy import validate_password_strength
+from app.routers.auth.schemas import LoginRequest, OnboardingRequest
 from sqlalchemy.orm.attributes import flag_modified
 from typing import Any, Dict
-from app.services.feature_access import user_tier, check_daily_limit
+from app.services.feature_access import user_tier, check_daily_limit, check_project_limit
+from app.utils.cache import cache_get, cache_set, cache_delete
 
 router = APIRouter(tags=["authentication"])
+
+_PROFILE_CACHE_TTL_SECONDS = 60
+
+
+def _profile_cache_key(user_id: int) -> str:
+    return f"profile:{user_id}"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -26,66 +31,16 @@ router = APIRouter(tags=["authentication"])
 @router.post("/auth/register")
 @router.post("/api/auth/register")
 @router.post("/api/auth/signup")
-def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
-    email = req.email.lower().strip()
-    enforce_rate_limit(f"register:ip:{client_ip(request)}", limit=5, window_seconds=600)
-
-    existing = db.query(User).filter(User.email == email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    validate_password_strength(req.password)
-
-    # Proves this exact email actually received and echoed back a real OTP
-    # (see /auth/otp/send + /auth/otp/verify, purpose="signup") before an
-    # account is created for it -- registering no longer activates an
-    # account for an email address nobody confirmed ownership of.
-    verified_otp = (
-        db.query(OTP)
-        .filter(OTP.email == email, OTP.purpose == "signup", OTP.verification_token == req.verification_token)
-        .first()
+def register():
+    """Email/password sign-up is permanently retired -- new accounts are
+    Google/GitHub only (see app/routers/auth/oauth/). 410 Gone, not 404: the
+    resource existed and was intentionally removed, which is exactly what
+    410 means and lets old frontend builds/bookmarks show a real message
+    instead of a generic "not found"."""
+    raise HTTPException(
+        status_code=410,
+        detail="Email/password sign-up is no longer available. Please continue with Google or GitHub.",
     )
-    if not verified_otp:
-        raise HTTPException(status_code=400, detail="Email verification required. Request a code via /auth/otp/send first.")
-
-    display_name = req.full_name or email.split("@")[0]
-
-    # Ensure unique username
-    base_username = email.split("@")[0]
-    username = base_username
-    counter = 1
-    while db.query(User).filter(User.username == username).first():
-        username = f"{base_username}{counter}"
-        counter += 1
-
-    user = User(
-        email=email,
-        full_name=display_name,
-        username=username,
-        hashed_password=get_password_hash(req.password),
-        is_active=True,
-        is_verified=True,
-        profile_completed=False,
-        tier="free",
-    )
-    db.add(user)
-    db.flush()  # assigns user.id within the same transaction, without committing yet
-
-    db.add(TokenAccount(user_id=user.id, balance=50000, total_purchased=0, total_used=0))
-    db.add(TokenTransaction(
-        user_id=user.id, type="bonus", amount=50000,
-        balance_after=50000, reason="Welcome starter token bonus",
-    ))
-    db.commit()
-    db.refresh(user)
-
-    token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
-    return {
-        "access_token": token, "token_type": "bearer",
-        "full_name": user.full_name, "tier": user.tier,
-        "profile_completed": user.profile_completed,
-        "user": user.to_dict(),
-    }
 
 
 @router.post("/auth/login")
@@ -173,14 +128,31 @@ def login_form(request: Request, form_data: OAuth2PasswordRequestForm = Depends(
 @router.get("/api/auth/me")
 @router.get("/api/profile")
 def get_current_user_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Short TTL (see _PROFILE_CACHE_TTL_SECONDS), not fully invalidated on
+    # every write: token balance and daily usage counts here change from
+    # many call sites across the app (every chat/code/image/search request,
+    # every payment) -- invalidating this cache from all of them would be
+    # a large, risky blast radius for a field that's already fine to show
+    # up to a minute stale. update_settings/complete_onboarding below (the
+    # two writes that live in this same file) still invalidate explicitly,
+    # since those should feel instant.
+    cache_key = _profile_cache_key(user.id)
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     token_acc = db.query(TokenAccount).filter_by(user_id=user.id).first()
     balance = token_acc.balance if token_acc else 50000
     tier = user_tier(user)
+    # chat_messages/code_messages are gone -- chat is unlimited on every
+    # tier now, so there's no daily count worth reporting for it.
     usage = {}
-    for feature in ("chat_messages", "code_messages", "image_gen", "web_search"):
+    for feature in ("image_gen", "web_search"):
         _, used, limit = check_daily_limit(db, user, feature)
         usage[feature] = {"used": used, "limit": limit}
-    return {
+    _, projects_used, projects_limit = check_project_limit(db, user)
+    usage["code_apps"] = {"used": projects_used, "limit": projects_limit}
+    result = {
         "id": user.id, "email": user.email,
         "name": user.full_name or user.email.split("@")[0],
         "full_name": user.full_name or user.email.split("@")[0],
@@ -194,6 +166,40 @@ def get_current_user_profile(user: User = Depends(get_current_user), db: Session
         "settings": user.settings or {},
         "twoFactorEnabled": user.two_factor_enabled,
     }
+    cache_set(cache_key, result, _PROFILE_CACHE_TTL_SECONDS)
+    return result
+
+
+@router.post("/auth/logout")
+@router.post("/api/auth/logout")
+def logout(response: Response, user: User = Depends(get_current_user)):
+    """This app has no server-side session and no httpOnly cookie to clear
+    -- auth is a stateless Bearer JWT held in the frontend's localStorage,
+    validated fresh on every request (see app/auth/dependencies), and
+    session.ts's clearSession() already fully logs the browser out today
+    (drops the token, clears the vatsa_session cookie next.js's middleware
+    reads -- that cookie is deliberately NOT httpOnly, since client JS has
+    to write it; it decides "show the page or bounce to /login" for
+    proxy.ts, nothing more).
+
+    What this endpoint deliberately does NOT do: bump user.token_version.
+    That's the mechanism this app already uses for "sign out other
+    devices" (POST /api/account/sessions/sign-out-others) and password
+    reset -- it invalidates every token for the account, not just this
+    one. Wiring routine logout to it would silently sign a user out of
+    every other tab/device too, which is a worse experience than what
+    exists today, not a fix. Genuinely revoking only THIS token (a
+    denylist keyed by the token's jti) is real, separate infrastructure
+    this app doesn't have -- out of scope for a login-only fix.
+
+    Requires a valid Bearer token (get_current_user) so a logged-out
+    client gets a real 401 instead of a hollow 200, and returns a
+    Set-Cookie clearing vatsa_session as a second, redundant guard against
+    that cookie surviving a client-side bug -- belt and suspenders, not
+    the source of truth.
+    """
+    response.delete_cookie("vatsa_session", path="/")
+    return {"success": True}
 
 
 @router.patch("/auth/settings")
@@ -224,6 +230,7 @@ def update_settings(
     flag_modified(user, "settings")
     db.commit()
     db.refresh(user)
+    cache_delete(_profile_cache_key(user.id))
     return {"settings": user.settings}
 
 
@@ -255,4 +262,5 @@ def complete_onboarding(
     user.profile_completed = True
     db.commit()
     db.refresh(user)
+    cache_delete(_profile_cache_key(user.id))
     return {"success": True, "message": "Onboarding completed", "user": user.to_dict()}

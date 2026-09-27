@@ -13,4 +13,12 @@ export interface Attachment {
   isBase64: boolean;
   status: AttachmentStatus;
   preview?: string;
+  /** Set once the real POST /api/upload round-trip completes -- the file
+   * is persisted (Library row, counts toward storage quota, survives a
+   * refresh) at this point, not just held in browser memory. */
+  progress?: number;
+  fileId?: string;
+  url?: string;
+  thumbnailUrl?: string;
+  errorMessage?: string;
 }

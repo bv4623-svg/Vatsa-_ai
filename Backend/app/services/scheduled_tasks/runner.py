@@ -9,6 +9,7 @@ from app.models.conversation import Conversation
 from app.models.scheduled_task import ScheduledTask
 from app.services.ai_service import AIService
 from app.services.scheduled_tasks.cron import compute_next_run
+from app.services.scheduled_tasks.locking import try_acquire_run_lock, release_run_lock
 from app.utils.email import send_task_result_email
 
 logger = logging.getLogger("ScheduledTaskRunner")
@@ -62,5 +63,17 @@ async def _run_task_async(task_id: str) -> None:
 def run_scheduled_task_sync(task_id: str) -> None:
     """Sync entry point for APScheduler's BackgroundScheduler and FastAPI's
     BackgroundTasks (run-now) -- both call plain sync functions, so this
-    opens its own event loop for the one async call inside."""
-    asyncio.run(_run_task_async(task_id))
+    opens its own event loop for the one async call inside.
+
+    Guarded by a distributed lock (see locking.py) so that with more than
+    one worker process sharing the same Redis-backed job store, only one
+    of them actually runs a given fire of a given task -- the others see
+    the lock already held and return immediately, without touching the DB
+    or making an AI call."""
+    if not try_acquire_run_lock(task_id):
+        logger.info("Scheduled task %s already running on another worker; skipping this fire", task_id)
+        return
+    try:
+        asyncio.run(_run_task_async(task_id))
+    finally:
+        release_run_lock(task_id)

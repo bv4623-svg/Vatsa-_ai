@@ -1,0 +1,61 @@
+services:
+  - type: web
+    name: vatsaai-backend
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: ./Backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: EMAIL_USERNAME
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_SMTP_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_SMTP_PORT
+        value: "587"
+      - key: MAIL_FROM
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://api.vatsaai.com/api/auth/google/callback
+      - key: ALLOWED_ORIGINS
+        value: https://vatsaai.com,https://www.vatsaai.com
+      - key: BACKEND_PUBLIC_URL
+        value: https://api.vatsaai.com
+      - key: FRONTEND_REDIRECT_URL
+        value: https://vatsaai.com
+      - key: STORAGE_BACKEND
+        value: local
+      - key: DB_POOL_SIZE
+        value: "2"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+      - key: DB_POOL_RECYCLE_SECONDS
+        value: "300"
+      - key: CACHE_ENABLED
+        value: "true"
+      - key: ADMIN_EMAILS
+        sync: false

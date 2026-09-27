@@ -2,7 +2,7 @@
 
 import { API_BASE } from "@/lib/session";
 
-const PROVIDERS = ["google", "github", "microsoft"] as const;
+const PROVIDERS = ["google", "github"] as const;
 
 export function OAuthButtons() {
   const oauth = (provider: (typeof PROVIDERS)[number]) => {
@@ -16,7 +16,7 @@ export function OAuthButtons() {
         <span className="text-[11px] uppercase tracking-wider text-zinc-500">or continue with</span>
         <span className="h-px flex-1 bg-white/10" />
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {PROVIDERS.map((p) => (
           <button
             key={p}

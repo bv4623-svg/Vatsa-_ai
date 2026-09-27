@@ -131,6 +131,6 @@ export async function completeOnboarding(
   return parseJsonOrThrow(res);
 }
 
-export function oauthRedirectUrl(provider: "google" | "github" | "microsoft"): string {
+export function oauthRedirectUrl(provider: "google" | "github"): string {
   return `${API_BASE}/auth/${provider}/login`;
 }

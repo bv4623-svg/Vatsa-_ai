@@ -1,0 +1,87 @@
+{
+  "_comment": "Copy to a real path and point AI_ROUTER_CONFIG_PATH at it to replace the built-in registry (app/ai_router/config.py:builtin_registry) entirely. Loaded once at process start by app/ai_router/config.py:load_registry -- a bad file fails fast at startup, not on the first user request. Provider/model ids here are internal: they are never sent to a client (see app/ai_router/sanitize.py) and a client can only ever select a route name, never a model id. The 'reasoning' route has no fallback on purpose: silently downgrading to a non-reasoning model would give the user a plain answer that looks like the reasoning they explicitly asked for. The 'vision' route is used automatically when a request needs Capability.VISION and the resolved route's own models don't have it -- see app/ai_router/fallback.py.",
+
+  "default_route": "auto",
+
+  "models": [
+    {
+      "id": "gpt-4o",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o",
+      "capabilities": ["chat", "code", "vision"],
+      "context_window": 128000,
+      "max_output": 4096,
+      "input_cost_per_mtok": null,
+      "output_cost_per_mtok": null,
+      "latency_profile": "medium",
+      "priority": 10,
+      "premium": true,
+      "enabled": true
+    },
+    {
+      "id": "sonnet",
+      "provider": "openrouter",
+      "model": "anthropic/claude-3.5-sonnet",
+      "capabilities": ["chat", "code", "vision"],
+      "priority": 20,
+      "premium": true
+    },
+    {
+      "id": "gemini-pro",
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-pro",
+      "capabilities": ["chat", "code", "vision"],
+      "priority": 30,
+      "premium": true
+    },
+    {
+      "id": "free-nex",
+      "provider": "openrouter",
+      "model": "nex-agi/nex-n2.5-mini:free",
+      "capabilities": ["chat", "code"],
+      "priority": 50,
+      "premium": false
+    },
+    {
+      "id": "free-nemotron",
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "capabilities": ["chat", "code"],
+      "priority": 51,
+      "premium": false
+    },
+    {
+      "id": "free-gemma",
+      "provider": "openrouter",
+      "model": "google/gemma-4-31b-it:free",
+      "capabilities": ["chat", "code"],
+      "priority": 52,
+      "premium": false
+    },
+    {
+      "id": "deepseek-chat",
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-chat",
+      "capabilities": ["chat", "code"],
+      "priority": 90,
+      "premium": false
+    },
+    {
+      "id": "reasoning",
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-r1",
+      "capabilities": ["chat", "reasoning"],
+      "priority": 100,
+      "premium": false
+    }
+  ],
+
+  "routes": {
+    "auto":            { "primary": "gpt-4o",      "fallbacks": ["free-nex", "free-nemotron", "free-gemma", "deepseek-chat"] },
+    "vatsa-pro":        { "primary": "gpt-4o",      "fallbacks": ["free-nex", "free-nemotron", "free-gemma", "deepseek-chat"] },
+    "vatsa-advanced":   { "primary": "sonnet",      "fallbacks": ["free-nex", "free-nemotron", "free-gemma", "deepseek-chat"] },
+    "vatsa-fast":       { "primary": "gemini-pro",  "fallbacks": ["free-nex", "free-nemotron", "free-gemma", "deepseek-chat"] },
+    "reasoning":        { "primary": "reasoning",  "fallbacks": [], "allow_fallback": false },
+    "vision":           { "primary": "gpt-4o",      "fallbacks": ["sonnet", "gemini-pro"] }
+  }
+}

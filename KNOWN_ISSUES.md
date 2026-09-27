@@ -22,6 +22,7 @@ Owners: **Owner** = repository owner / product decision · **Backend** / **Front
 | KI-14 | P3 | Lint | 16 ESLint warnings remain (no errors): `<img>` vs `next/image`, `window.location` navigation, hook dependency hints | Open | Frontend |
 | KI-15 | P3 | Library | "Revoke link" in the share dialog acts on one click (the old link stops working; re-sharing issues a new one), and its copy button ignores clipboard failures | Open: needs one new string in all 12 locales, which weren't guessed | Frontend |
 | KI-16 | P3 | Dead code | `components/settings/settings-modal.tsx` is mounted with `open={false}` in `RootShell` and can never open; its "Delete all" only cleared local state. The live settings dialog is `components/home/SettingsModal.tsx` | Open: delete it | Frontend |
+| KI-17 | P3 | i18n | Server render of `/library` logs next-intl `ENVIRONMENT_FALLBACK` (no `timeZone` configured, so dates format in the server's zone before hydration). Log noise; the page renders | Open: pass the viewer's time zone to `NextIntlClientProvider` without causing a hydration mismatch | Frontend |
 
 \* KI-01 is rated P1 only because the exposure is live until the purge and rotations happen; no code change can fix it.
 

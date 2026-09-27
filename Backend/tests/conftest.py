@@ -21,6 +21,10 @@ from app.database import SessionLocal
 from app.models.user import User
 from app.services import payment_service
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "live: hits a real external provider (opt-in, see tests/test_live_providers.py)")
+
+
 TEST_PASSWORD = "a-long-test-password-1"
 # One real bcrypt hash of TEST_PASSWORD, computed once at cost 4. Production
 # hashes at cost 12 (app/auth/jwt.py); bcrypt.checkpw reads the cost from the

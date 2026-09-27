@@ -912,6 +912,8 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
                   <img
                     src={providerLogo}
                     alt={a.provider}
+                    width={32}
+                    height={32}
                     className="h-8 w-8 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
                     loading="lazy"
                   />
@@ -1028,6 +1030,8 @@ function ModelsSection() {
                       <img
                         src={logo}
                         alt={m.provider}
+                        width={32}
+                        height={32}
                         className="h-8 w-8 shrink-0 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
                         loading="lazy"
                       />
@@ -1101,6 +1105,8 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
         <img
           src={logo}
           alt={name}
+          width={24}
+          height={24}
           className="h-6 w-6 shrink-0 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
           loading="lazy"
         />
@@ -1583,7 +1589,7 @@ function FlipCard({ w, i, finePointer, onLaunch }: { w: Workspace; i: number; fi
                       boxShadow: `0 10px 30px -10px ${w.accent}66, inset 0 1px 0 rgba(255,255,255,0.08)`,
                     }}
                   >
-                    <img src={imageSrc} alt={w.title} className="h-7 w-7 object-contain" />
+                    <img src={imageSrc} alt={w.title} width={28} height={28} loading="lazy" decoding="async" className="h-7 w-7 object-contain" />
                   </div>
                   <span className="font-mono text-[10px] tracking-[0.2em] text-[#8a8a8a]">{w.index}</span>
                 </div>
@@ -1622,7 +1628,7 @@ function FlipCard({ w, i, finePointer, onLaunch }: { w: Workspace; i: number; fi
                 <div className="flex items-center justify-between">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border" style={{ color: w.accent, background: `${w.accent}1a`, borderColor: `${w.accent}35` }}>
-                      <img src={imageSrc} alt={w.title} className="h-4 w-4 object-contain" />
+                      <img src={imageSrc} alt="" width={16} height={16} loading="lazy" decoding="async" className="h-4 w-4 object-contain" />
                     </span>
                     <span className="truncate font-display text-[14px] font-medium text-white">{w.backTitle}</span>
                   </div>

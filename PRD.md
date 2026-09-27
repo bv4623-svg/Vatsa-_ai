@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Status | Current as of 2026-09-27 (this audit). Describes shipped behaviour. |
+| Status | Current as of 2026-09-27 (audit rounds 1 and 2). Describes shipped behaviour. |
 | Owner | Vatsa AI |
 | Scope | Web app (Next.js, `frontend/`) and API (FastAPI, `Backend/`) |
-| Related | [README.md](README.md), [TEST_REPORT.md](TEST_REPORT.md), [BUG_FIXES.md](BUG_FIXES.md), [CHANGELOG.md](CHANGELOG.md), [DEPLOYMENT.md](DEPLOYMENT.md) |
+| Related | [README.md](README.md), [TEST_REPORT.md](TEST_REPORT.md), [BUG_FIXES.md](BUG_FIXES.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md), [SECURITY_ACTIONS.md](SECURITY_ACTIONS.md), [CHANGELOG.md](CHANGELOG.md), [DEPLOYMENT.md](DEPLOYMENT.md) |
 
 The previous PRD file was an engineering repair brief and is kept at [docs/archive/REPAIR-BRIEF.md](docs/archive/REPAIR-BRIEF.md).
 
@@ -207,12 +207,12 @@ FastAPI (Backend/app/main.py) ── SQLAlchemy ── SQLite (DATA_DIR/vatsa.db
  ├─ library, projects, scheduled_tasks (APScheduler), memory, account, auth, payment (Razorpay)
  └─ services/feature_access.py  (plan gates + daily limits; charge-on-success)
 
-Code preview:  generated files → lib/code/preview.ts → <iframe srcdoc sandbox="allow-scripts …"> (opaque origin)
+Code preview:  generated files → lib/code/preview.ts → <iframe srcdoc sandbox="allow-scripts …"> (opaque origin; Python from /pyodide/)
                                                      └─ postMessage console bridge → parent console panel
 Voice:         Web Speech API (SpeechRecognition / speechSynthesis) in the browser only
 ```
 
-**Key dependencies:** FastAPI ≥ 0.118 (keeps the request DB session open during streaming responses), SQLAlchemy 2, aiohttp, ddgs, pdfplumber, python-docx, openpyxl, Pillow, APScheduler, python-jose, bcrypt, pyotp; Next.js 16, React 19, Zustand, react-markdown, Monaco, framer-motion, lucide-react; Pyodide 0.29.5 (CDN, loaded only inside the sandbox); Vitest and Playwright for tests.
+**Key dependencies:** FastAPI ≥ 0.118 (keeps the request DB session open during streaming responses), SQLAlchemy 2, aiohttp, ddgs, pdfplumber, python-docx, openpyxl, Pillow, APScheduler, python-jose, bcrypt, pyotp; Next.js 16, React 19, Zustand, react-markdown, Monaco, framer-motion, lucide-react; Pyodide 0.29.5 (self-hosted under `/pyodide/`, copied from npm at build time, loaded only inside the sandbox); Vitest and Playwright for tests.
 
 **Hosting:** frontend on Netlify, API on Render with a persistent disk at `DATA_DIR` (see [DEPLOYMENT.md](DEPLOYMENT.md)).
 
@@ -284,7 +284,8 @@ PNG for the owner only; 401 without or with an invalid token; 404 for other user
 
 ## 8. Security, privacy and rate limits
 
-- **Secrets:** read from environment only. `JWT_SECRET_KEY` is required at startup. Razorpay secrets live on the backend only. CI runs gitleaks on every push and PR. An archive containing `.env` files and a database was removed from the tree in this audit; see BUG-001 for the rotation and history-purge steps that remain.
+- **Secrets:** read from environment only. `JWT_SECRET_KEY` is required at startup. Razorpay secrets live on the backend only. A pre-commit hook and CI block secret-bearing files (`tools/security/forbidden_files.py`), and CI scans the full history of every branch against a baseline (`scan_history.py`). Archives containing `.env` files and a database are still in git history; SECURITY_ACTIONS.md has the rotation list and purge commands for the owner (KI-01).
+- **Data at rest:** 2FA TOTP secrets are Fernet-encrypted with `DATA_ENCRYPTION_KEY` (rotation via `DATA_ENCRYPTION_KEYS_OLD`; fallback derived from `JWT_SECRET_KEY`). Backup codes are stored as keyed HMACs and redeemed with a compare-and-swap, so each works exactly once. Deleting an account removes its files from disk.
 - **AuthN/Z:** bcrypt passwords (legacy pbkdf2 upgraded on login), 7-day JWTs with `token_version` revocation, optional TOTP 2FA, admin endpoints require allow-listed email + verified email + 2FA. Every owned resource is filtered by `user_id`; foreign ids return 404.
 - **Media:** generated images are served with a `scope=media` token that is useless against other endpoints and re-signed on each conversation read.
 - **Uploads:** content sniffing (magic bytes / PIL), filename sanitisation, zip-bomb guard, size caps, parsing in a threadpool.
@@ -293,41 +294,42 @@ PNG for the owner only; 401 without or with an invalid token; 404 for other user
 - **Privacy:** voice audio never reaches Vatsa AI servers (browser speech services apply). Account export returns only the requester's data, without password hashes or 2FA secrets. Private mode disables history. "Auto-save chats" off means exchanges aren't stored.
 - **Identity:** provider/model names are redacted from all client-visible output and stored messages.
 - **Headers:** security headers middleware (API) and HSTS/nosniff/frame/referrer (frontend). CORS is restricted to exact origins.
-- **Rate limits:** daily plan limits (section 3), 30 uploads/min/user, login throttling (in-process; see limitations).
+- **Rate limits:** daily plan limits (section 3), 30 uploads/min/user, login throttling by email and by IP (in-process; see limitations). The client IP is the `X-Forwarded-For` entry added by the outermost trusted proxy (`TRUSTED_PROXY_COUNT`, default 1), so a forged header can't rotate IPs.
+- **Transport:** JSON responses over 1 KB are gzip-compressed; SSE streams are not, so they stay incremental.
 
 ## 9. Testing strategy
 
 | Layer | Tooling | Scope |
 |---|---|---|
-| Backend unit + API | pytest + FastAPI TestClient, throwaway SQLite, `DATA_DIR` temp dir | 213 tests: every router and feature, with providers faked (`tests/llm_fakes.py`, mocked search/image/HTTP) |
-| Frontend unit | Vitest | 118 tests: intent parity, attachments, SSE parser, preview builder, parser, voice helpers |
-| End-to-end | Playwright, production build, mocked API (`e2e/mock-api.ts`), Desktop Chrome + Pixel 7 | 27 scenarios × 2 viewports (one is mobile-only) |
+| Backend unit + API | pytest + FastAPI TestClient, throwaway SQLite, `DATA_DIR` temp dir | 274 tests: every router and feature, with providers faked (`tests/llm_fakes.py`, mocked search/image/HTTP), plus query-plan/N+1 guards and a concurrency test. 12 opt-in live-provider tests (`VATSA_LIVE_TESTS=1`) |
+| Frontend unit | Vitest | 125 tests: intent parity, attachments, SSE parser, preview builder, parser, voice helpers, API error messages |
+| End-to-end | Playwright, production build, mocked API (`e2e/mock-api.ts`), Desktop Chrome + Pixel 7 | 57 scenarios × 2 viewports; any uncaught page error fails a test; axe WCAG 2.1 AA scan of 9 screens in both themes |
 | Static | ESLint (0 errors), `tsc --noEmit`, pricing consistency check | CI |
-| Security | gitleaks (history + tree), sandbox isolation E2E, SSRF/upload/ownership tests | CI + suites |
+| Security | forbidden-file guard (pre-commit + CI), full-history scan with baseline, gitleaks, sandbox isolation E2E, SSRF/upload/ownership/2FA/rate-limit tests | CI + suites |
+| Performance | `scripts/profile_routes.py` (500 ms route budget, heavy account), `e2e/perf.spec.ts` (`PERF=1`) | On demand; results in TEST_REPORT §6 |
 | Manual | Checklist in TEST_REPORT.md §4 for things that need real providers, microphones or devices | Before each release |
 
 Rule: every bug fix ships with a test that fails without the fix.
 
 ## 10. Known limitations
 
-1. **Git history still contains the removed archive** (with `.env` files and a database). The secrets must be rotated and history purged by the repository owner (BUG-001).
-2. Real-provider behaviour (OpenRouter model availability, image provider quality, live search ranking) is verified only manually; automated tests mock providers.
-3. Python execution uses Pyodide with the standard library only. No pip packages, network or files. It needs `cdn.jsdelivr.net` reachable from the user's browser.
-4. Voice relies on the browser: Firefox has no SpeechRecognition, Chrome/Edge send audio to the browser vendor's speech service, and voice quality depends on the OS.
-5. Rate limiting for login/uploads is in-process; with several workers the effective limit multiplies. Move to Redis before scaling out.
-6. Regenerate removes the old exchange from the client view, but the server conversation keeps both attempts (history grows).
-7. Free-plan users can still attach images to chat messages; that is image understanding through chat, which the plans page lists as Pro-only "Vision". This is a product decision to confirm (BUG-024).
-8. The API-keys paid gate returns `403 feature_requires_upgrade` rather than the standard `402 upgrade_required` (BUG-025).
-9. SQLite is the default database; concurrent write-heavy use needs Postgres (`DATABASE_URL`).
-10. The business-info check (`npm run check:business`) fails until the legal name, address and phone are filled in, which Razorpay verification requires.
+The complete, maintained list, with severity, owner and plan, is [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (KI-01 to KI-18). The most important:
+
+1. **Git history still contains archives with `.env` files and databases** (KI-01). The owner must rotate the secrets and purge history as described in SECURITY_ACTIONS.md.
+2. Real-provider behaviour is covered by opt-in live tests that haven't run yet (they need keys and network), plus the manual checklist.
+3. Python runs with the standard library only (KI-13). Voice depends on the browser (KI-12).
+4. Rate limits and the search cache are per process (KI-03). The deletion cascade is SQLite-only (KI-05).
+5. The conversation list returns every message (KI-07), measured at 5.4 MB (1.8 MB gzipped) for a heavy account.
+6. Free-plan image attachments are an accepted risk, capped at 100 images per user per day (KI-02).
+7. `npm run check:business` fails until the owner fills in the legal details (KI-10).
 
 ## 11. Roadmap
 
 **Next (0–1 month)**
-- Rotate secrets, purge history (BUG-001), enable GitHub secret scanning push protection.
+- Rotate secrets, purge history (SECURITY_ACTIONS.md), enable GitHub secret scanning push protection.
 - Redis-backed rate limiting and search cache shared across workers.
 - Server-side regenerate (replace the last exchange instead of appending).
-- Product decision on Free image attachments (BUG-024); standardise the API-keys gate (BUG-025).
+- Conversation summary endpoint with lazy message loading (KI-07).
 
 **Soon (1–3 months)**
 - Research: follow-up questions on a report, export to PDF/Doc, per-source quote extraction.

@@ -2,6 +2,38 @@
 
 All notable changes to Vatsa AI. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]: round-2 follow-up, 2026-09-27
+
+### Security
+- **2FA secrets encrypted at rest:** TOTP seeds use Fernet (`DATA_ENCRYPTION_KEY`, rotation via `DATA_ENCRYPTION_KEYS_OLD`; fallback key derived from `JWT_SECRET_KEY`), and backup codes are HMAC'd. `Backend/scripts/reencrypt_two_factor.py` migrates existing rows (BUG-037).
+- Backup codes can no longer be redeemed twice by concurrent logins (BUG-039).
+- Per-IP rate limits read the client IP from the trusted proxy's `X-Forwarded-For` entry (`TRUSTED_PROXY_COUNT`, default 1), not the forgeable first entry. Expired buckets are pruned (BUG-041, BUG-042).
+- **Secret guard:** `tools/security/` provides a full-history scanner (all refs, names inside archives, gitleaks) with a baseline, a tracked/staged forbidden-file check, a pre-commit hook (`git config core.hooksPath .githooks`) and a CI job. `.gitignore` now covers every `.env.*` variant (BUG-058).
+- [SECURITY_ACTIONS.md](SECURITY_ACTIONS.md): what was exposed, a 14-row rotation list and rehearsed history-purge commands. **Not executed; needs the owner.**
+- Hard account deletion also removes the user's files on disk (BUG-038).
+
+### Added
+- Opt-in live-provider tests (`VATSA_LIVE_TESTS=1`) and a weekly `live-providers.yml` workflow.
+- `Backend/scripts/profile_routes.py` (route timings against a heavy account) and `e2e/perf.spec.ts` (`PERF=1`, per-page JS/CLS/long tasks).
+- `KNOWN_ISSUES.md`.
+- Tests: backend 213 → 274, security tooling 30, Vitest 118 → 125, E2E 27 → 57 scenarios, axe on 9 screens in both themes.
+
+### Fixed
+- API errors are always one readable sentence: no "[object Object]", no raw codes, no HTML error pages, no raw JSON in the code chat (BUG-050).
+- Revoking an API key needs confirmation; key errors are shown (BUG-051). The API-keys gate returns the standard `402 upgrade_required` (BUG-025).
+- Library, Projects and Scheduled show a loading state and a retryable error instead of a false "Create your first…" (BUG-052).
+- Accessibility: 0 serious/critical axe violations on every scanned screen, light and dark, including the landing page, which had never actually been scanned (BUG-049, BUG-053, BUG-054). "Launch Workspace" on the landing page now works.
+- Mobile: 44×44 touch targets, the composer stays above the keyboard and clear of the home indicator (BUG-046, BUG-047).
+- `dark:` styles follow the in-app theme, not the OS (BUG-048). Clipboard failures are reported (BUG-045).
+- Privacy policy corrected to match what the code does (BUG-040).
+- Python runs from a self-hosted Pyodide instead of a CDN (BUG-044).
+- `.venv/` is gitignored; the README was verified on a clean clone (BUG-059).
+
+### Performance
+- API JSON responses are gzip-compressed; SSE streams are excluded. The heavy-account conversation list goes from 5.40 MB to 1.82 MB on the wire (BUG-055).
+- Signed-in visitors to `/` are redirected by the server: 419 → 318 KB of JS (BUG-056). Landing images are lazy-loaded and sized (BUG-057).
+- `GET /api/projects` no longer does N+1 queries (BUG-043). The backend test suite runs in 10 s instead of 94 s.
+
 ## [Unreleased]: end-to-end audit, 2026-09-27
 
 ### Security
@@ -46,6 +78,4 @@ All notable changes to Vatsa AI. Format based on [Keep a Changelog](https://keep
 - The previous PRD (an engineering repair brief) moved to `docs/archive/REPAIR-BRIEF.md`.
 
 ### Known issues
-- BUG-024: Free users can send images to chat (Vision is listed as Pro); product decision pending.
-- BUG-025: API-keys paid gate uses 403 instead of the standard 402.
-- See PRD.md §10 for all limitations.
+- See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (KI-01 to KI-18), which supersedes the list that used to be here.

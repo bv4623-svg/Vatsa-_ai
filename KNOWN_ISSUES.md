@@ -1,6 +1,6 @@
 # Known issues
 
-Everything open or deliberately accepted after the round-2 audit (2026-09-27). **No P0, P1 or P2 is open.** Each entry has a severity (same scale as BUG_FIXES.md), an owner, and either the plan or the reason it's accepted.
+Everything open or deliberately accepted after the round-2 audit (2026-09-27), KI-01 to KI-18. **No P0, P1 or P2 code defect is open.** The one P1-rated item, KI-01 (secrets in git history), can only be closed by the owner running SECURITY_ACTIONS.md. Each entry has a severity (same scale as BUG_FIXES.md), an owner, and either the plan or the reason it's accepted.
 
 Owners: **Owner** = repository owner / product decision · **Backend** / **Frontend** = engineering · **Ops** = hosting and deployment.
 
@@ -12,7 +12,7 @@ Owners: **Owner** = repository owner / product decision · **Backend** / **Front
 | KI-04 | P3 | Data | Daily limits are check-then-increment: simultaneous requests can exceed a cap by the number in flight | Accepted | Backend |
 | KI-05 | P3 | Portability | Hard account deletion lists tables via `sqlite_master`/`PRAGMA` (SQLite only); on Postgres the cascade would fail | Open | Backend |
 | KI-06 | P3 | Chat | Regenerate replaces the old reply in the UI, but the server conversation keeps both attempts | Open | Backend + Frontend |
-| KI-07 | P3 | Perf | `GET /api/conversations` returns every message of every conversation (see TEST_REPORT §Performance for measurements) | Open | Backend + Frontend |
+| KI-07 | P3 | Perf | `GET /api/conversations` returns every message of every conversation: 5.40 MB for 200 conversations × 40 messages (1.82 MB gzipped since BUG-055; ~125 ms server time) | Open | Backend + Frontend |
 | KI-08 | P3 | Dead code | `frontend/src/db/` (drizzle/pg template) is imported nowhere but keeps `pg`, `drizzle-orm`, `drizzle-kit` and a frontend `DATABASE_URL` around; `drizzle.config.json` holds a local-dev default `postgres:postgres@127.0.0.1` (not a secret) | Open | Frontend |
 | KI-09 | P3 | CI | GitHub warns that checkout@v4 / setup-node@v4 / setup-python@v5 target Node 20 and are forced onto Node 24 | Open | Ops |
 | KI-10 | P3 | Launch | `npm run check:business` fails until the legal name, postal address and phone are set (Razorpay verification needs them) | Waiting on owner | Owner |
@@ -23,6 +23,7 @@ Owners: **Owner** = repository owner / product decision · **Backend** / **Front
 | KI-15 | P3 | Library | "Revoke link" in the share dialog acts on one click (the old link stops working; re-sharing issues a new one), and its copy button ignores clipboard failures | Open: needs one new string in all 12 locales, which weren't guessed | Frontend |
 | KI-16 | P3 | Dead code | `components/settings/settings-modal.tsx` is mounted with `open={false}` in `RootShell` and can never open; its "Delete all" only cleared local state. The live settings dialog is `components/home/SettingsModal.tsx` | Open: delete it | Frontend |
 | KI-17 | P3 | i18n | Server render of `/library` logs next-intl `ENVIRONMENT_FALLBACK` (no `timeZone` configured, so dates format in the server's zone before hydration). Log noise; the page renders | Open: pass the viewer's time zone to `NextIntlClientProvider` without causing a hydration mismatch | Frontend |
+| KI-18 | P3 | Perf | Signed-out landing page has one layout shift of ~0.07 about 1 s after load, from the hero "Live Router" panel (CLS 0.066–0.082; "good" is < 0.1) | Watch; reserve the panel's final height if it grows | Frontend |
 
 \* KI-01 is rated P1 only because the exposure is live until the purge and rotations happen; no code change can fix it.
 
@@ -47,7 +48,7 @@ Blocking it would take away a capability free users have today; that's a pricing
 The client drops the old exchange before re-sending; the server appends a new pair. Reloading shows both attempts. **Fix:** a `replace_last` flag on `/api/chat` that pops the trailing user/assistant pair before persisting.
 
 ### KI-07 · Conversation list payload
-The home page loads all conversations with their full message arrays in one request. See TEST_REPORT.md "Performance" for size and time. **Fix:** a summary list endpoint (id, title, flags, timestamps) and messages loaded per conversation when opened; the frontend's `useHomeConversations` currently reads `conv.messages` from the list.
+The home page loads all conversations with their full message arrays in one request. Measured with `Backend/scripts/profile_routes.py`: 5.40 MB of JSON (1.82 MB on the wire with gzip) and ~125 ms of server time for 200 conversations × 40 messages. It wasn't changed in round 2 because four features read `conv.messages` from the list: home chat (`useHomeConversations`), code workspace (`useCodeConversations`), sidebar content search (`home/Sidebar.tsx`) and JSON export. The project chat picker (`listAllChats`) uses only summary fields and would benefit immediately. **Fix:** a summary list endpoint (id, title, flags, timestamps) and messages loaded per conversation when opened; the frontend's `useHomeConversations` currently reads `conv.messages` from the list.
 
 ### KI-08 · Unused database template in the frontend
 Remove `frontend/src/db/`, `drizzle.config.json` and the `pg`/`drizzle-*` dependencies, regenerate the lockfile, and drop `DATABASE_URL` from the frontend docs.

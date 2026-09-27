@@ -20,6 +20,8 @@ Owners: **Owner** = repository owner / product decision · **Backend** / **Front
 | KI-12 | P3 | Voice | Depends on the browser: Firefox has no speech recognition (button disabled with an explanation); Chrome and Edge send audio to the vendor's speech service | Accepted (documented in the privacy policy) | – |
 | KI-13 | P3 | Code | Python runs in the browser with the standard library only (no pip packages) | Accepted; roadmap item | Frontend |
 | KI-14 | P3 | Lint | 16 ESLint warnings remain (no errors): `<img>` vs `next/image`, `window.location` navigation, hook dependency hints | Open | Frontend |
+| KI-15 | P3 | Library | "Revoke link" in the share dialog acts on one click (the old link stops working; re-sharing issues a new one), and its copy button ignores clipboard failures | Open: needs one new string in all 12 locales, which weren't guessed | Frontend |
+| KI-16 | P3 | Dead code | `components/settings/settings-modal.tsx` is mounted with `open={false}` in `RootShell` and can never open; its "Delete all" only cleared local state. The live settings dialog is `components/home/SettingsModal.tsx` | Open: delete it | Frontend |
 
 \* KI-01 is rated P1 only because the exposure is live until the purge and rotations happen; no code change can fix it.
 

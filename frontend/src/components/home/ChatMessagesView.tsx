@@ -260,7 +260,7 @@ export function ChatMessagesView({
           })}
 
           {isLoading && (
-            <div className="flex flex-col items-start gap-2">
+            <div className="flex flex-col items-start gap-2" role="status" aria-label="Vatsa AI is responding">
               <span className="text-xs font-medium text-muted-foreground/60">Vatsa AI</span>
               {isImageGenLoading ? (
                 <ImageLoadingGrid />
@@ -362,6 +362,7 @@ export function ChatMessagesView({
                     else if (inputValue.trim() || hasReadyAttachments) onSend();
                   }}
                   disabled={!isLoading && !inputValue.trim() && !hasReadyAttachments}
+                  aria-label={isLoading ? "Stop generating" : "Send message"}
                   className={cn(
                     "rounded-full p-2 text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
                     isLoading || inputValue.trim() || hasReadyAttachments ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"

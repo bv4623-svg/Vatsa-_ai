@@ -2,7 +2,8 @@
 
 **Status (2026-09-27):**
 - ✅ **Git history purged** and force-pushed to every branch (§5). There are no tags. The three archives and everything inside them are gone from all branches.
-- ⚠️ **Still needs the owner:** rotate the secrets in §4 (only you can log in to those dashboards), decide on user notification (§3), and ask GitHub Support to clear cached commit views (§5, "After the purge").
+- ✅ **The app refuses the leaked values:** the backend won't start, and the pre-deploy gate fails the deploy, while any configured secret matches a leaked one (checked by one-way fingerprint, `Backend/app/core/secrets_check.py`).
+- ⚠️ **Still needs the owner:** rotate the **5 leaked secrets** in §4 (only you can log in to those dashboards), run the force-reset command (§3), and ask GitHub Support to clear cached commit views (§5, "After the purge").
 
 Values that were public before the purge must be treated as compromised forever, however well the purge worked: anyone could have cloned or forked the repo while they were in history. **Rotation is what actually secures the app.**
 
@@ -17,6 +18,11 @@ Found by `tools/security/scan_history.py`, `git log --all --full-history` and `g
 | `9ca0cba` | 2026-09-15 | `vatsaai.com/vatsaai.zip` (84,540,183 bytes, 374 members) | `Backend/.env` (853 B), `frontend/.env.local` (225 B), `Backend/vatsa.db` (262,144 B), `Backend/test.db` (16,384 B), `Backend/vatsa-ai-debug.zip` (41 MB), which contains another `Backend/vatsa.db` (122,880 B) |
 | `43d432c` | 2026-09-19 | `vatsaai-backend.zip` (192,580 B) | `.env.example` only (a source archive) |
 | `a8b4a69` | 2026-09-20 | `vatsaai-backend-FINAL.zip` (187,924 B) | `.env.example` only (a source archive) |
+
+**What the leaked env files actually set.** Established by fingerprinting each file through a pipe: names only, no value was ever displayed. See `Backend/scripts/fingerprint_leaked_env.py`.
+- `Backend/.env`: `JWT_SECRET_KEY`, `OPENROUTER_API_KEY`, `RAZORPAY_KEY_SECRET`, `GOOGLE_CLIENT_SECRET`, `EMAIL_PASSWORD`, plus `DATABASE_URL`, a local `sqlite+aiosqlite` path with no password, so not a secret.
+- `frontend/.env.local`: `RAZORPAY_KEY_SECRET` (a server secret that should never have been in frontend config).
+- Not present in either file, so not leaked: `RAZORPAY_WEBHOOK_SECRET`, the GitHub and Microsoft OAuth secrets, all search API keys, and any database password.
 
 Also checked, and clean:
 - **Every historical version of the committed env files:** 25 versions of `Backend/.env.example`, `frontend/.env.example` and `frontend/.env.production`. Secret-looking keys are empty everywhere. The only flagged key, `ACCESS_TOKEN_EXPIRE_MINUTES=10080`, is a 7-day setting, not a secret.
@@ -43,30 +49,21 @@ Also checked, and clean:
 Judging by the schema at that commit, the databases may hold user emails and names, password hashes (bcrypt, or pbkdf2 for older accounts), OTP code hashes, payment records (emails, Razorpay order/payment ids) and **conversation contents**. 2FA columns were added on 2026-09-18, after this snapshot.
 
 **Password reset for affected users** (everyone whose account existed on 2026-09-15):
-1. **Sign them out everywhere.** Rotating `JWT_SECRET_KEY` (§4 row 1) does this for all users. To do it for the affected accounts only, run this on the Render shell:
+1. **Force the reset** with the admin command, in the Render **Shell** tab:
    ```bash
-   cd Backend && python - <<'PY'
-   from datetime import datetime, timezone
-   from app.database import SessionLocal
-   from app.models.user import User
-   db = SessionLocal()
-   cutoff = datetime(2026, 9, 16, tzinfo=timezone.utc)
-   affected = db.query(User).filter(User.created_at < cutoff).all()
-   for u in affected:
-       u.token_version = (u.token_version or 0) + 1   # invalidates their existing sessions
-   db.commit()
-   print(len(affected), "accounts signed out")
-   for u in affected: print(u.email)                   # the notification list
-   PY
+   cd Backend
+   python -m scripts.force_password_reset                   # dry run: lists every account created before 2026-09-16
+   python -m scripts.force_password_reset --apply --notify  # signs them out, disables the old password, emails the reset link
    ```
-2. **Email each of them** from the support address: "As a precaution, please reset your password at https://vatsaai.netlify.app/forgot-password. If you used the same password elsewhere, change it there too."
+   `--apply` bumps each account's `token_version`, which ends all its sessions, and replaces the password hash with the hash of an unknown random secret. The leaked hash stops working, and `/forgot-password` becomes the way back in. `--notify` sends the email in step 2 for you. Tested on fake users in `Backend/tests/test_force_password_reset.py`.
+2. **The email** (`--notify` sends it; send it yourself if SMTP isn't configured yet): "As a precaution, please reset your password at https://vatsaai.netlify.app/forgot-password. If you used the same password elsewhere, change it there too."
 3. **How the reset works (already in the app):** `/forgot-password` emails a one-time code. `/reset-password` sets the new password through `POST /auth/reset-password` (`Backend/app/routers/auth/otp.py:158`), which also increments `token_version` and ends any remaining sessions.
 4. **2FA users:** ask them to regenerate backup codes (Settings → Security). The re-encrypt script reports how many accounts have 2FA.
 5. **Legal:** a personal-data breach may require notifying the Data Protection Board of India and affected users under the DPDP Act, 2023, and equivalent laws elsewhere for non-Indian users. Get legal advice; this document is not legal advice.
 
 ## 4. Secrets to rotate
 
-The contents of the leaked `.env` files were never opened, so this list is every secret the application reads from those files. Rotate all of them unless you are certain a value was never set.
+**Rows 1, 3, 4, 6 and 9 leaked and must be rotated.** The app refuses to start until they are (the fingerprint check). Row 2 is new. The other rows weren't in the leaked files; rotate them only if you want a clean slate.
 
 **Where to put new values:** backend variables go in the **Render** dashboard (https://dashboard.render.com → the API service → *Environment*). Frontend variables go in **Netlify** (https://app.netlify.com → the site → *Site configuration → Environment variables*). Redeploy after changing them. Dashboard menus move over time; the paths below were correct when this was written.
 

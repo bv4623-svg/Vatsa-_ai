@@ -4,7 +4,7 @@ One workspace to chat, search the web, run deep research, generate images, write
 
 - **Web app:** Next.js 16 / React 19 in [`frontend/`](frontend/)
 - **API:** FastAPI in [`Backend/`](Backend/)
-- **Docs:** [PRD.md](PRD.md) (product spec, API contracts) · [TEST_REPORT.md](TEST_REPORT.md) · [BUG_FIXES.md](BUG_FIXES.md) · [KNOWN_ISSUES.md](KNOWN_ISSUES.md) · [SECURITY_ACTIONS.md](SECURITY_ACTIONS.md) (**owner action required**) · [CHANGELOG.md](CHANGELOG.md) · [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Docs:** [PRD.md](PRD.md) (product spec, API contracts) · [TEST_REPORT.md](TEST_REPORT.md) · [BUG_FIXES.md](BUG_FIXES.md) · [KNOWN_ISSUES.md](KNOWN_ISSUES.md) · [SECURITY_ACTIONS.md](SECURITY_ACTIONS.md) (**owner action required**) · [CHANGELOG.md](CHANGELOG.md) · [DEPLOY.md](DEPLOY.md) (copy-paste deploy) · [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## Features
 
@@ -90,7 +90,7 @@ All secrets come from environment variables. Never commit `.env` files: every `.
 ## Testing
 
 ```bash
-cd Backend  && python -m pytest -q                         # 274 tests (12 live-provider tests skip without opt-in)
+cd Backend  && python -m pytest -q                         # 304 tests (12 live-provider tests skip without opt-in)
 cd frontend && npm test                                    # 125 unit tests (Vitest)
 cd frontend && npm run lint && npm run typecheck
 cd frontend && npx playwright install chromium && npm run test:e2e   # 75 scenarios x desktop + mobile, incl. axe

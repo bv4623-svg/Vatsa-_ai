@@ -5,6 +5,9 @@ All notable changes to Vatsa AI. Format based on [Keep a Changelog](https://keep
 ## [Unreleased]: round-2 follow-up, 2026-09-27
 
 ### Security
+- Password-reset tokens can no longer be used as a login session; OTP codes are no longer written to the server log; OTP login requires 2FA when it's on, and its sessions can be revoked (BUG-060 to BUG-062).
+- The backend refuses to start (and the deploy fails) if a secret is missing, malformed, or still a value that leaked in git history.
+- New `python -m scripts.force_password_reset` signs out accounts from the leaked database and makes them set a new password.
 - **Git history purged:** the three archives (one with `.env` files and databases) are gone from every branch. Everyone must re-clone; the leaked secrets must still be rotated (SECURITY_ACTIONS.md §4).
 - **2FA secrets encrypted at rest:** TOTP seeds use Fernet (`DATA_ENCRYPTION_KEY`, rotation via `DATA_ENCRYPTION_KEYS_OLD`; fallback key derived from `JWT_SECRET_KEY`), and backup codes are HMAC'd. `Backend/scripts/reencrypt_two_factor.py` migrates existing rows (BUG-037).
 - Backup codes can no longer be redeemed twice by concurrent logins (BUG-039).
@@ -29,6 +32,9 @@ All notable changes to Vatsa AI. Format based on [Keep a Changelog](https://keep
 - Privacy policy corrected to match what the code does (BUG-040).
 - Python runs from a self-hosted Pyodide instead of a CDN (BUG-044).
 - `.venv/` is gitignored; the README was verified on a clean clone (BUG-059).
+
+### Deploy
+- `render.yaml` moved to the repo root, where Render reads it, with a pre-deploy gate (secrets, database, disk) before the server starts; copy-paste steps in DEPLOY.md.
 
 ### Performance
 - API JSON responses are gzip-compressed; SSE streams are excluded. The heavy-account conversation list goes from 5.40 MB to 1.82 MB on the wire (BUG-055).

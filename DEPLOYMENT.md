@@ -1,5 +1,7 @@
 # Deploying Vatsa AI (Netlify + Razorpay)
 
+> **Short version:** [DEPLOY.md](DEPLOY.md) has the copy-paste steps. This file has the background.
+
 **Architecture.** Netlify hosts the Next.js frontend. The FastAPI backend runs on a separate host (Render, Railway, Fly.io or a VPS), because Netlify Functions are JavaScript only. The browser talks to the backend directly over HTTPS at `NEXT_PUBLIC_API_URL`.
 
 **Prices.** Exactly two things can be bought: **Pro $24** and **Business $99**, each one payment for 30 days, no auto-renewal, tax-inclusive. INR uses one fixed rate, **$1 = ₹83** (Pro ₹1,992, Business ₹8,217), USD shown first everywhere.
@@ -49,7 +51,7 @@ Required environment variables (names in `Backend/.env.example`):
 | `EMAIL_*`, `MAIL_FROM` | SMTP for OTP/notification mail |
 | `GOOGLE_*`, `GITHUB_*`, `MICROSOFT_*` | only if you keep social login; the `*_REDIRECT_URI` values must use the backend's https URL and be registered with each provider |
 
-**Storage.** SQLite is the database, and uploads and generated images are written to disk too. Set `DATA_DIR` to a directory on a **persistent disk** (e.g. `/data`) and all three go there; leave it unset locally. On an ephemeral filesystem every redeploy wipes users, payments and files. `Backend/render.yaml` is a Render blueprint that does this (paid instance + 5 GB disk + `DATA_DIR=/data`); it has not been run on Render. Render deploys from a Git repo, not a zip. Python 3.14 was used for development and testing, and is Render's default; the blueprint pins 3.14.3 to match. If Render's build log says `Could not open requirements file`, set the service's **Root Directory** to the folder that contains `requirements.txt` (`Backend` when the whole project was pushed).
+**Storage.** SQLite is the database, and uploads and generated images are written to disk too. Set `DATA_DIR` to a directory on a **persistent disk** (e.g. `/data`) and all three go there; leave it unset locally. On an ephemeral filesystem every redeploy wipes users, payments and files. `render.yaml` at the repo root is a Render Blueprint that does this (paid instance + 5 GB disk + `DATA_DIR=/data`, `rootDir: Backend`). It pins Python 3.11.9, the version CI tests, and runs the pre-deploy gate before the server. It has not been applied on Render from here. Copy-paste steps: [DEPLOY.md](DEPLOY.md).
 
 Check: `GET https://<backend>/health` returns `{"status":"ok",…}` and `GET https://<backend>/payment/config` returns `"configured": true`.
 

@@ -6,7 +6,7 @@ Round 2 (follow-up, same day) re-ran everything from a clean state, then added s
 
 | Suite | Tool | Cases | Result |
 |---|---|---|---|
-| Backend unit + API | pytest (FastAPI TestClient, temp SQLite + `DATA_DIR`) | 274 (213 after round 1, +61 in round 2) | **262 passed, 12 skipped by design** (live-provider tests; opt-in, §7) |
+| Backend unit + API | pytest (FastAPI TestClient, temp SQLite + `DATA_DIR`) | 304 (213 after round 1, +61 in round 2, +30 deploy prep) | **292 passed, 12 skipped by design** (live-provider tests; opt-in, §7) |
 | Security tooling | pytest over `tools/security` (temp git repos) | 30 | **30 passed** |
 | Frontend unit | Vitest | 125 (118 after round 1, +7) | **125 passed** |
 | End-to-end | Playwright on the production build, mocked API, Desktop Chrome + Pixel 7 | 75 scenarios × 2 viewports = 150 runs (27 scenarios after round 1) | **108 passed, 42 skipped by design** (viewport-specific cases plus the opt-in perf report). Any uncaught page error or unhandled rejection fails a test |
@@ -346,7 +346,7 @@ A fresh `git clone` of `24f9660` into an empty temp directory, following README.
 
 Generated with `pytest --collect-only`, `vitest list` and `playwright test --list` at the head of PR #2. Result for every case: **PASS**, except the 12 live-provider tests (SKIPPED: opt-in, no keys or egress here), E2E cases limited to one viewport (skipped on the other), and the opt-in perf report.
 
-### A.1 Backend (pytest, 274 cases)
+### A.1 Backend (pytest, 304 cases)
 
 **test_account_deletion.py**
 
@@ -447,6 +447,12 @@ Generated with `pytest --collect-only`, `vitest list` and `playwright test --lis
 - `test_authenticated_reads[/api/payments/me]`
 - `test_production_password_hashing_uses_cost_12`
 
+**test_force_password_reset.py**
+
+- `test_force_reset_only_hits_accounts_older_than_the_leak`
+- `test_dry_run_lists_without_changing_anything`
+- `test_failed_notification_is_counted`
+
 **test_image_generation.py**
 
 - `test_image_intent_chat[generate an image of a red fox in snow]`
@@ -510,6 +516,14 @@ Generated with `pytest --collect-only`, `vitest list` and `playwright test --lis
 - `test_live_optional_search_provider[_google_cse-GOOGLE_CSE_API_KEY]`
 - `test_live_optional_search_provider[_searxng-SEARXNG_URL]`
 
+**test_password_reset.py**
+
+- `test_reset_flow_changes_password_and_ends_existing_sessions`
+- `test_reset_token_cannot_be_used_as_a_session_or_for_another_email`
+- `test_otp_code_is_never_written_to_the_log`
+- `test_otp_login_respects_two_factor`
+- `test_otp_login_session_is_revoked_by_token_version`
+
 **test_payment_history_api.py**
 
 - `test_history_requires_a_login`
@@ -559,6 +573,14 @@ Generated with `pytest --collect-only`, `vitest list` and `playwright test --lis
 - `test_partial_refund_leaves_access_alone`
 - `test_refund_webhook_needs_a_valid_signature_and_a_known_payment`
 
+**test_predeploy_check.py**
+
+- `test_passes_on_a_good_production_config`
+- `test_fails_when_a_required_secret_is_missing`
+- `test_fails_on_a_leaked_secret_without_printing_it`
+- `test_fails_when_the_database_is_unreachable`
+- `test_fails_when_the_data_dir_is_missing`
+
 **test_query_performance.py**
 
 - `test_hot_query_uses_an_index[conversations list]`
@@ -592,6 +614,26 @@ Generated with `pytest --collect-only`, `vitest list` and `playwright test --lis
 - `test_login_ip_limit_holds_against_rotating_fake_ips`
 - `test_expired_buckets_are_pruned`
 - `test_limit_still_enforced`
+
+**test_secrets_check.py**
+
+- `test_a_correct_production_config_passes`
+- `test_a_leaked_value_is_refused_and_never_echoed`
+- `test_a_leaked_value_reused_under_another_name_is_refused`
+- `test_old_rotation_keys_are_checked_one_by_one`
+- `test_leaked_values_are_refused_outside_production_too`
+- `test_malformed_encryption_key_is_refused`
+- `test_each_required_variable_is_enforced_in_production[JWT_SECRET_KEY]`
+- `test_each_required_variable_is_enforced_in_production[DATA_ENCRYPTION_KEY]`
+- `test_each_required_variable_is_enforced_in_production[OPENROUTER_API_KEY]`
+- `test_each_required_variable_is_enforced_in_production[ALLOWED_ORIGINS]`
+- `test_each_required_variable_is_enforced_in_production[BACKEND_PUBLIC_URL]`
+- `test_each_required_variable_is_enforced_in_production[FRONTEND_REDIRECT_URL]`
+- `test_required_variables_are_not_enforced_in_development`
+- `test_render_counts_as_production`
+- `test_placeholder_and_short_jwt_are_refused_in_production`
+- `test_committed_fingerprints_cover_the_leaked_secrets`
+- `test_the_app_refuses_to_start_with_a_bad_secret`
 
 **test_two_factor.py**
 

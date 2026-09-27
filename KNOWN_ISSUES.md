@@ -6,7 +6,7 @@ Owners: **Owner** = repository owner / product decision · **Backend** / **Front
 
 | ID | Sev | Area | Issue | Status | Owner |
 |---|---|---|---|---|---|
-| KI-01 | P1* | Security | Archives with `.env` files and databases were in git history. **Purged from every branch on 2026-09-27** (SECURITY_ACTIONS.md §5). The leaked values must still be rotated, and GitHub Support asked to drop cached old commits | Waiting on owner: rotation (SECURITY_ACTIONS.md §4) | Owner |
+| KI-01 | P1* | Security | Archives with `.env` files and databases were in git history. **Purged from every branch on 2026-09-27** (SECURITY_ACTIONS.md §5). 5 leaked values must still be rotated (the app refuses to start until they are), and GitHub Support asked to drop cached old commits | Waiting on owner: rotation (SECURITY_ACTIONS.md §4) | Owner |
 | KI-02 | P3 | Plans | Free users can attach images to chat (image understanding), though the plans table lists Vision as Pro (was BUG-024) | Accepted risk | Owner |
 | KI-03 | P3 | Scale | Rate limiter and search cache are per process: with N workers, limits are ×N and the cache isn't shared | Accepted for a single worker (the current Render setup) | Backend |
 | KI-04 | P3 | Data | Daily limits are check-then-increment: simultaneous requests can exceed a cap by the number in flight | Accepted | Backend |

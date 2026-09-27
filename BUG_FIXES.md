@@ -4,7 +4,7 @@ Every bug found during the end-to-end audit, with severity, reproduction, expect
 
 **Severity scale:** **P0** security or data exposure, or a core feature unusable · **P1** a major feature broken, missing or misleading · **P2** a real defect with a workaround or limited blast radius · **P3** minor, cosmetic, or hardening.
 
-**Summary:** 59 issues logged (36 in round 1, 23 in round 2). Every P0, P1 and P2 is fixed. BUG-024 (P3) is an accepted risk, tracked as KNOWN_ISSUES.md KI-02. BUG-001 is fixed in the tree and in history (purged from every branch on 2026-09-27). Rotating the leaked secrets still needs the owner (SECURITY_ACTIONS.md §4, KI-01).
+**Summary:** 63 issues logged (36 in round 1, 23 in round 2, 4 found while preparing the deploy). Every P0, P1 and P2 is fixed. BUG-024 (P3) is an accepted risk, tracked as KNOWN_ISSUES.md KI-02. BUG-001 is fixed in the tree and in history (purged from every branch on 2026-09-27). Rotating the leaked secrets still needs the owner (SECURITY_ACTIONS.md §4, KI-01).
 
 Every round-2 fix has a test that was run against the old code and failed, then passed with the fix. Round 2 is [below](#round-2-2026-09-27-follow-up).
 
@@ -270,6 +270,10 @@ A script uploaded with `Content-Type: image/png` was base64-encoded and sent to 
 | BUG-057 | P3 | Perf | 16 landing images below the fold loaded eagerly; 45 had no dimensions | Fixed | 57f603b |
 | BUG-058 | P2 | Security | `.gitignore` covered `.env` and `.env.local` only; `.env.production.local` and other variants could be committed | Fixed | cec25b8 |
 | BUG-059 | P3 | Tooling | `Backend/.venv/`, created by the README quick start, wasn't gitignored | Fixed | 616adb3 |
+| BUG-060 | P1 | Auth | The 10-minute password-reset token was accepted as a full login session by every authenticated route | Fixed | 4accbe8 |
+| BUG-061 | P1 | Auth | Every OTP code (sign-up and password reset) was printed with its email to the server log | Fixed | 4accbe8 |
+| BUG-062 | P2 | Auth | OTP login for an existing user skipped 2FA, and minted a token without `tv` that no sign-out or password reset could revoke | Fixed | 4accbe8 |
+| BUG-063 | P2 | Deploy | `render.yaml` lived in `Backend/`, where Render never reads a Blueprint, and pinned Python 3.14.3 while CI tests 3.11 | Fixed | c167a7e |
 
 ### BUG-037 · P1 · 2FA secrets readable from a database copy
 - **Steps:** enable 2FA, then read `users.totp_secret` and `users.backup_codes`.
@@ -352,6 +356,17 @@ See TEST_REPORT.md §6 for the before/after numbers.
 
 ### BUG-059 · P3 · Virtualenv not ignored
 Found by running the README on a clean clone (TEST_REPORT.md §8): afterwards, `git status` listed `Backend/.venv/`. `.venv/` and `venv/` are now ignored, confirmed with `git check-ignore` (not ignored before, ignored after).
+
+### BUG-060 / BUG-061 / BUG-062 · Auth: reset tokens, logged OTPs, OTP login
+Found while verifying the password-reset flow for the leaked-database force reset.
+- **060, before:** `get_current_user` rejected tokens with a `scope` claim, but not the reset token's `purpose` claim. So the token from `/auth/otp/verify` worked as a full session for 10 minutes, e.g. `GET /auth/me` returned 200.
+- **061, before:** `POST /auth/otp/send` ran `print(f"[OTP] Generated for {email}: {code}")` before sending. Anyone who could read the server log could reset any account.
+- **062, before:** verifying a sign-up OTP for an existing email returned a session with no 2FA step, and without the `tv` claim. That session survived password resets, "sign out other devices" and the force-reset command.
+- **After:** sessions require `tv` and reject `purpose` and `scope` tokens (`app/auth/dependencies/core.py`). The OTP is never logged. OTP login returns the 2FA pending token for 2FA users, and mints `tv` otherwise. The UI never used OTP login, so no frontend change was needed.
+- **Tests:** `tests/test_password_reset.py` (5; 4 fail on the old code), including the full OTP → reset → old session 401 → new password flow.
+
+### BUG-063 · Render Blueprint in the wrong place
+Render reads `render.yaml` only from the repository root, so `Backend/render.yaml` was never used. It now sits at the root with `rootDir: Backend`, pins Python 3.11.9 (what CI tests), sets `APP_ENV=production`, runs the pre-deploy gate before `uvicorn`, and lists every variable the backend reads. Checked by parsing the YAML and confirming its paths exist; it hasn't been applied on Render from here.
 
 ---
 

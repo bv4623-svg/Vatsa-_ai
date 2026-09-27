@@ -8,7 +8,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check:pricing": "node scripts/check-pricing-consistency.js",
-    "check:business": "node scripts/check-business-info.js"
+    "check:business": "node scripts/check-business-info.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -51,7 +53,8 @@
     "eslint-config-next": "16.3.5",
     "postcss": "8.5.28",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
   },
   "overrides": {
     "dompurify": "3.4.15"

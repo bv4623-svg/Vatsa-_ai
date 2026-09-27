@@ -15,6 +15,8 @@ re-hosted from our own storage.
 import os
 import io
 import uuid
+import random
+import asyncio
 import logging
 import urllib.parse
 from typing import Dict, Any, Optional
@@ -49,14 +51,65 @@ BRAND_FONT_CANDIDATES = [
 ]
 
 
-async def _fetch_raw_image(prompt: str) -> bytes:
+IMAGE_PROVIDER_URL = os.getenv("IMAGE_PROVIDER_URL", "https://image.pollinations.ai/prompt")
+IMAGE_TIMEOUT_SECONDS = 60
+# Attempts per image: transient 5xx/429/timeouts from the provider are common
+# enough that one retry turns most failures into a success.
+IMAGE_MAX_ATTEMPTS = 3
+IMAGE_RETRY_BACKOFF_SECONDS = (1.0, 3.0)
+MAX_RAW_IMAGE_BYTES = 20 * 1024 * 1024
+
+
+class ImageProviderError(RuntimeError):
+    """Raised with a provider-neutral message; never shown to clients verbatim."""
+
+
+class _RetryableImageError(ImageProviderError):
+    """A failure worth another attempt: 429, 5xx, timeout, connection error."""
+
+
+def _provider_url(prompt: str, seed: int) -> str:
     encoded = urllib.parse.quote(prompt)
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&model=flux&nologo=true"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f"Image provider returned status {resp.status}")
-            return await resp.read()
+    # A fresh seed per request: the provider caches by URL, so without it
+    # "regenerate" returned the identical picture.
+    return f"{IMAGE_PROVIDER_URL}/{encoded}?width=1024&height=1024&model=flux&nologo=true&seed={seed}"
+
+
+async def _fetch_raw_image(prompt: str) -> bytes:
+    seed = random.randint(1, 2**31 - 1)
+    last_error: Exception = ImageProviderError("no attempt made")
+    for attempt in range(IMAGE_MAX_ATTEMPTS):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    _provider_url(prompt, seed),
+                    timeout=aiohttp.ClientTimeout(total=IMAGE_TIMEOUT_SECONDS),
+                ) as resp:
+                    if resp.status == 429 or resp.status >= 500:
+                        raise _RetryableImageError(f"Image provider returned status {resp.status}")
+                    if resp.status != 200:
+                        raise ImageProviderError(f"Image provider returned status {resp.status}")
+                    ctype = resp.headers.get("Content-Type", "")
+                    if not ctype.startswith("image/"):
+                        raise ImageProviderError(f"Image provider returned non-image content ({ctype or 'unknown'})")
+                    buf = bytearray()
+                    async for chunk in resp.content.iter_chunked(64 * 1024):
+                        buf.extend(chunk)
+                        if len(buf) > MAX_RAW_IMAGE_BYTES:
+                            raise ImageProviderError("Image provider returned an oversized image")
+                    raw = bytes(buf)
+                    if not raw:
+                        raise ImageProviderError("Image provider returned an empty body")
+                    return raw
+        except _RetryableImageError as e:
+            last_error = e
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            last_error = ImageProviderError(f"Image provider unreachable: {type(e).__name__}")
+        if attempt < IMAGE_MAX_ATTEMPTS - 1:
+            delay = IMAGE_RETRY_BACKOFF_SECONDS[min(attempt, len(IMAGE_RETRY_BACKOFF_SECONDS) - 1)]
+            logger.warning(f"Image attempt {attempt + 1} failed ({last_error}); retrying in {delay}s")
+            await asyncio.sleep(delay)
+    raise last_error
 
 
 def _load_brand_font(size: int) -> ImageFont.FreeTypeFont:
@@ -97,7 +150,12 @@ def _add_branding(img: Image.Image) -> Image.Image:
 
 
 def _process_image(raw: bytes) -> bytes:
-    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+    except Exception as e:
+        raise ImageProviderError(f"Image provider returned undecodable data: {type(e).__name__}") from e
+    img = img.convert("RGB")
     w, h = img.size
     trim_x = int(w * WATERMARK_TRIM_FRACTION)
     trim_y = int(h * WATERMARK_TRIM_FRACTION)

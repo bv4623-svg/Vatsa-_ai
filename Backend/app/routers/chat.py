@@ -121,14 +121,16 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     return parsed
 
 
-def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
+def _check_daily_limit(db: Session, user: User, feature: str) -> None:
     """
     Raises 429 (with the shape the frontend's upgrade UI expects) once a
-    user's free/pro/business daily cap for `feature` is hit, else records
-    this call against today's count. Chat and Code share one endpoint
-    (distinguished only by req.workspace in the body), so this can't be
-    a route-level dependency the way vision's require_feature() is --
-    it has to run after the request body is parsed.
+    user's free/pro/business daily cap for `feature` is hit. Does NOT
+    record usage: callers call increment_usage() only after the work
+    succeeded, so a provider outage never burns the user's allowance.
+    Chat and Code share one endpoint (distinguished only by req.workspace
+    in the body), so this can't be a route-level dependency the way
+    vision's require_feature() is -- it has to run after the request body
+    is parsed.
     """
     allowed, used, limit = check_daily_limit(db, user, feature)
     if not allowed:
@@ -140,7 +142,6 @@ def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
             "resets_at": "midnight UTC",
             "upgrade_url": "/pricing",
         })
-    increment_usage(db, user, feature)
 
 
 def _enforce_storage_quota(db: Session, user: User, estimated_bytes: int) -> None:
@@ -262,6 +263,7 @@ async def _stream_chat_response(
     project_instructions: Optional[str] = None,
     response_style_instructions: Optional[str] = None,
     search_notice: Optional[str] = None,
+    message_feature: str = "chat_messages",
 ) -> AsyncGenerator[str, None]:
     if search_notice:
         yield f"data: {json.dumps({'notice': search_notice})}\n\n"
@@ -302,6 +304,7 @@ async def _stream_chat_response(
         return
 
     if full_text:
+        increment_usage(db, user, message_feature)
         _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources, reasoning_text=reasoning_text, user_settings=user.settings)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
@@ -332,9 +335,14 @@ async def chat_endpoint(
     # the streaming frontend clients already fall back to plain JSON when
     # the response isn't text/event-stream, so this stays consistent even
     # when the caller asked for stream=true). ---
-    img_prompt = detect_image_gen(req.message)
+    parsed_attachments = _parse_attachments(req)
+    # An attached file means "work with this", never "make a new picture"
+    # (same rule the client uses to predict the image loading state). Text
+    # attachments arrive inlined into the message after a "--- File:" marker.
+    has_attachment = bool(parsed_attachments) or "\n\n--- File:" in req.message
+    img_prompt = None if has_attachment else detect_image_gen(req.message, workspace)
     if img_prompt:
-        _enforce_daily_limit(db, user, "image_gen")
+        _check_daily_limit(db, user, "image_gen")
         # A processed PNG from this pipeline is typically 1-3MB; 2MB is a
         # conservative pre-check so a user right at their ceiling is
         # blocked before spending the generation call, not after.
@@ -344,6 +352,7 @@ async def chat_endpoint(
         except Exception as e:
             logger.error(f"Image generation failed for user {user.id}: {e}")
             raise HTTPException(status_code=502, detail="Image generation is temporarily unavailable. Please try again.")
+        increment_usage(db, user, "image_gen")
 
         media_token = create_media_token(user.id)
         image_url = f"{BACKEND_PUBLIC_URL}/api/files/{img_data['image_id']}/preview?token={media_token}"
@@ -365,12 +374,12 @@ async def chat_endpoint(
             "primary_intent": "image_generation"
         }
 
-    # --- 2. Daily message-limit check (per workspace) ---
-    _enforce_daily_limit(db, user, "code_messages" if workspace == "code" else "chat_messages")
+    # --- 2. Daily message-limit check (per workspace; charged on success) ---
+    message_feature = "code_messages" if workspace == "code" else "chat_messages"
+    _check_daily_limit(db, user, message_feature)
 
     # --- 3. Load Conversation History + Attachments ---
     conv, history_messages = _load_history(req, user, db)
-    parsed_attachments = _parse_attachments(req)
     search_context, sources, search_notice = await _get_search_context(req, user, db)
     # A chat that belongs to a Project gets that project's systemPrompt +
     # instructions applied to every message, not just the ones sent while
@@ -384,7 +393,7 @@ async def chat_endpoint(
                 req, user, db, conv, history_messages, parsed_attachments,
                 chosen_model, workspace, background_tasks, search_context, sources,
                 req.reasoning, project_instructions, response_style_instructions,
-                search_notice,
+                search_notice, message_feature,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -414,6 +423,7 @@ async def chat_endpoint(
         logger.error(f"AI service error for user {user.id}: {e}")
         raise HTTPException(status_code=502, detail="AI service is temporarily unavailable. Please try again.")
 
+    increment_usage(db, user, message_feature)
     if sources:
         result["sources"] = sources
     if search_notice:

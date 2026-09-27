@@ -15,14 +15,14 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
 from app.auth.jwt import create_media_token
-from app.services.ai_service import AIService, detect_image_gen
+from app.services.ai_service import AIService, GENERIC_AI_ERROR, detect_image_gen
 from app.services.image_service import generate_and_store_image
 from app.services.memory_extractor import extract_facts
 from app.services.library import sync_conversation_item, check_quota
 from app.services.account import notify_quota_warning
 from app.services.chat_projects import get_project_instructions_for_conversation
 from app.services.memory_service import MemoryService
-from app.services.search_service import SearchService
+from app.services.search_service import SearchService, build_search_query
 from app.services.feature_access import check_daily_limit, increment_usage
 
 from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else the live API
@@ -58,15 +58,22 @@ def _extract_and_save_memory(user_id: int, message_text: str) -> None:
     finally:
         db.close()
 
+# Generous enough for a long prompt plus inlined text attachments (each
+# capped at 50k chars by /api/upload), small enough that one request can't
+# pin a worker building a multi-megabyte prompt.
+MAX_MESSAGE_CHARS = 200_000
+MAX_ATTACHMENTS = 10
+
+
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=MAX_MESSAGE_CHARS)
     # Ownership always comes from the authenticated session (see get_current_user
     # below) -- a client-supplied user_id/userId is never trusted for identity.
     conversation_id: Optional[str] = None
     model: Optional[str] = None
     preferred_model: Optional[str] = Field(None, alias="preferredModel")
     workspace: Optional[str] = "chat"
-    attachments: Optional[List[Union[str, Dict[str, Any]]]] = None
+    attachments: Optional[List[Union[str, Dict[str, Any]]]] = Field(None, max_length=MAX_ATTACHMENTS)
     stream: Optional[bool] = False
     web_search: Optional[bool] = Field(False, alias="webSearch")
     reasoning: Optional[bool] = False
@@ -155,27 +162,35 @@ def _enforce_storage_quota(db: Session, user: User, estimated_bytes: int) -> Non
         notify_quota_warning(db, user, usage["used_bytes"], usage["limit_bytes"], at_limit=False)
 
 
-async def _get_search_context(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+SEARCH_NOTICE_LIMIT = "Daily web search limit reached -- answered without live results. Resets at midnight UTC."
+SEARCH_NOTICE_UNAVAILABLE = "Web search is unavailable right now -- answered without live results."
+
+
+async def _get_search_context(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[str], List[Dict[str, Any]], Optional[str]]:
     """
     Best-effort multi-source web search grounding. Never raises -- if no
-    provider is configured/reachable, or the user's daily search quota
-    is used up, the chat just proceeds without it rather than breaking
-    the whole response over an optional feature.
-    Returns (formatted_context_for_the_prompt, raw_results_for_the_client).
+    provider is reachable, or the user's daily search quota is used up,
+    the chat proceeds without it rather than breaking the whole response
+    over an optional feature. The third value is a user-facing notice so
+    the user knows the answer is NOT grounded in live results.
+    Returns (formatted_context_for_the_prompt, raw_results_for_the_client, notice).
     """
     if not req.web_search:
-        return None, []
+        return None, [], None
     allowed, used, limit = check_daily_limit(db, user, "web_search")
     if not allowed:
         logger.info(f"Web search daily limit reached for user {user.id} ({used}/{limit})")
-        return None, []
+        return None, [], SEARCH_NOTICE_LIMIT
+    query = build_search_query(req.message)
+    if not query:
+        return None, [], None
     try:
-        results = await SearchService.search(req.message)
+        results = await SearchService.search(query)
         increment_usage(db, user, "web_search")
-        return SearchService.format_context(results, req.message), results
+        return SearchService.format_context(results, query), results, None
     except Exception as e:
         logger.warning(f"Web search unavailable for user {user.id}: {e}")
-        return None, []
+        return None, [], SEARCH_NOTICE_UNAVAILABLE
 
 
 def _persist_conversation(
@@ -246,7 +261,10 @@ async def _stream_chat_response(
     reasoning: bool = False,
     project_instructions: Optional[str] = None,
     response_style_instructions: Optional[str] = None,
+    search_notice: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
+    if search_notice:
+        yield f"data: {json.dumps({'notice': search_notice})}\n\n"
     full_text = ""
     reasoning_text = ""
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -269,8 +287,8 @@ async def _stream_chat_response(
             elif "delta" in event:
                 yield f"data: {json.dumps({'delta': event['delta']})}\n\n"
             elif "error" in event:
-                logger.warning(f"Stream error for user {user.id}: {event['error']}")
-                yield f"data: {json.dumps({'error': event['error']})}\n\n"
+                logger.warning(f"Stream error for user {user.id}: {event.get('code')}")
+                yield f"data: {json.dumps(event)}\n\n"
                 return
             elif event.get("done"):
                 full_text = event["content"]
@@ -280,7 +298,7 @@ async def _stream_chat_response(
         # Never forward exception text to the client -- may name a
         # provider/model (see ai_service.py). Log server-side only.
         logger.error(f"Stream error for user {user.id}: {e}")
-        yield f"data: {json.dumps({'error': 'AI service is temporarily unavailable. Please try again.'})}\n\n"
+        yield f"data: {json.dumps({'error': GENERIC_AI_ERROR, 'code': 'ai_unavailable', 'retryable': True})}\n\n"
         return
 
     if full_text:
@@ -353,7 +371,7 @@ async def chat_endpoint(
     # --- 3. Load Conversation History + Attachments ---
     conv, history_messages = _load_history(req, user, db)
     parsed_attachments = _parse_attachments(req)
-    search_context, sources = await _get_search_context(req, user, db)
+    search_context, sources, search_notice = await _get_search_context(req, user, db)
     # A chat that belongs to a Project gets that project's systemPrompt +
     # instructions applied to every message, not just the ones sent while
     # viewing the project UI.
@@ -366,6 +384,7 @@ async def chat_endpoint(
                 req, user, db, conv, history_messages, parsed_attachments,
                 chosen_model, workspace, background_tasks, search_context, sources,
                 req.reasoning, project_instructions, response_style_instructions,
+                search_notice,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -397,6 +416,8 @@ async def chat_endpoint(
 
     if sources:
         result["sources"] = sources
+    if search_notice:
+        result["notice"] = search_notice
     _persist_conversation(
         conv, db, req.message, result["response"], result["selected_model"],
         sources=sources, reasoning_text=result.get("reasoning"), user_settings=user.settings,

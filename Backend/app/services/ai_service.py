@@ -64,6 +64,9 @@ OPENROUTER_TIMEOUT_SECONDS = 30
 # values or the OpenRouter model id outside this module.
 PUBLIC_MODEL_NAME = "Vatsa AI"
 
+# The only failure text a client ever sees for an upstream model failure.
+GENERIC_AI_ERROR = "AI service is temporarily unavailable. Please try again."
+
 # Appended last to every system prompt so it has the highest priority
 # and cannot be pushed out of context by earlier instructions.
 IDENTITY_SEAL = """=== IDENTITY SEAL — ABSOLUTE, NON-NEGOTIABLE ===
@@ -277,7 +280,7 @@ class AIService:
         target_model = REASONING_MODEL if reasoning else AIService.map_model(model_name)
         allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=target_model)
         if not allowed:
-            yield {"error": reason}
+            yield {"error": reason, "code": "insufficient_tokens", "retryable": False}
             return
 
         messages = AIService._build_messages(
@@ -333,7 +336,10 @@ class AIService:
                 continue
 
         if not started:
-            yield {"error": f"All AI models failed. Last error: {last_error}"}
+            # The upstream exception names the provider and model id; it is
+            # logged above and never sent to the client.
+            logger.error(f"All stream models failed for user {user.id}: {last_error}")
+            yield {"error": GENERIC_AI_ERROR, "code": "ai_unavailable", "retryable": True}
             return
 
         prompt_tokens = (usage_info or {}).get("prompt_tokens") or len(query) // 4

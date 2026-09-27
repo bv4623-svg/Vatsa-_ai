@@ -51,7 +51,8 @@ BRAND_FONT_CANDIDATES = [
 ]
 
 
-IMAGE_PROVIDER_URL = os.getenv("IMAGE_PROVIDER_URL", "https://image.pollinations.ai/prompt")
+# Empty counts as unset (Render and .env files produce `NAME=`).
+IMAGE_PROVIDER_URL = (os.getenv("IMAGE_PROVIDER_URL") or "https://image.pollinations.ai/prompt").rstrip("/")
 IMAGE_TIMEOUT_SECONDS = 60
 # Attempts per image: transient 5xx/429/timeouts from the provider are common
 # enough that one retry turns most failures into a success.

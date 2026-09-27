@@ -63,7 +63,7 @@ _META_DESC_RE = re.compile(
 
 # Identical queries within this window reuse the previous results instead of
 # re-running every provider (saves quota, and makes regenerate/retry fast).
-SEARCH_CACHE_TTL_SECONDS = int(os.getenv("SEARCH_CACHE_TTL_SECONDS", "600"))
+SEARCH_CACHE_TTL_SECONDS = int(os.getenv("SEARCH_CACHE_TTL_SECONDS") or "600")
 SEARCH_CACHE_MAX_ENTRIES = 256
 _search_cache: "OrderedDict[Tuple[str, int], Tuple[float, List[Dict[str, Any]]]]" = OrderedDict()
 

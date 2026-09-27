@@ -36,3 +36,17 @@ def test_without_data_dir_everything_stays_in_the_backend_folder():
     assert db_path == BACKEND / "vatsa.db"
     assert uploads == BACKEND / "uploads"
     assert images == BACKEND / "generated_images"
+
+
+def test_blank_optional_env_vars_fall_back_to_defaults(tmp_path):
+    """`NAME=` (as .env.example ships them) must mean 'unset', not ''."""
+    env = {**os.environ, "JWT_SECRET_KEY": "x" * 40, "DATA_DIR": str(tmp_path),
+           "IMAGE_PROVIDER_URL": "", "SEARCH_CACHE_TTL_SECONDS": ""}
+    env.pop("DATABASE_URL", None)
+    code = ("import app.services.image_service as i, app.services.search_service as s;"
+            "print(i._provider_url('cat', 1));print(s.SEARCH_CACHE_TTL_SECONDS)")
+    res = subprocess.run([sys.executable, "-c", code], cwd=BACKEND, env=env, capture_output=True, text=True, timeout=180)
+    assert res.returncode == 0, res.stderr[-800:]
+    url, ttl = res.stdout.strip().splitlines()[-2:]
+    assert url.startswith("https://") and "/cat?" in url
+    assert ttl == "600"

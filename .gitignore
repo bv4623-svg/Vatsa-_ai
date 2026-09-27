@@ -4,6 +4,14 @@ __pycache__/
 *.pyc
 .env
 .env.local
+# Any other env file (.env.development, .env.production.local, ...). Committed
+# exceptions: example files and the public, NEXT_PUBLIC_-only frontend file.
+.env.*
+!.env.example
+!**/.env.example
+!frontend/.env.production
+*.sqlite
+*.sqlite3
 *.log
 *.db
 *.db.bak

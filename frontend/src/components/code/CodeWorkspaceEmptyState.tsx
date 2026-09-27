@@ -259,7 +259,7 @@ export function CodeWorkspaceEmptyState({
               }}
               disabled={!inputValue.trim() || isLoading}
               aria-label="Send"
-              className="rounded-full bg-accent p-2.5 text-accent-foreground transition-transform hover:scale-105 disabled:opacity-40"
+              className="rounded-full bg-accent-solid p-2.5 text-accent-foreground transition-transform hover:scale-105 disabled:opacity-40"
             >
               {isLoading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />

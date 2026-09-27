@@ -45,7 +45,7 @@ export function ConnectedAccountsTab() {
             ) : (
               <button
                 onClick={() => void handleConnect(id)}
-                className="flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground hover:opacity-90"
+                className="flex items-center gap-1.5 rounded-lg bg-accent-solid px-2.5 py-1 text-xs font-medium text-accent-foreground hover:opacity-90"
               >
                 <Link2 className="h-3.5 w-3.5" /> Connect
               </button>

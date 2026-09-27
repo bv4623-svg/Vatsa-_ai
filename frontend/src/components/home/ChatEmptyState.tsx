@@ -173,7 +173,7 @@ export function ChatEmptyState({
                       onClick={onSend}
                       disabled={!inputValue.trim() && !hasReadyAttachments}
                       aria-label="Send message"
-                      className="h-11 w-11 rounded-full bg-accent text-accent-foreground shadow-sm transition-all hover:shadow-accent/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="h-11 w-11 rounded-full bg-accent-solid text-accent-foreground shadow-sm transition-all hover:shadow-accent/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                       <Send className="h-5 w-5" />
                     </motion.button>

@@ -92,7 +92,7 @@ export function ApiKeysTab({ isFree }: { isFree: boolean }) {
           placeholder="Key name (e.g. CI pipeline)"
           className="flex-1 rounded-lg border border-border bg-input/10 px-3 py-1.5 text-sm text-foreground focus:border-accent/50 focus:outline-none"
         />
-        <button type="submit" disabled={!name.trim() || busy} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50">
+        <button type="submit" disabled={!name.trim() || busy} className="rounded-lg bg-accent-solid px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50">
           Create key
         </button>
       </form>

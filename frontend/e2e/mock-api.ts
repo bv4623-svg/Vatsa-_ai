@@ -118,6 +118,19 @@ export async function mockBackend(page: Page, opts: { tier?: Tier } = {}): Promi
     if (path.startsWith("/api/files/")) {
       return route.fulfill({ status: 200, headers: { "content-type": "image/png", "access-control-allow-origin": "*" }, body: PNG_1PX });
     }
+    // List pages, empty (the real backend always returns these shapes).
+    if (path === "/api/library/items" && method === "GET") {
+      return fulfillJson(route, { items: [], total: 0, page: 1, page_size: 50, has_more: false });
+    }
+    if (path === "/api/library/storage") {
+      return fulfillJson(route, { used_bytes: 0, limit_bytes: 1073741824, breakdown: {} });
+    }
+    if ((path === "/api/projects" || path === "/api/account/api-keys") && method === "GET") {
+      return fulfillJson(route, { items: [] });
+    }
+    if (path === "/api/scheduled-tasks" && method === "GET") {
+      return fulfillJson(route, { items: [], total: 0, page: 1, page_size: 20, has_more: false });
+    }
     // Anything else the pages load (notifications, usage, settings...).
     return fulfillJson(route, {});
   });

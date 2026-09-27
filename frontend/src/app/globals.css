@@ -60,6 +60,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: #ffffff;
+  /* Solid accent fill behind white text: 5.4:1 (the #a855f7 accent is 4.0:1). */
+  --color-accent-solid: #9333ea;
   --color-destructive: var(--danger);
   --color-destructive-foreground: #ffffff;
   --color-success: var(--success);

@@ -22,7 +22,7 @@ for (const theme of ["light", "dark"] as const) {
     const api = await mockBackend(page);
     api.onChat((_b, r) => fulfillSse(r, [{ delta: "Answer [1]\n\n```js\nx()\n```" }, { done: true, sources: [{ index: 1, title: "Source", url: "https://example.org", domain: "example.org", snippet: "s" }] }]));
     const problems: string[] = [];
-    for (const path of ["/", "/pricing", "/privacy", "/login", "/code", "/home"]) {
+    for (const path of ["/", "/pricing", "/privacy", "/login", "/code", "/library", "/projects", "/scheduled", "/home"]) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
       problems.push(...(await scan(page, path)));

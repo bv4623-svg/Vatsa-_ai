@@ -364,7 +364,7 @@ export function ChatMessagesView({
                   aria-label={isLoading ? "Stop generating" : "Send message"}
                   className={cn(
                     "tap-target rounded-full p-2 text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
-                    isLoading || inputValue.trim() || hasReadyAttachments ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
+                    isLoading || inputValue.trim() || hasReadyAttachments ? "bg-accent-solid text-accent-foreground" : "bg-muted text-muted-foreground"
                   )}
                 >
                   {isLoading ? <Square className="h-5 w-5" /> : <Send className="h-5 w-5" />}

@@ -295,7 +295,7 @@ export function CodeWorkspace() {
           <p className="text-sm text-muted-foreground">{fatalError}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 rounded-lg bg-accent px-4 py-2 text-accent-foreground hover:bg-accent/80"
+            className="mt-4 rounded-lg bg-accent-solid px-4 py-2 text-accent-foreground hover:bg-accent/80"
           >
             Retry
           </button>

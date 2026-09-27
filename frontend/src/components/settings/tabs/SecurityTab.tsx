@@ -81,7 +81,7 @@ export function SecurityTab() {
           ) : settingUp ? (
             <TwoFactorSetupFlow onEnabled={() => { updateUser({ twoFactorEnabled: true }); setSettingUp(false); }} />
           ) : (
-            <button onClick={() => setSettingUp(true)} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90">
+            <button onClick={() => setSettingUp(true)} className="rounded-lg bg-accent-solid px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90">
               Enable 2FA
             </button>
           )}

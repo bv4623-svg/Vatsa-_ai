@@ -120,7 +120,7 @@ export function CodeChatPanel({
               }}
               disabled={!inputValue.trim()}
               aria-label="Send"
-              className="rounded-full bg-accent p-1.5 text-accent-foreground hover:scale-105 disabled:opacity-40"
+              className="rounded-full bg-accent-solid p-1.5 text-accent-foreground hover:scale-105 disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
             </button>

@@ -32,7 +32,7 @@ export function LibraryTabs({ active, onChange }: LibraryTabsProps) {
             "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
             "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
             active === tab.value
-              ? "bg-accent text-accent-foreground"
+              ? "bg-accent-solid text-accent-foreground"
               : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
           )}
         >

@@ -64,7 +64,7 @@ export function ProjectSettingsForm({ project, onSave }: ProjectSettingsFormProp
       </div>
 
       <div className="flex items-center gap-2">
-        <button onClick={save} disabled={!name.trim() || saving} className="rounded-lg bg-accent px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50">
+        <button onClick={save} disabled={!name.trim() || saving} className="rounded-lg bg-accent-solid px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50">
           {saving ? "Saving..." : "Save"}
         </button>
         {saved && <span className="text-xs text-green-500">Saved</span>}

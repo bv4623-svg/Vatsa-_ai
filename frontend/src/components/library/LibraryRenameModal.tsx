@@ -61,7 +61,7 @@ function RenameForm({ item, onClose, onRename }: RenameFormProps) {
       />
       <div className="mt-4 flex justify-end gap-2">
         <button onClick={onClose} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent/10">{tCommon("cancel")}</button>
-        <button onClick={submit} disabled={!name.trim() || saving} className="rounded-lg bg-accent px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50">
+        <button onClick={submit} disabled={!name.trim() || saving} className="rounded-lg bg-accent-solid px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50">
           {saving ? t("saving") : t("save")}
         </button>
       </div>

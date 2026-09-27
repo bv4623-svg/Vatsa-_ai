@@ -4,5 +4,6 @@
 # Backend/tests/test_log_redaction.py:38 (branch feat/ai-router-engine-and-auth-hardening):
 # a fake 18-character "sk-or-..." string fed to the log redactor under test.
 # Real OpenRouter keys are sk-or-v1- + 64 hex chars (73 chars); this can't
-# authenticate anywhere. Reviewed 2026-09-27.
-ec2a6a434659fd44be86fd338dadb326262dbb1a:Backend/tests/test_log_redaction.py:generic-api-key:38
+# authenticate anywhere. Reviewed 2026-09-27; fingerprint re-issued after the
+# history purge changed the commit SHA (was ec2a6a4346).
+b8ce36d8cbe3e93d24f38b2b20cccc4e8e77581a:Backend/tests/test_log_redaction.py:generic-api-key:38

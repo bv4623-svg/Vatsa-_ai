@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any, Union, AsyncGenerator, Tuple
 from datetime import datetime
 import json
 import logging
+import re
 import uuid
 
 import os
@@ -101,6 +102,11 @@ def _load_history(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[C
     return conv, history
 
 
+MAX_IMAGE_ATTACHMENTS = 4
+MAX_IMAGE_ATTACHMENT_BYTES = 8 * 1024 * 1024
+_IMAGE_DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/=\s]+)$")
+
+
 def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     """
     Normalizes the client's attachment shape into what AIService._build_messages
@@ -108,16 +114,32 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     via /api/upload or read as plain text) and {"filename", "image_data_url"}
     for images, so the model can actually see them instead of the attachment
     being a UI-only decoration.
+
+    Image data URLs are validated (type, base64, decoded size) and a bad one
+    is rejected with 400 -- an attachment the user can see in the composer
+    must never be silently dropped.
     """
     parsed = []
+    images = 0
     if req.attachments:
         for att in req.attachments:
             if not isinstance(att, dict):
                 continue
+            name = str(att.get("name") or "file")[:255]
             if att.get("text"):
-                parsed.append({"filename": att.get("name", "file"), "text": att["text"]})
-            elif att.get("is_base64") and str(att.get("type", "")).startswith("image/") and att.get("content"):
-                parsed.append({"filename": att.get("name", "image"), "image_data_url": att["content"]})
+                parsed.append({"filename": name, "text": str(att["text"])})
+            elif att.get("is_base64") and att.get("content"):
+                if not str(att.get("type", "")).startswith("image/"):
+                    raise HTTPException(400, f"Attachment type not supported: {name}")
+                m = _IMAGE_DATA_URL_RE.match(str(att["content"]))
+                if not m:
+                    raise HTTPException(400, f"Image attachment is not a valid PNG, JPEG, WEBP or GIF: {name}")
+                if len(m.group(2)) * 3 // 4 > MAX_IMAGE_ATTACHMENT_BYTES:
+                    raise HTTPException(413, f"Image attachment too large (max 8 MB): {name}")
+                images += 1
+                if images > MAX_IMAGE_ATTACHMENTS:
+                    raise HTTPException(400, f"At most {MAX_IMAGE_ATTACHMENTS} images per message.")
+                parsed.append({"filename": name, "image_data_url": att["content"]})
     return parsed
 
 

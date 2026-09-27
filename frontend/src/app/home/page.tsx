@@ -119,7 +119,7 @@ export default function HomePage() {
   } = useAttachments();
 
   const { analyzingId, analyzeImage } = useVisionAnalysis({
-    activeConversationId, handleNewChat, addMessageToConversation, setErrorState,
+    activeConversationId, handleNewChat, addMessageToConversation, setErrorState, onUpgradeRequired: handleUpgradeGate,
   });
 
   const resetComposerForNewChat = useCallback(() => {

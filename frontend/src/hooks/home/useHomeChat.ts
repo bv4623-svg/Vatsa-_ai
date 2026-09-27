@@ -75,8 +75,11 @@ export function useHomeChat(params: UseHomeChatParams) {
     const isFirst = !!conv && (conv.messages?.length ?? 0) === 0 && (conv.title === "New Chat" || !conv.title);
 
     const readyAttachments = attachments.filter(a => a.status === "ready");
+    // Text/document attachments travel inlined in the message below; only
+    // images need their bytes in the attachments array (as vision input).
     const payloadAttachments = readyAttachments.map(a => ({
-      name: a.name, type: a.type, size: a.size, is_base64: a.isBase64, content: a.content,
+      name: a.name, type: a.type, size: a.size, is_base64: a.isBase64,
+      ...(a.isBase64 ? { content: a.content } : {}),
     }));
 
     let messageText = content.trim();

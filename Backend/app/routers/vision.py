@@ -1,8 +1,10 @@
+import io
 import os
 import re
 import json
 import base64
 import logging
+from PIL import Image
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
@@ -11,7 +13,7 @@ from app.database import get_db
 from app.models.user import User
 from app.services.token_service import TokenService
 from app.services.ai_service import AIService, PUBLIC_MODEL_NAME
-from app.services.feature_access import require_feature
+from app.services.feature_access import require_feature, increment_usage
 
 logger = logging.getLogger("VisionRouter")
 router = APIRouter(prefix="/api/vision", tags=["vision"])
@@ -57,7 +59,7 @@ def _parse_vision_response(raw: str) -> dict:
 async def analyze_image(
     file: UploadFile = File(...),
     prompt: Optional[str] = Form(None),
-    user: User = Depends(require_feature("vision")),
+    user: User = Depends(require_feature("vision", charge=False)),
     db: Session = Depends(get_db),
 ):
     """
@@ -70,9 +72,22 @@ async def analyze_image(
     if content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(400, f"Unsupported image type: {content_type}. Use JPEG, PNG, WEBP, or GIF.")
 
-    raw = await file.read()
+    raw = await file.read(MAX_IMAGE_BYTES + 1)
+    if not raw:
+        raise HTTPException(400, "Image is empty.")
     if len(raw) > MAX_IMAGE_BYTES:
-        raise HTTPException(400, "Image too large (max 10 MB).")
+        raise HTTPException(413, "Image too large (max 10 MB).")
+    # The declared content type is client-controlled; check the bytes.
+    try:
+        with Image.open(io.BytesIO(raw)) as img:
+            img.verify()
+            actual = (img.format or "").lower()
+    except Exception:
+        raise HTTPException(400, "File is not a valid image.")
+    if f"image/{'jpeg' if actual == 'jpeg' else actual}" not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(400, "Unsupported image format. Use JPEG, PNG, WEBP, or GIF.")
+    if prompt and len(prompt) > 2000:
+        raise HTTPException(400, "Prompt too long (max 2000 characters).")
 
     estimated_tokens = 1500
     allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=VISION_MODEL)
@@ -101,6 +116,7 @@ async def analyze_image(
         raise HTTPException(status_code=502, detail="Image analysis is temporarily unavailable. Please try again.")
 
     parsed = _parse_vision_response(result["content"])
+    increment_usage(db, user, "vision")
 
     total_tokens = result.get("prompt_tokens", 0) + result.get("completion_tokens", 0)
     TokenService.deduct_tokens(

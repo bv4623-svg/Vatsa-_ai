@@ -28,6 +28,8 @@ If a service already exists, open it → **Settings** and check it matches: **Ro
 | `RAZORPAY_WEBHOOK_SECRET` | for payments | `openssl rand -hex 32`; paste the same value into the Razorpay webhook (step 3) |
 | `EMAIL_USERNAME`, `EMAIL_PASSWORD`, `MAIL_FROM` | for sign-up/reset emails | Gmail address + a **new** app password from https://myaccount.google.com/apppasswords |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | a **reset** secret from https://console.cloud.google.com/apis/credentials |
+| `GOOGLE_REDIRECT_URI` | with Google sign-in | `https://vatsaai-backend.onrender.com/auth/google/callback` (blank = Google sign-in fails) |
+| `GOOGLE_LINK_REDIRECT_URI` | with Google sign-in | `https://vatsaai-backend.onrender.com/auth/google/link/callback` (blank = falls back to the sign-in URL and "Connect Google" in Settings fails) |
 | `GITHUB_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET` | optional | only if you use those sign-in buttons |
 | `SERPER_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY` | optional | extra search providers |
 | `ADMIN_EMAILS` | optional | your email, for `/api/admin/*` (also needs 2FA) |

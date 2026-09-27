@@ -18,6 +18,7 @@ import {
   ResearchToggle, VoiceButton, VoiceConversationButton, VoiceStatus,
   type ComposerResearchProps, type ComposerVoiceProps,
 } from "@/components/home/ComposerExtras";
+import { ChatImage } from "@/components/home/ChatImage";
 import type { Message } from "@/types";
 import type { Attachment } from "@/types/home";
 
@@ -107,14 +108,7 @@ export function ChatMessagesView({
                 <span className="text-xs font-medium text-muted-foreground/60">Vatsa AI</span>
 
                 {msgImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={msgImageUrl}
-                    alt="Generated image"
-                    className="my-3 rounded-xl max-w-full shadow-lg"
-                    style={{ maxWidth: 420 }}
-                    loading="lazy"
-                  />
+                  <ChatImage src={msgImageUrl} alt="Generated image" className="my-3 max-w-[420px] rounded-xl shadow-lg" />
                 )}
 
                 {msg.researchStatus && (
@@ -155,6 +149,9 @@ export function ChatMessagesView({
                               {children}
                             </a>
                           );
+                        },
+                        img({ src, alt }) {
+                          return <ChatImage src={typeof src === "string" ? src : undefined} alt={alt} />;
                         },
                       }}
                     >

@@ -201,8 +201,15 @@ def test_account_export_contains_own_data_only(client, make_user):
 
 
 def test_api_keys_are_a_paid_feature(client, make_user):
+    """Same 402 upgrade_required contract as every other plan gate (BUG-025),
+    so the frontend's shared upgrade handler recognises it."""
     _, free = make_user()
-    assert client.post("/api/account/api-keys", json={"name": "ci"}, headers=free).status_code == 403
+    res = client.post("/api/account/api-keys", json={"name": "ci"}, headers=free)
+    assert res.status_code == 402
+    assert res.json()["detail"] == {
+        "error": "upgrade_required", "feature": "api_keys", "current_tier": "free",
+        "suggested_tier": "pro", "upgrade_url": "/pricing",
+    }
 
 
 def test_api_keys_create_list_revoke(client, make_user):
@@ -216,6 +223,18 @@ def test_api_keys_create_list_revoke(client, make_user):
     if secret:
         assert secret not in listed, "the full key must only be shown once"
     assert client.delete(f"/api/account/api-keys/{key_id}", headers=h).status_code in (200, 204)
+
+
+def test_api_key_authenticates_until_revoked(client, make_user):
+    user, h = make_user(tier="pro")
+    created = client.post("/api/account/api-keys", json={"name": "script"}, headers=h).json()
+    key_headers = {"Authorization": f"Bearer {created['key']}"}
+    me = client.get("/api/conversations", headers=key_headers)
+    assert me.status_code == 200
+    client.delete(f"/api/account/api-keys/{created['id']}", headers=h)
+    assert client.get("/api/conversations", headers=key_headers).status_code == 401
+    # A made-up key with the right prefix is rejected too.
+    assert client.get("/api/conversations", headers={"Authorization": "Bearer vsk_notreal"}).status_code == 401
 
 
 def test_notifications_and_tokens(client, make_user):

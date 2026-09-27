@@ -13,10 +13,14 @@ router = APIRouter()
 
 
 def _require_paid_tier(user: User) -> None:
+    # Same shape as feature_access.require_feature's gate, so clients handle
+    # every plan gate with one code path.
     if user_tier(user) == "free":
-        raise HTTPException(status_code=403, detail={
-            "error": "feature_requires_upgrade",
+        raise HTTPException(status_code=402, detail={
+            "error": "upgrade_required",
             "feature": "api_keys",
+            "current_tier": "free",
+            "suggested_tier": "pro",
             "upgrade_url": "/pricing",
         })
 

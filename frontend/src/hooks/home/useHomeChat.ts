@@ -274,10 +274,11 @@ export function useHomeChat(params: UseHomeChatParams) {
         imageUrl = data.image_url;
         textContent = data.response || "No response from AI";
 
-        if (!imageUrl && textContent) {
+        // The server sends the image both as image_url and inline markdown; strip the inline copy so it renders once.
+        if (textContent) {
           const m = textContent.match(/!\[[^\]]*\]\((data:image\/[^)\s]+|https?:\/\/[^)\s]+)\)/);
           if (m) {
-            imageUrl = m[1];
+            imageUrl = imageUrl || m[1];
             textContent = textContent
               .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
               .replace(/\*\*Vatsa AI Image\*\*/g, "")

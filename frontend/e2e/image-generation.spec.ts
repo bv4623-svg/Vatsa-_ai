@@ -17,6 +17,8 @@ test.describe("image generation", () => {
     const img = page.getByRole("img", { name: "Generated image" });
     await expect(img).toBeVisible();
     await expect(img).toHaveAttribute("src", url);
+    // The response carries the image as image_url and as inline markdown; it renders once.
+    await expect(page.locator(`img[src="${url}"]`)).toHaveCount(1);
     // Image requests never ask for web search or reasoning.
     expect(api.calls[0].body).toMatchObject({ web_search: false, reasoning: false });
   });

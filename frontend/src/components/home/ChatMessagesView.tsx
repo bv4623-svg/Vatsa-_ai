@@ -13,6 +13,7 @@ import { ImageLoadingGrid } from "@/components/home/ImageLoadingGrid";
 import { SourcesList } from "@/components/home/SourcesList";
 import { ThinkingBox } from "@/components/home/ThinkingBox";
 import { linkifyCitations } from "@/lib/home/citations";
+import { ChatImage } from "@/components/home/ChatImage";
 import { useSettings } from "@/stores/app-store";
 import { useUpgrade } from "@/components/billing/UpgradeProvider";
 import { speak, stopSpeaking } from "@/lib/voice/tts";
@@ -193,6 +194,9 @@ export function ChatMessagesView({
                               {children}
                             </a>
                           );
+                        },
+                        img({ src, alt }) {
+                          return <ChatImage src={typeof src === "string" ? src : undefined} alt={alt} />;
                         },
                       }}
                     >

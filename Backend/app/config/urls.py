@@ -11,8 +11,8 @@ Empty variables count as unset (Render and .env files both produce
 import os
 from typing import List
 
-PRODUCTION_FRONTEND_URL = "https://vatsaai.netlify.app"
-PRODUCTION_BACKEND_URL = "https://vatsa-ai.onrender.com"
+PRODUCTION_FRONTEND_URL = "https://vatsaai.com"
+PRODUCTION_BACKEND_URL = "https://api.vatsaai.com"
 
 DEFAULT_ALLOWED_ORIGINS = f"{PRODUCTION_FRONTEND_URL},{PRODUCTION_BACKEND_URL}"
 

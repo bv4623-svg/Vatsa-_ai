@@ -7,8 +7,8 @@ import pytest
 
 from app.config import urls
 
-LIVE_FRONTEND = "https://vatsaai.netlify.app"
-LIVE_BACKEND = "https://vatsa-ai.onrender.com"
+LIVE_FRONTEND = "https://vatsaai.com"
+LIVE_BACKEND = "https://api.vatsaai.com"
 
 
 @pytest.fixture()

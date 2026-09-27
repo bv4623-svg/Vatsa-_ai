@@ -14,27 +14,38 @@ async function scan(page: import("@playwright/test").Page, label: string) {
   return bad;
 }
 
+const SCREENS = ["/", "/pricing", "/privacy", "/login", "/code", "/library", "/projects", "/scheduled", "/home"];
+
+// One test per screen and theme: each gets its own timeout and they run in
+// parallel. (A single test scanning every screen outgrew its budget on CI.)
 for (const theme of ["light", "dark"] as const) {
-  test(`no serious accessibility violations (${theme} theme)`, async ({ page }, info) => {
-    test.skip(info.project.name !== "desktop", "one viewport is enough for axe; mobile targets are in mobile.spec.ts");
-    test.setTimeout(120_000);
-    await page.addInitScript((t) => { if (window.top === window) localStorage.setItem("vatsa-theme", t); }, theme);
-    const api = await mockBackend(page);
-    api.onChat((_b, r) => fulfillSse(r, [{ delta: "Answer [1]\n\n```js\nx()\n```" }, { done: true, sources: [{ index: 1, title: "Source", url: "https://example.org", domain: "example.org", snippet: "s" }] }]));
-    const problems: string[] = [];
-    for (const path of ["/", "/pricing", "/privacy", "/login", "/code", "/library", "/projects", "/scheduled", "/home"]) {
-      if (path === "/") await gotoSignedOut(page, path);
-      else {
-        await page.goto(path);
-        await page.waitForLoadState("networkidle");
-      }
-      problems.push(...(await scan(page, path)));
+  test.describe(`no serious accessibility violations (${theme} theme)`, () => {
+    test.beforeEach(async ({ page }, info) => {
+      test.skip(info.project.name !== "desktop", "one viewport is enough for axe; mobile targets are in mobile.spec.ts");
+      await page.addInitScript((t) => { if (window.top === window) localStorage.setItem("vatsa-theme", t); }, theme);
+    });
+
+    for (const path of SCREENS) {
+      test(path, async ({ page }) => {
+        await mockBackend(page);
+        if (path === "/") await gotoSignedOut(page, path);
+        else {
+          await page.goto(path);
+          await page.waitForLoadState("networkidle");
+        }
+        expect(await scan(page, path)).toEqual([]);
+      });
     }
-    await page.getByRole("textbox", { name: "Message" }).fill("hi");
-    await page.getByRole("textbox", { name: "Message" }).press("Enter");
-    await page.getByText("Answer").first().waitFor();
-    problems.push(...(await scan(page, "/home (conversation)")));
-    expect(problems).toEqual([]);
+
+    test("/home with a conversation", async ({ page }) => {
+      const api = await mockBackend(page);
+      api.onChat((_b, r) => fulfillSse(r, [{ delta: "Answer [1]\n\n```js\nx()\n```" }, { done: true, sources: [{ index: 1, title: "Source", url: "https://example.org", domain: "example.org", snippet: "s" }] }]));
+      await page.goto("/home");
+      await page.getByRole("textbox", { name: "Message" }).fill("hi");
+      await page.getByRole("textbox", { name: "Message" }).press("Enter");
+      await page.getByText("Answer").first().waitFor();
+      expect(await scan(page, "/home (conversation)")).toEqual([]);
+    });
   });
 }
 

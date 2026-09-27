@@ -13,6 +13,8 @@ tsconfig.tsbuildinfo
 .DS_Store
 .aider*
 Backend/generated_images/
+# Runtime data written by the API (user uploads); lives under DATA_DIR in production
+Backend/uploads/
 
 # Built static site for Netlify Drop (generated, not source)
 netlify-drop/

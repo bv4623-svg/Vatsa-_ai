@@ -10,7 +10,8 @@
     "check:pricing": "node scripts/check-pricing-consistency.js",
     "check:business": "node scripts/check-business-info.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "NEXT_PUBLIC_API_URL=http://api.test next build && playwright test"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -42,6 +43,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "4.1.17",
     "@types/file-saver": "^2.0.7",
     "@types/node": "22.19.15",

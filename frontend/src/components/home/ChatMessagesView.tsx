@@ -332,6 +332,8 @@ export function ChatMessagesView({
               <Tooltip text={webSearchEnabled ? "Web search on" : "Search Web"}>
                 <button
                   onClick={onToggleWebSearch}
+                  aria-label={webSearchEnabled ? "Web search on" : "Web search off"}
+                  aria-pressed={webSearchEnabled}
                   className={`rounded-full p-2 hover:bg-accent/10 ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
                 >
                   <Globe className="h-4 w-4" />

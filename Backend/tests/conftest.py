@@ -5,6 +5,8 @@ import tempfile
 # database and known Razorpay credentials instead of the developer's own.
 _tmp = tempfile.mkdtemp(prefix="vatsa-test-")
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+# Uploads and generated images go to the temp dir too, never into Backend/.
+os.environ["DATA_DIR"] = _tmp
 os.environ["JWT_SECRET_KEY"] = "test-secret-not-used-anywhere-else"
 os.environ["RAZORPAY_KEY_ID"] = "rzp_test_unit"
 os.environ["RAZORPAY_KEY_SECRET"] = "unit-test-secret"

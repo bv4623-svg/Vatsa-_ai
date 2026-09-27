@@ -138,13 +138,16 @@ export function ChatEmptyState({
                   <Tooltip text={webSearchEnabled ? "Web search on" : "Search Web"}>
                     <button
                       onClick={() => setShowWebSearchPopover((p) => !p)}
+                      aria-label={webSearchEnabled ? "Web search on" : "Web search off"}
+                      aria-haspopup="menu"
+                      aria-expanded={showWebSearchPopover}
                       className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-accent/10 hover:text-foreground ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
                     >
                       <Globe className="h-4 w-4" /> Search
                     </button>
                   </Tooltip>
                   <ToolbarPopover open={showWebSearchPopover} onClose={() => setShowWebSearchPopover(false)} title="Web Search">
-                    <button onClick={onToggleWebSearch} className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent/10 rounded">
+                    <button onClick={onToggleWebSearch} aria-pressed={webSearchEnabled} className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent/10 rounded">
                       {webSearchEnabled ? "Disable Search" : "Enable Search"}
                     </button>
                   </ToolbarPopover>

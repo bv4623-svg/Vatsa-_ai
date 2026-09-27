@@ -19,7 +19,7 @@ Round 2 (follow-up, same day) re-ran everything from a clean state, then added s
 | Secret scan, history | `scan_history.py --baseline` (all refs, archive listings, gitleaks) | 163 commits, all refs | **9 known items, 0 new, 0 gitleaks findings**. The 9 are the archives in SECURITY_ACTIONS.md, waiting for the owner's purge (KI-01) |
 | Route latency | `Backend/scripts/profile_routes.py` (heavy account) | 33 GET routes | **all under 500 ms**; slowest ~200 ms (§6) |
 | Business-info gate | `npm run check:business` | – | **fails, as before the audit**: legal name, postal address and phone must come from the owner (KI-10) |
-| CI | GitHub Actions on PR #2 | backend, frontend, e2e, secret-scan | runs 1–4 green. Run 5 (`100d560`) failed: the dark-theme axe test (one test for 10 scans) timed out at 120 s on the CI runner. It was split into 20 tests (`a11y.spec.ts`), which pass locally in 28 s. The latest run is shown on the PR |
+| CI | GitHub Actions on PR #2 | backend, frontend, e2e, secret-scan | runs 1–4 green. Run 5 (`100d560`) failed: the dark-theme axe test (one test for 10 scans) timed out at 120 s on the CI runner. It was split into 20 tests (`a11y.spec.ts`). **Run 36306429383 on `9e5dc53`: all 4 jobs green** (backend, frontend, E2E in 3m27s, secret scan) |
 
 Environment: Python 3.11.15, FastAPI 0.141.1, Starlette 1.7.0, Node 22.22.2, Chromium 141 (Playwright 1.56.1).
 

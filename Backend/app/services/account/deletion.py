@@ -1,4 +1,6 @@
 import logging
+import os
+import shutil
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
@@ -54,6 +56,24 @@ def _cascade_delete_user(db: Session, user_id: int) -> None:
         db.execute(text(f"DELETE FROM {table} WHERE user_id = :uid"), {"uid": user_id})
 
 
+def _delete_user_files(user_id: int) -> None:
+    """Removes the user's directories under every file storage root
+    (uploads, generated images). Their database rows alone are not the
+    whole account: the bytes live on disk. Paths are resolved and checked
+    to stay inside the root before anything is removed."""
+    # Imported here: storage_roots imports routers, which import services.
+    from app.routers.library.storage_roots import STORAGE_ROOTS
+
+    for root in set(STORAGE_ROOTS.values()):
+        base = os.path.realpath(root)
+        target = os.path.realpath(os.path.join(base, str(int(user_id))))
+        if os.path.commonpath([base, target]) != base or target == base:
+            logger.error("Refusing to delete %s: outside storage root %s", target, base)
+            continue
+        if os.path.isdir(target):
+            shutil.rmtree(target, ignore_errors=False)
+
+
 def hard_delete_expired_accounts() -> int:
     """Cron target (see app.services.account.scheduler_jobs): permanently
     removes any account whose grace period has elapsed. Runs in its own
@@ -61,17 +81,25 @@ def hard_delete_expired_accounts() -> int:
     a request."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=HARD_DELETE_GRACE_DAYS)
     db = SessionLocal()
-    deleted = 0
+    deleted_ids = []
     try:
         expired = db.query(User).filter(User.is_deleted.is_(True), User.deleted_at <= cutoff).all()
         for user in expired:
             _cascade_delete_user(db, user.id)
             db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user.id})
-            deleted += 1
+            deleted_ids.append(user.id)
         db.commit()
     except Exception:
         logger.exception("Hard-delete pass failed")
         db.rollback()
+        deleted_ids = []
     finally:
         db.close()
-    return deleted
+    # Files go only after the rows are committed, so a failed pass never
+    # leaves an account whose files are gone but whose rows remain.
+    for uid in deleted_ids:
+        try:
+            _delete_user_files(uid)
+        except OSError:
+            logger.exception("Could not remove files of deleted user %s", uid)
+    return len(deleted_ids)

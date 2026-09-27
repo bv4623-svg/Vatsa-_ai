@@ -482,9 +482,10 @@ class AIService:
             system_parts.append(
                 "\n[CODE WORKSPACE MODE]\n"
                 "You are generating production-grade code. Follow these rules strictly:\n"
-                "1. Provide complete, working code for each file inside markdown code fences with filename comments or language identifiers.\n"
-                "2. When generating web projects, provide index.html, styles.css, script.js or React components with full working code.\n"
-                "3. Never truncate files with placeholder comments like '// ... rest of code'. Write the complete file."
+                "1. Put each file in its own markdown code fence whose info string is the language then the file name, e.g. ```html index.html, ```css styles.css, ```javascript script.js, ```python main.py.\n"
+                "2. For web projects, provide index.html plus styles.css/script.js, and reference them from index.html by exactly those names (<link href=\"styles.css\">, <script src=\"script.js\">). The in-browser preview inlines them. Use only CDN-hosted libraries.\n"
+                "3. Python runs in the browser (Pyodide, standard library only): no pip packages, network, or filesystem outside the program.\n"
+                "4. Never truncate files with placeholder comments like '// ... rest of code'. Write the complete file."
             )
 
         # Identity seal goes last so it has the highest priority and

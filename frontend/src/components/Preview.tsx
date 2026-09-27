@@ -9,5 +9,5 @@ export default function Preview({ src }: PreviewProps) {
     return <div className="flex h-full items-center justify-center text-sm text-gray-400">Preview will appear here</div>;
   }
 
-  return <iframe title="Project preview" src={src} className="h-full w-full border-0" />;
+  return <iframe title="Project preview" src={src} sandbox="allow-scripts allow-forms allow-popups" className="h-full w-full border-0" />;
 }

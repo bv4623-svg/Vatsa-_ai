@@ -303,7 +303,7 @@ PNG for the owner only; 401 without or with an invalid token; 404 for other user
 |---|---|---|
 | Backend unit + API | pytest + FastAPI TestClient, throwaway SQLite, `DATA_DIR` temp dir | 274 tests: every router and feature, with providers faked (`tests/llm_fakes.py`, mocked search/image/HTTP), plus query-plan/N+1 guards and a concurrency test. 12 opt-in live-provider tests (`VATSA_LIVE_TESTS=1`) |
 | Frontend unit | Vitest | 125 tests: intent parity, attachments, SSE parser, preview builder, parser, voice helpers, API error messages |
-| End-to-end | Playwright, production build, mocked API (`e2e/mock-api.ts`), Desktop Chrome + Pixel 7 | 57 scenarios × 2 viewports; any uncaught page error fails a test; axe WCAG 2.1 AA scan of 9 screens in both themes |
+| End-to-end | Playwright, production build, mocked API (`e2e/mock-api.ts`), Desktop Chrome + Pixel 7 | 75 scenarios × 2 viewports; any uncaught page error fails a test; axe WCAG 2.1 AA scan of 9 screens in both themes |
 | Static | ESLint (0 errors), `tsc --noEmit`, pricing consistency check | CI |
 | Security | forbidden-file guard (pre-commit + CI), full-history scan with baseline, gitleaks, sandbox isolation E2E, SSRF/upload/ownership/2FA/rate-limit tests | CI + suites |
 | Performance | `scripts/profile_routes.py` (500 ms route budget, heavy account), `e2e/perf.spec.ts` (`PERF=1`) | On demand; results in TEST_REPORT §6 |

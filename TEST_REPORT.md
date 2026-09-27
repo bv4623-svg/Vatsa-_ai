@@ -2,14 +2,14 @@
 
 ## 1. Summary
 
-Round 2 (follow-up, same day) re-ran everything from a clean state, then added security, accessibility, UX and performance work. Every number below is from runs on 2026-09-27 at commit `100d560`.
+Round 2 (follow-up, same day) re-ran everything from a clean state, then added security, accessibility, UX and performance work. Every number below is from runs on 2026-09-27 at the head of PR #2.
 
 | Suite | Tool | Cases | Result |
 |---|---|---|---|
 | Backend unit + API | pytest (FastAPI TestClient, temp SQLite + `DATA_DIR`) | 274 (213 after round 1, +61 in round 2) | **262 passed, 12 skipped by design** (live-provider tests; opt-in, §7) |
 | Security tooling | pytest over `tools/security` (temp git repos) | 30 | **30 passed** |
 | Frontend unit | Vitest | 125 (118 after round 1, +7) | **125 passed** |
-| End-to-end | Playwright on the production build, mocked API, Desktop Chrome + Pixel 7 | 57 scenarios × 2 viewports = 114 runs (27 scenarios after round 1) | **90 passed, 24 skipped by design** (viewport-specific cases plus the opt-in perf report). Any uncaught page error or unhandled rejection fails a test |
+| End-to-end | Playwright on the production build, mocked API, Desktop Chrome + Pixel 7 | 75 scenarios × 2 viewports = 150 runs (27 scenarios after round 1) | **108 passed, 42 skipped by design** (viewport-specific cases plus the opt-in perf report). Any uncaught page error or unhandled rejection fails a test |
 | Accessibility | axe-core (WCAG 2.1 A/AA) in Playwright | 9 screens + a conversation, light and dark | **0 serious/critical violations** |
 | Lint | ESLint | – | **0 errors** (16 pre-existing warnings, KI-14) |
 | Types | `tsc --noEmit` | – | **clean** |
@@ -19,7 +19,7 @@ Round 2 (follow-up, same day) re-ran everything from a clean state, then added s
 | Secret scan, history | `scan_history.py --baseline` (all refs, archive listings, gitleaks) | 163 commits, all refs | **9 known items, 0 new, 0 gitleaks findings**. The 9 are the archives in SECURITY_ACTIONS.md, waiting for the owner's purge (KI-01) |
 | Route latency | `Backend/scripts/profile_routes.py` (heavy account) | 33 GET routes | **all under 500 ms**; slowest ~200 ms (§6) |
 | Business-info gate | `npm run check:business` | – | **fails, as before the audit**: legal name, postal address and phone must come from the owner (KI-10) |
-| CI | GitHub Actions on PR #2 | backend, frontend, e2e, secret-scan | green on `c18ea41` and earlier heads; result for the latest head is under "Final state" in the PR |
+| CI | GitHub Actions on PR #2 | backend, frontend, e2e, secret-scan | runs 1–4 green. Run 5 (`100d560`) failed: the dark-theme axe test (one test for 10 scans) timed out at 120 s on the CI runner. It was split into 20 tests (`a11y.spec.ts`), which pass locally in 28 s. The latest run is shown on the PR |
 
 Environment: Python 3.11.15, FastAPI 0.141.1, Starlette 1.7.0, Node 22.22.2, Chromium 141 (Playwright 1.56.1).
 
@@ -252,7 +252,7 @@ Coverage categories: **H** happy path · **E** edge case · **I** invalid input 
 | Destructive actions | API key revoke needs confirmation; failures shown | `destructive.spec.ts` (2) | PASS |
 | List states | loading, error + retry, true empty on Library/Projects/Scheduled | `list-states.spec.ts` (6) | PASS |
 | Mobile | no sideways scroll on 5 pages, 44×44 named controls, keyboard/notch meta | `mobile.spec.ts` (3) | PASS |
-| Accessibility | axe on 9 screens + conversation, light and dark; theme variant | `a11y.spec.ts` (4) | PASS |
+| Accessibility | axe on 9 screens + conversation, light and dark; theme variant | `a11y.spec.ts` (22: 9 screens + conversation × 2 themes, plus 2 theme-variant tests) | PASS |
 | Landing | server redirect when signed in; keyboard flip + Launch | `landing-redirect.spec.ts` (2), `landing.spec.ts` (1) | PASS |
 | Clipboard, privacy text | copy success/failure; policy matches code | `clipboard.spec.ts` (2), `legal.spec.ts` (1) | PASS |
 
@@ -344,7 +344,7 @@ A fresh `git clone` of `100d560` into an empty temp directory, following README.
 
 ## Appendix A: every automated test case (generated from the runners)
 
-Generated with `pytest --collect-only`, `vitest list` and `playwright test --list` at commit `100d560`. Result for every case: **PASS**, except the 12 live-provider tests (SKIPPED: opt-in, no keys or egress here), E2E cases limited to one viewport (skipped on the other), and the opt-in perf report.
+Generated with `pytest --collect-only`, `vitest list` and `playwright test --list` at the head of PR #2. Result for every case: **PASS**, except the 12 live-provider tests (SKIPPED: opt-in, no keys or egress here), E2E cases limited to one viewport (skipped on the other), and the opt-in perf report.
 
 ### A.1 Backend (pytest, 274 cases)
 
@@ -865,12 +865,30 @@ Generated with `pytest --collect-only`, `vitest list` and `playwright test --lis
 - describeApiError › falls back by status, with the caller's fallback for unknown statuses
 - normalizeResponse › never dumps raw backend JSON into the chat
 
-### A.4 End-to-end (Playwright, 57 scenarios; each listed once, run on `desktop` and `mobile`)
+### A.4 End-to-end (Playwright, 75 scenarios; each listed once, run on `desktop` and `mobile`)
 
 **a11y.spec.ts**
 
-- no serious accessibility violations (light theme)
-- no serious accessibility violations (dark theme)
+- no serious accessibility violations (light theme) › /
+- no serious accessibility violations (light theme) › /pricing
+- no serious accessibility violations (light theme) › /privacy
+- no serious accessibility violations (light theme) › /login
+- no serious accessibility violations (light theme) › /code
+- no serious accessibility violations (light theme) › /library
+- no serious accessibility violations (light theme) › /projects
+- no serious accessibility violations (light theme) › /scheduled
+- no serious accessibility violations (light theme) › /home
+- no serious accessibility violations (light theme) › /home with a conversation
+- no serious accessibility violations (dark theme) › /
+- no serious accessibility violations (dark theme) › /pricing
+- no serious accessibility violations (dark theme) › /privacy
+- no serious accessibility violations (dark theme) › /login
+- no serious accessibility violations (dark theme) › /code
+- no serious accessibility violations (dark theme) › /library
+- no serious accessibility violations (dark theme) › /projects
+- no serious accessibility violations (dark theme) › /scheduled
+- no serious accessibility violations (dark theme) › /home
+- no serious accessibility violations (dark theme) › /home with a conversation
 - dark: styles follow the in-app theme (dark), not the OS (light)
 - dark: styles follow the in-app theme (light), not the OS (dark)
 

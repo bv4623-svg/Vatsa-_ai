@@ -16,7 +16,7 @@ All notable changes to Vatsa AI. Format based on [Keep a Changelog](https://keep
 - Opt-in live-provider tests (`VATSA_LIVE_TESTS=1`) and a weekly `live-providers.yml` workflow.
 - `Backend/scripts/profile_routes.py` (route timings against a heavy account) and `e2e/perf.spec.ts` (`PERF=1`, per-page JS/CLS/long tasks).
 - `KNOWN_ISSUES.md`.
-- Tests: backend 213 → 274, security tooling 30, Vitest 118 → 125, E2E 27 → 57 scenarios, axe on 9 screens in both themes.
+- Tests: backend 213 → 274, security tooling 30, Vitest 118 → 125, E2E 27 → 75 scenarios, axe on 9 screens in both themes.
 
 ### Fixed
 - API errors are always one readable sentence: no "[object Object]", no raw codes, no HTML error pages, no raw JSON in the code chat (BUG-050).

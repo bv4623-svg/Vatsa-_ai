@@ -93,7 +93,7 @@ All secrets come from environment variables. Never commit `.env` files: every `.
 cd Backend  && python -m pytest -q                         # 274 tests (12 live-provider tests skip without opt-in)
 cd frontend && npm test                                    # 125 unit tests (Vitest)
 cd frontend && npm run lint && npm run typecheck
-cd frontend && npx playwright install chromium && npm run test:e2e   # 57 scenarios x desktop + mobile, incl. axe
+cd frontend && npx playwright install chromium && npm run test:e2e   # 75 scenarios x desktop + mobile, incl. axe
 python -m pytest -q tools/security                         # 30 secret-guard tests (repo root)
 ```
 By default no test calls a real model, search or image service. To check the real providers:

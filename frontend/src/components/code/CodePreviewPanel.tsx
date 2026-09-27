@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { MonacoEditor } from "./MonacoEditor";
 import type { ProjectFile } from "@/types/code";
 import {
-  PREVIEW_SANDBOX, buildPreviewDocument, buildStandalonePage, isPreviewMessage, type ConsoleEntry,
+  PREVIEW_SANDBOX, PYODIDE_PATH, buildPreviewDocument, buildStandalonePage, isPreviewMessage, type ConsoleEntry,
 } from "@/lib/code/preview";
 import { useDebounce } from "@/hooks/useDebounce";
 
@@ -66,7 +66,14 @@ export const CodePreviewPanel = ({
   // Rebuilt from all files (HTML with its CSS/JS inlined, or a JS/Python
   // runner), debounced so typing in the editor doesn't reload every keystroke.
   const debouncedFiles = useDebounce(files, 400);
-  const preview = useMemo(() => buildPreviewDocument(debouncedFiles, activeFile), [debouncedFiles, activeFile]);
+  const preview = useMemo(
+    () =>
+      buildPreviewDocument(debouncedFiles, activeFile, {
+        // Absolute: the runner can't resolve relative URLs to this site.
+        pyodideBaseUrl: typeof window === "undefined" ? PYODIDE_PATH : `${window.location.origin}${PYODIDE_PATH}`,
+      }),
+    [debouncedFiles, activeFile]
+  );
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);

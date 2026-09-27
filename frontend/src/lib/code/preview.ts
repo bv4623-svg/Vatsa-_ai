@@ -16,8 +16,19 @@ export const PREVIEW_SANDBOX = "allow-scripts allow-modals allow-forms allow-pop
 
 export const PREVIEW_MESSAGE_SOURCE = "vatsa-preview";
 
+/** Must equal the exact "pyodide" version in package.json (a unit test
+ * checks). The runtime is copied from node_modules to public/pyodide/ by
+ * scripts/copy-pyodide.js and served from this site, not a CDN. */
 export const PYODIDE_VERSION = "0.29.5";
-const PYODIDE_BASE = `https://cdn.jsdelivr.net/npm/pyodide@${PYODIDE_VERSION}/`;
+export const PYODIDE_PATH = "/pyodide/";
+
+export interface PreviewOptions {
+  /** Absolute URL of the self-hosted runtime, e.g. https://app.example/pyodide/.
+   * Absolute because the runner lives in an opaque-origin srcdoc frame (and,
+   * for "open in new tab", inside a blob: page) where relative URLs don't
+   * resolve to this site. */
+  pyodideBaseUrl?: string;
+}
 
 export type PreviewKind = "html" | "javascript" | "python" | "css" | "none";
 
@@ -124,16 +135,17 @@ ${escapeScript(code)}
 </body></html>`;
 }
 
-export function buildPythonRunner(code: string, title = "main.py"): string {
+export function buildPythonRunner(code: string, title = "main.py", pyodideBaseUrl = PYODIDE_PATH): string {
+  const base = pyodideBaseUrl.endsWith("/") ? pyodideBaseUrl : `${pyodideBaseUrl}/`;
   return `<!doctype html><html><head><meta charset="utf-8">${CONSOLE_BRIDGE}${RUNNER_STYLE}</head><body>
 <header>Running ${escapeHtml(title)} (Python in your browser)</header><div id="out"><div class="info">Loading Python runtime…</div></div>${RUNNER_OUTPUT}
-<script src="${PYODIDE_BASE}pyodide.js"></script>
+<script src="${escapeHtml(base)}pyodide.js"></script>
 <script>
 (async function(){
   var out=document.getElementById("out");
   if (typeof loadPyodide !== "function") { out.innerHTML=""; console.error("Could not load the Python runtime. Check your connection and try again."); return; }
   try {
-    var py = await loadPyodide({ indexURL: ${JSON.stringify(PYODIDE_BASE)},
+    var py = await loadPyodide({ indexURL: ${JSON.stringify(base)},
       stdout: function(t){ console.log(t); }, stderr: function(t){ console.error(t); } });
     out.innerHTML="";
     var result = await py.runPythonAsync(${JSON.stringify(code)});
@@ -141,7 +153,15 @@ export function buildPythonRunner(code: string, title = "main.py"): string {
     if (!out.childNodes.length) window.__vatsaPrint("info","(finished with no output)");
   } catch (e) {
     out.innerHTML = out.innerHTML.indexOf("Loading Python") >= 0 ? "" : out.innerHTML;
-    console.error(String(e && e.message ? e.message : e));
+    var msg = String(e && e.message ? e.message : e);
+    // Pyodide suggests micropip for missing packages, which can't work here
+    // (no package index is served); say what actually applies instead.
+    var missing = /ModuleNotFoundError: (?:No module named |The module )'([^']+)'/.exec(msg);
+    if (missing) {
+      console.error("Package '" + missing[1] + "' isn't available: Python here runs in your browser with the standard library only (no pip packages).");
+    } else {
+      console.error(msg);
+    }
   }
 })();
 </script></body></html>`;
@@ -149,7 +169,7 @@ export function buildPythonRunner(code: string, title = "main.py"): string {
 
 /** Picks what to run: an HTML page (with CSS/JS inlined), else a JS or
  * Python runner, else a page showing the stylesheet. */
-export function buildPreviewDocument(files: ProjectFile[], preferred?: string): PreviewDocument {
+export function buildPreviewDocument(files: ProjectFile[], preferred?: string, options: PreviewOptions = {}): PreviewDocument {
   const nonEmpty = files.filter((f) => f.content.trim());
   if (!nonEmpty.length) return { kind: "none", html: null, reason: "Waiting for code…" };
 
@@ -167,7 +187,7 @@ export function buildPreviewDocument(files: ProjectFile[], preferred?: string): 
   const js = pick(isJs);
   if (js) return { kind: "javascript", html: buildJavaScriptRunner(js.content, js.name) };
   const py = pick(isPy);
-  if (py) return { kind: "python", html: buildPythonRunner(py.content, py.name) };
+  if (py) return { kind: "python", html: buildPythonRunner(py.content, py.name, options.pyodideBaseUrl) };
   const css = pick(isCss);
   if (css) {
     const sample = `<!doctype html><html><head>${CONSOLE_BRIDGE}<style>${escapeStyle(css.content)}</style></head><body><h1>Heading</h1><p>Paragraph with <a href="#">a link</a>.</p><button>Button</button></body></html>`;

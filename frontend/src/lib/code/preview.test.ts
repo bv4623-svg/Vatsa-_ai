@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import {
+  PYODIDE_VERSION,
   PREVIEW_SANDBOX, buildPreviewDocument, buildStandalonePage, inlineAssets, isPreviewMessage, PREVIEW_MESSAGE_SOURCE,
 } from "./preview";
 
@@ -71,11 +74,18 @@ describe("buildPreviewDocument", () => {
     expect(doc.html).toContain('id="out"');
   });
 
-  it("runs Python via the pinned in-browser runtime", () => {
-    const doc = buildPreviewDocument([file("main.py", "print('hi')")]);
+  it("runs Python from the self-hosted runtime, never a CDN", () => {
+    const doc = buildPreviewDocument([file("main.py", "print('hi')")], undefined, { pyodideBaseUrl: "https://app.example/pyodide" });
     expect(doc.kind).toBe("python");
-    expect(doc.html).toMatch(/cdn\.jsdelivr\.net\/npm\/pyodide@\d+\.\d+\.\d+\/pyodide\.js/);
+    expect(doc.html).toContain('<script src="https://app.example/pyodide/pyodide.js"></script>');
+    expect(doc.html).toContain('indexURL: "https://app.example/pyodide/"');
+    expect(doc.html).not.toMatch(/jsdelivr|unpkg|cdnjs/);
     expect(doc.html).toContain(JSON.stringify("print('hi')"));
+  });
+
+  it("pins the runner to the installed Pyodide version", () => {
+    const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "../../../package.json"), "utf8"));
+    expect(pkg.dependencies.pyodide).toBe(PYODIDE_VERSION);
   });
 
   it("previews a lone stylesheet on sample markup", () => {

@@ -61,4 +61,42 @@ test.describe("code workspace", () => {
     await expect(consolePanel).toContainText("boom");
     await expect(page.getByRole("button", { name: /Console, 1 errors/ })).toBeVisible();
   });
+
+  test("a Python script really runs in the browser (self-hosted runtime, no CDN)", async ({ page }) => {
+    test.setTimeout(90_000); // first load compiles the ~9 MB WebAssembly runtime
+    const api = await mockBackend(page, { tier: "pro" });
+    const cdnRequests: string[] = [];
+    page.on("request", (r) => { if (r.url().includes("cdn.jsdelivr.net")) cdnRequests.push(r.url()); });
+    api.onChat((_b, route) =>
+      fulfillSse(route, [
+        { delta: "```python main.py\nprimes = [n for n in range(2, 30) if all(n % d for d in range(2, n))]\nprint('primes:', primes)\nimport json\nprint(json.dumps({'ok': True}))\n```" },
+        { done: true },
+      ])
+    );
+    await page.goto("/code");
+    const box = page.locator("textarea").first();
+    await box.fill("print primes under 30 in python");
+    await box.press("Enter");
+    const consolePanel = page.getByRole("region", { name: "Console output" });
+    await expect(consolePanel).toContainText("primes: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]", { timeout: 75_000 });
+    await expect(consolePanel).toContainText('{"ok": true}');
+    expect(cdnRequests).toEqual([]);
+  });
+
+  test("importing a third-party Python package explains the stdlib-only limit", async ({ page }) => {
+    test.setTimeout(90_000);
+    const api = await mockBackend(page, { tier: "pro" });
+    api.onChat((_b, route) =>
+      fulfillSse(route, [{ delta: "```python main.py\nimport numpy as np\nprint(np.arange(3))\n```" }, { done: true }])
+    );
+    await page.goto("/code");
+    const box = page.locator("textarea").first();
+    await box.fill("numpy example");
+    await box.press("Enter");
+    const consolePanel = page.getByRole("region", { name: "Console output" });
+    await expect(consolePanel).toContainText("'numpy' isn't available", { timeout: 75_000 });
+    await expect(consolePanel).toContainText("standard library");
+    await expect(consolePanel).not.toContainText("micropip");
+  });
 });
+

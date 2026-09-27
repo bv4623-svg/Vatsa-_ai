@@ -32,3 +32,4 @@ frontend/typecheck-errors.txt
 frontend/test-results/
 frontend/playwright-report/
 .pytest_cache/
+frontend/public/pyodide/

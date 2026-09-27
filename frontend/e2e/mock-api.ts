@@ -44,6 +44,22 @@ export const PNG_1PX = Buffer.from(
   "base64"
 );
 
+const SESSION_COOKIE = { name: "vatsa_session", value: "e2e", url: APP_ORIGIN };
+
+/** Visits `path` as a signed-out visitor would arrive (no session cookie,
+ * so "/" serves the landing page instead of redirecting to /home), then
+ * restores the session for whatever the test does next. */
+export async function gotoSignedOut(page: Page, path: string) {
+  const ctx = page.context();
+  await ctx.clearCookies({ name: SESSION_COOKIE.name });
+  try {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+  } finally {
+    await ctx.addCookies([SESSION_COOKIE]);
+  }
+}
+
 /** Signs the browser in and answers every backend call from memory. */
 export async function mockBackend(page: Page, opts: { tier?: Tier } = {}): Promise<MockApi> {
   const tier = opts.tier ?? "pro";
@@ -56,11 +72,16 @@ export async function mockBackend(page: Page, opts: { tier?: Tier } = {}): Promi
   let uploadHandler: Handler = (_b, route) => fulfillJson(route, { text: "extracted text", truncated: false, warning: null });
 
   // proxy.ts only lets a request into protected pages with this cookie.
-  await page.context().addCookies([{ name: "vatsa_session", value: "e2e", url: APP_ORIGIN }]);
+  await page.context().addCookies([SESSION_COOKIE]);
   await page.addInitScript(() => {
     // Init scripts run in every frame, including the sandboxed code preview,
     // where storage access is (correctly) refused. Only seed the app itself.
     if (window.top !== window) return;
+    // Signed in exactly when the session cookie is present (gotoSignedOut).
+    if (!document.cookie.includes("vatsa_session=")) {
+      localStorage.removeItem("access_token");
+      return;
+    }
     localStorage.setItem("access_token", "e2e-token");
     localStorage.setItem("cookie-consent", JSON.stringify({ status: "accepted", preferences: {} }));
   });

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./fixtures";
-import { fulfillSse, mockBackend } from "./mock-api";
+import { fulfillSse, gotoSignedOut, mockBackend } from "./mock-api";
 
 /** axe-core WCAG 2.1 A/AA scan of the main screens, light and dark.
  * Serious and critical violations fail the test. */
@@ -23,8 +23,11 @@ for (const theme of ["light", "dark"] as const) {
     api.onChat((_b, r) => fulfillSse(r, [{ delta: "Answer [1]\n\n```js\nx()\n```" }, { done: true, sources: [{ index: 1, title: "Source", url: "https://example.org", domain: "example.org", snippet: "s" }] }]));
     const problems: string[] = [];
     for (const path of ["/", "/pricing", "/privacy", "/login", "/code", "/library", "/projects", "/scheduled", "/home"]) {
-      await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      if (path === "/") await gotoSignedOut(page, path);
+      else {
+        await page.goto(path);
+        await page.waitForLoadState("networkidle");
+      }
       problems.push(...(await scan(page, path)));
     }
     await page.getByRole("textbox", { name: "Message" }).fill("hi");

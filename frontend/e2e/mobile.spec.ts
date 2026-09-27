@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { fulfillSse, mockBackend } from "./mock-api";
+import { fulfillSse, gotoSignedOut, mockBackend } from "./mock-api";
 
 /** Touch-screen quality on a phone (Pixel 7 project only). */
 test.describe("mobile", () => {
@@ -8,8 +8,11 @@ test.describe("mobile", () => {
   test("no page scrolls sideways", async ({ page }) => {
     await mockBackend(page);
     for (const path of ["/", "/pricing", "/privacy", "/home", "/code"]) {
-      await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      if (path === "/") await gotoSignedOut(page, path);
+      else {
+        await page.goto(path);
+        await page.waitForLoadState("networkidle");
+      }
       const { sw, cw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
       expect(sw, `${path} overflows horizontally`).toBeLessThanOrEqual(cw);
     }

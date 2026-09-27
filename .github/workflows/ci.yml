@@ -90,12 +90,24 @@ jobs:
           retention-days: 7
 
   secrets:
-    name: Secret scan
+    name: Secret scan (tree + full history)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Guard tests
+        run: pip install pytest && python -m pytest -q tools/security
+      - name: No secret-bearing files in the tree
+        run: python tools/security/forbidden_files.py --tracked
+      - name: Install gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar xz gitleaks
+          echo "GITLEAKS=$PWD/gitleaks" >> "$GITHUB_ENV"
+      - name: Full-history scan (all refs; known items pending purge are baselined)
+        run: |
+          git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+          python tools/security/scan_history.py --baseline tools/security/history-baseline.json

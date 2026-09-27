@@ -20,6 +20,7 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -66,6 +67,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Outermost: compresses JSON bodies over 1 KB (the conversation list is
+# ~5x smaller on the wire). text/event-stream is excluded by Starlette, so
+# chat and research streams still arrive chunk by chunk
+# (tests/test_compression.py).
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Include all routers
 app.include_router(chat.router)

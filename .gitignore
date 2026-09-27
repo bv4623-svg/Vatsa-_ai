@@ -7,6 +7,8 @@ __pycache__/
 # Any other env file (.env.development, .env.production.local, ...). Committed
 # exceptions: example files and the public, NEXT_PUBLIC_-only frontend file.
 .env.*
+*.env
+*.env.*
 !.env.example
 !**/.env.example
 !frontend/.env.production
@@ -31,6 +33,11 @@ render-upload/
 # Never commit archives of the project: they have carried .env files and
 # databases before. Share builds through the deploy pipeline instead.
 *.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
 # Generated lint/typecheck dumps
 frontend/eslint-*.json
 frontend/lint-*.json

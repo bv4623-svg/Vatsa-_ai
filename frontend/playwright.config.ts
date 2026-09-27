@@ -17,7 +17,8 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
-  retries: process.env.CI ? 1 : 0,
+  // No retries: a test that only passes on a second attempt is a bug to fix.
+  retries: 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,

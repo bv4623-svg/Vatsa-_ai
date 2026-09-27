@@ -47,6 +47,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/src/**') }}
+          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -67,6 +72,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/src/**') }}
+          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
       - run: npx playwright install --with-deps chromium
       # Built against a mock API origin that e2e/mock-api.ts answers.
       - run: npm run test:e2e

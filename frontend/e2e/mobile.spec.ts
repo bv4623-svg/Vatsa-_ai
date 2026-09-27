@@ -37,4 +37,25 @@ test.describe("mobile", () => {
     });
     expect(problems).toEqual([]);
   });
+
+  test("keyboard and notch aware: viewport resizes with the keyboard, safe areas respected", async ({ page }) => {
+    await mockBackend(page);
+    await page.goto("/home");
+    const meta = await page.locator('meta[name="viewport"]').getAttribute("content");
+    // Chrome for Android only keeps a bottom composer above the on-screen
+    // keyboard when the layout viewport resizes with it.
+    expect(meta).toContain("interactive-widget=resizes-content");
+    // Lets env(safe-area-inset-*) report the iPhone home-indicator inset.
+    expect(meta).toContain("viewport-fit=cover");
+    const box = page.getByRole("textbox", { name: "Message" });
+    await box.fill("hi");
+    await box.press("Enter");
+    const shell = await page.evaluate(() => {
+      const el = document.querySelector("[data-chat-shell]") as HTMLElement | null;
+      return el ? { h: el.getBoundingClientRect().height, vh: window.innerHeight } : null;
+    });
+    expect(shell, "chat shell marked with data-chat-shell").not.toBeNull();
+    expect(Math.round(shell!.h)).toBe(shell!.vh);
+  });
 });
+

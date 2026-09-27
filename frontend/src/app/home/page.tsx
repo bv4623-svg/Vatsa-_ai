@@ -343,7 +343,9 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="relative z-10 flex h-screen flex-col">
+        {/* h-dvh: the visible viewport, not 100vh (which is taller than the
+            screen while mobile browser toolbars are showing). */}
+        <div className="relative z-10 flex h-dvh flex-col" data-chat-shell>
           <header className="flex h-9 shrink-0 items-center justify-between px-4 backdrop-blur-sm bg-background/40 border-b border-border/40">
             <div className="w-8" />
             <div className="flex items-center gap-2">

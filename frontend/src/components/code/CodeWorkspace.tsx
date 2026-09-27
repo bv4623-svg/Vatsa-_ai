@@ -316,7 +316,7 @@ export function CodeWorkspace() {
         )}
         style={{ "--accent": accentColorHex } as React.CSSProperties}
       >
-        <div className="relative z-10 flex h-screen flex-col">
+        <div className="relative z-10 flex h-dvh flex-col">
           <CodeWorkspaceHeader
             pathname={pathname}
             theme={theme}

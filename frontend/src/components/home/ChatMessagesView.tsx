@@ -274,7 +274,8 @@ export function ChatMessagesView({
         </div>
       </div>
 
-      <div className="border-t border-border/40 bg-background/60 px-4 py-3 backdrop-blur-sm">
+      {/* Bottom padding clears the iPhone home indicator (safe area). */}
+      <div className="border-t border-border/40 bg-background/60 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
         {banner}
         <div className="mx-auto max-w-[760px]">
           {attachments.length > 0 && (

@@ -28,7 +28,7 @@ from app.middleware import SecurityHeadersMiddleware
 from app.config.urls import allowed_origins
 
 from app.routers import chat, profile, conversations, auth as auth_router
-from app.routers import memory, payment, payment_history, tokens, upload, files, vision
+from app.routers import memory, payment, payment_history, tokens, upload, files, vision, research
 from app.routers import library as library_router
 from app.routers import scheduled_tasks as scheduled_tasks_router
 from app.routers import chat_projects as chat_projects_router
@@ -79,6 +79,7 @@ app.include_router(tokens.router)
 app.include_router(upload.router)
 app.include_router(files.router)
 app.include_router(vision.router)
+app.include_router(research.router)
 app.include_router(library_router.router)
 app.include_router(scheduled_tasks_router.router)
 app.include_router(chat_projects_router.router)

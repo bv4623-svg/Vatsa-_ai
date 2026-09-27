@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useHydrated } from '@/hooks/useHydrated';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 
@@ -18,31 +19,34 @@ const DEFAULT_PREFERENCES: Preferences = {
   preferences: false,
 };
 
-export default function CookieBanner() {
-  const [consent, setConsent] = useState<ConsentStatus>(null);
-  const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
-  const [showModal, setShowModal] = useState(false);
-  const [mounted, setMounted] = useState(false);
+interface StoredConsent {
+  status: ConsentStatus;
+  preferences: Preferences;
+}
 
-  useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem('cookie-consent');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.status) {
-          setConsent(parsed.status);
-          if (parsed.preferences) {
-            setPreferences(parsed.preferences);
-          }
-        }
-      } catch {
-        if (stored === 'accepted' || stored === 'rejected') {
-          setConsent(stored);
-        }
-      }
-    }
-  }, []);
+function readStoredConsent(): StoredConsent {
+  const empty = { status: null, preferences: DEFAULT_PREFERENCES };
+  if (typeof window === 'undefined') return empty;
+  const stored = localStorage.getItem('cookie-consent');
+  if (!stored) return empty;
+  try {
+    const parsed = JSON.parse(stored);
+    return parsed.status
+      ? { status: parsed.status, preferences: parsed.preferences || DEFAULT_PREFERENCES }
+      : empty;
+  } catch {
+    return stored === 'accepted' || stored === 'rejected' ? { status: stored, preferences: DEFAULT_PREFERENCES } : empty;
+  }
+}
+
+export default function CookieBanner() {
+  // Read once on the client; the banner renders nothing until hydrated, so
+  // the server and hydration renders agree.
+  const [initial] = useState(readStoredConsent);
+  const [consent, setConsent] = useState<ConsentStatus>(initial.status);
+  const [preferences, setPreferences] = useState<Preferences>(initial.preferences);
+  const [showModal, setShowModal] = useState(false);
+  const mounted = useHydrated();
 
   const saveConsent = useCallback(
     (status: ConsentStatus, prefs?: Preferences) => {

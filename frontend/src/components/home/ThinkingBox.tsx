@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,19 +11,18 @@ import { cn } from "@/lib/utils";
  * finishes -- matches the ChatGPT/Claude "show thinking" pattern.
  */
 export function ThinkingBox({ thinking, isStreaming }: { thinking?: string; isStreaming?: boolean }) {
-  const [expanded, setExpanded] = useState(true);
-  const [userToggled, setUserToggled] = useState(false);
-
-  useEffect(() => {
-    if (!isStreaming && !userToggled) setExpanded(false);
-  }, [isStreaming, userToggled]);
+  // Follows the stream (open while streaming, closed after) until the user
+  // opens or closes it themselves.
+  const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
+  const expanded = userExpanded ?? !!isStreaming;
 
   if (!thinking) return null;
 
   return (
     <div className="mb-2 w-full max-w-[620px] rounded-lg border border-border/40 bg-muted/30">
       <button
-        onClick={() => { setExpanded((v) => !v); setUserToggled(true); }}
+        onClick={() => setUserExpanded(!expanded)}
+        aria-expanded={expanded}
         className="flex w-full items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground/80 hover:text-foreground transition-colors"
       >
         <Brain className="w-3.5 h-3.5" />

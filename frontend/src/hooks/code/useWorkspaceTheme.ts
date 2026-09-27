@@ -19,6 +19,7 @@ export function useWorkspaceTheme() {
   useEffect(() => {
     const savedTheme = localStorage.getItem("vatsa-theme") as ThemeMode | null;
     const savedAccent = localStorage.getItem("vatsa-accent") as AccentColor | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage after hydration (reading it during render would mismatch the server HTML)
     if (savedTheme) handleThemeChange(savedTheme);
     if (savedAccent) setAccentColor(savedAccent);
   }, [handleThemeChange]);

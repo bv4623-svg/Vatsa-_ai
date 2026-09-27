@@ -20,12 +20,21 @@ export const CommandPalette = ({
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // Reset the search each time the palette opens (state adjusted during
+  // render when the prop changes, per React's guidance, not in an effect).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setQuery("");
       setCursor(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
     }
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(t);
   }, [open]);
 
   const filtered = useMemo(() => {

@@ -2,12 +2,16 @@ import base64
 import binascii
 import hashlib
 import io
+import json
 import re
 import secrets
 from typing import List, Optional
 
 import pyotp
 import qrcode
+from sqlalchemy import String, cast, update
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.models.user import User
 from app.services.crypto import (
@@ -82,16 +86,27 @@ def _matches(stored: str, code: str) -> bool:
     return keyed_hash_matches(stored, code, BACKUP_CODE_PURPOSE)
 
 
-def consume_backup_code(user: User, code: str) -> bool:
-    """Real one-time-use check: removes the matching hash on success so
-    the same backup code can never be replayed."""
+def consume_backup_code(user: User, code: str, db: Session) -> bool:
+    """One-time use, even under concurrency: the matching hash is removed
+    with a compare-and-swap UPDATE that only applies if the stored list is
+    still exactly what this request read. Two logins racing with the same
+    code both read the list first; only one UPDATE matches, the other gets
+    False. The caller commits."""
     if not user.backup_codes or not code:
         return False
     code = code.strip()
-    hashes = list(user.backup_codes)
-    for stored in hashes:
+    current = list(user.backup_codes)
+    for i, stored in enumerate(current):
         if _matches(stored, code):
-            hashes.remove(stored)
-            user.backup_codes = hashes
+            remaining = current[:i] + current[i + 1:]
+            result = db.execute(
+                update(User)
+                .where(User.id == user.id, cast(User.backup_codes, String) == json.dumps(current))
+                .values(backup_codes=remaining)
+                .execution_options(synchronize_session=False)
+            )
+            if result.rowcount != 1:
+                return False  # another request consumed a code first
+            set_committed_value(user, "backup_codes", remaining)
             return True
     return False

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import get_db
 from app.models.user import User
@@ -39,13 +38,14 @@ def verify_login_2fa(req: Verify2FALoginRequest, request: Request, db: Session =
     totp_ok = verify_totp_code(user.totp_secret, req.code)
     if totp_ok:
         upgrade_totp_secret(user)
-    ok = totp_ok or consume_backup_code(user, req.code)
+    ok = totp_ok or consume_backup_code(user, req.code, db)
     if ok:
         reset_rate_limit(f"2fa-login:ip:{client_ip(request)}")
         reset_rate_limit(f"2fa-login:user:{user.id}")
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid code")
-    flag_modified(user, "backup_codes")
+    # consume_backup_code already wrote backup_codes atomically; don't
+    # flag the attribute, or a stale list could be written back.
     db.commit()
 
     token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})

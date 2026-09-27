@@ -131,3 +131,32 @@ def test_crypto_helpers_handle_empty(value):
     from app.services.crypto import decrypt_str, encrypt_str
     assert encrypt_str(value) == value
     assert decrypt_str(value) == value
+
+
+def test_backup_code_cannot_be_used_twice_concurrently(client, make_user, db):
+    """Two logins racing with the same backup code: both load the user
+    before either commits. Exactly one may succeed."""
+    from app.database import SessionLocal
+    from app.services.account import consume_backup_code, hash_backup_codes
+
+    user, _ = make_user()
+    row = _fresh(db, user.id)
+    row.backup_codes = hash_backup_codes(["race0001", "other002"])
+    row.two_factor_enabled = True
+    db.commit()
+
+    s1, s2 = SessionLocal(), SessionLocal()
+    try:
+        u1 = s1.query(User).filter_by(id=user.id).first()
+        u2 = s2.query(User).filter_by(id=user.id).first()
+        _ = (list(u1.backup_codes), list(u2.backup_codes))  # both read before either writes
+        results = []
+        for session, u in ((s1, u1), (s2, u2)):
+            results.append(consume_backup_code(u, "race0001", session))
+            session.commit()
+    finally:
+        s1.close()
+        s2.close()
+    assert sorted(results) == [False, True], results
+    remaining = _fresh(db, user.id).backup_codes
+    assert len(remaining) == 1, "only the used code is removed; the other survives"

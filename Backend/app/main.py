@@ -39,6 +39,7 @@ from intents_data import INTENTS
 from app.database import init_db
 from app.services.scheduled_tasks import init_scheduler, shutdown_scheduler
 from app.services.account import register_account_jobs
+from app.core.secrets_check import enforce_secrets
 
 # Initialize intent classifier singleton
 intent_classifier = IntentClassifier()
@@ -46,6 +47,8 @@ intent_classifier = IntentClassifier()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail fast on missing, malformed or leaked secrets (app/core/secrets_check.py).
+    enforce_secrets()
     init_db()
     init_scheduler()
     register_account_jobs()

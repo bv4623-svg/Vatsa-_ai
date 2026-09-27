@@ -13,4 +13,8 @@ export interface Attachment {
   isBase64: boolean;
   status: AttachmentStatus;
   preview?: string;
+  /** Why the file could not be attached (shown on the chip). */
+  error?: string;
+  /** Attached, but with a caveat, e.g. the document was truncated. */
+  warning?: string;
 }

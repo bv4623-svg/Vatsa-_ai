@@ -169,7 +169,7 @@ export const Sidebar = ({
                   <p className="text-sm font-medium text-foreground/70">
                     No projects
                   </p>
-                  <p className="text-xs text-muted-foreground/60">
+                  <p className="text-xs text-muted-foreground">
                     Create your first project
                   </p>
                 </div>
@@ -204,7 +204,7 @@ export const Sidebar = ({
               </div>
               <button
                 onClick={onLogout}
-                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-400/10"
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-red-600 dark:text-red-400 transition-colors hover:bg-red-400/10"
               >
                 <LogOut className="w-3.5 h-3.5" /> {tNav("signOut")}
               </button>

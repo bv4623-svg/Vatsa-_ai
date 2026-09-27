@@ -776,7 +776,7 @@ function analyze(q: string): Analysis {
 function Metric({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
-      <div className="font-mono text-[8.5px] uppercase tracking-[0.18em] text-neutral-500">{label}</div>
+      <div className="font-mono text-[8.5px] uppercase tracking-[0.18em] text-neutral-400">{label}</div>
       <div className={`mt-0.5 text-[12.5px] text-neutral-100 ${mono ? "font-mono" : ""}`}>{value}</div>
     </div>
   );
@@ -860,12 +860,12 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
                           : "0 0 0px 0px rgba(139,124,246,0)",
                       }}
                       className={`grid h-[34px] w-[34px] place-items-center rounded-full border transition-colors duration-300 ${
-                        on ? "border-violet-400/50 bg-violet-500/20 text-violet-200" : "border-white/10 bg-white/[0.03] text-neutral-600"
+                        on ? "border-violet-400/50 bg-violet-500/20 text-violet-200" : "border-white/10 bg-white/[0.03] text-[#8a8a8a]"
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
                     </motion.div>
-                    <span className={`font-mono text-[8px] uppercase tracking-[0.14em] ${on ? "text-neutral-300" : "text-neutral-600"}`}>
+                    <span className={`font-mono text-[8px] uppercase tracking-[0.14em] ${on ? "text-neutral-300" : "text-[#8a8a8a]"}`}>
                       {s.label}
                     </span>
                   </div>
@@ -912,6 +912,8 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
                   <img
                     src={providerLogo}
                     alt={a.provider}
+                    width={32}
+                    height={32}
                     className="h-8 w-8 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
                     loading="lazy"
                   />
@@ -927,14 +929,14 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
                   <div className="text-[13.5px] font-medium text-white">{a.model}</div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-[9.5px] text-neutral-400">{a.provider}</span>
-                    <span className="text-[9px] text-neutral-600">·</span>
+                    <span className="text-[9px] text-[#8a8a8a]">·</span>
                     <span className="font-mono text-[9.5px] text-neutral-400">{a.intent}</span>
                   </div>
                 </div>
               </div>
               <div className="text-right">
                 <div className="font-mono text-[13px] text-white">{a.confidence}%</div>
-                <div className="font-mono text-[8.5px] uppercase tracking-[0.16em] text-neutral-500">confidence</div>
+                <div className="font-mono text-[8.5px] uppercase tracking-[0.16em] text-neutral-400">confidence</div>
               </div>
             </div>
             <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[0.06]">
@@ -944,7 +946,7 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
                 transition={{ type: "spring", stiffness: 60, damping: 20 }}
               />
             </div>
-            <div className="mt-2.5 flex items-center justify-between font-mono text-[9.5px] text-neutral-500">
+            <div className="mt-2.5 flex items-center justify-between font-mono text-[9.5px] text-neutral-400">
               <span className="truncate pr-3 text-neutral-400">why: {a.reason}</span>
               <span className="flex shrink-0 items-center gap-1"><ShieldCheck className="h-3 w-3 text-cyan-300/80" />{a.fallback}</span>
             </div>
@@ -965,15 +967,15 @@ function RouterDashboard({ query, sendTick }: { query: string; sendTick: number 
               { n: "OpenAI", u: "99.98%" },
               { n: "Google", u: "99.97%" },
             ].map((p) => (
-              <div key={p.n} className="flex items-center gap-2 font-mono text-[9px] text-neutral-500">
+              <div key={p.n} className="flex items-center gap-2 font-mono text-[9px] text-neutral-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                {p.n} <span className="text-neutral-600">{p.u}</span>
+                {p.n} <span className="text-[#8a8a8a]">{p.u}</span>
               </div>
             ))}
           </div>
 
           <div className="mt-4 border-t border-white/[0.06] pt-4">
-            <p className="mb-2 text-center text-[10px] font-medium uppercase tracking-wider text-neutral-500">
+            <p className="mb-2 text-center text-[10px] font-medium uppercase tracking-wider text-neutral-400">
               All Supported Providers
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
@@ -1028,6 +1030,8 @@ function ModelsSection() {
                       <img
                         src={logo}
                         alt={m.provider}
+                        width={32}
+                        height={32}
                         className="h-8 w-8 shrink-0 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
                         loading="lazy"
                       />
@@ -1039,7 +1043,7 @@ function ModelsSection() {
                     )}
                     <div>
                       <div className="text-[13.5px] font-medium text-white">{m.name}</div>
-                      <div className="font-mono text-[9px] text-neutral-500">{m.provider}</div>
+                      <div className="font-mono text-[9px] text-neutral-400">{m.provider}</div>
                     </div>
                   </div>
                   <span className="flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/[0.08] px-2 py-1 font-mono text-[8px] text-emerald-300">
@@ -1057,20 +1061,20 @@ function ModelsSection() {
 
                 <div className="mt-4 grid grid-cols-3 gap-1 border-t border-white/[0.06] pt-3.5 text-[10px] text-neutral-400">
                   <div className="text-center">
-                    <div className="font-mono text-[9px] uppercase tracking-wide text-neutral-500">Speed</div>
+                    <div className="font-mono text-[9px] uppercase tracking-wide text-neutral-400">Speed</div>
                     <div className="mt-0.5 font-mono text-[11px] text-white">{m.speed}%</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-mono text-[9px] uppercase tracking-wide text-neutral-500">Reason</div>
+                    <div className="font-mono text-[9px] uppercase tracking-wide text-neutral-400">Reason</div>
                     <div className="mt-0.5 font-mono text-[11px] text-white">{m.reason}%</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-mono text-[9px] uppercase tracking-wide text-neutral-500">Code</div>
+                    <div className="font-mono text-[9px] uppercase tracking-wide text-neutral-400">Code</div>
                     <div className="mt-0.5 font-mono text-[11px] text-white">{m.code}%</div>
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-3 font-mono text-[9.5px] text-neutral-500">
+                <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-3 font-mono text-[9.5px] text-neutral-400">
                   <span>TTFB <span className="text-neutral-300">{m.latency}</span></span>
                   <span className="text-neutral-300">{m.up} uptime</span>
                 </div>
@@ -1080,7 +1084,7 @@ function ModelsSection() {
         </div>
       </div>
 
-      <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-600">
+      <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-[#8a8a8a]">
         Benchmarked hourly · health-checked every 30s · +429 more models
       </p>
     </section>
@@ -1101,6 +1105,8 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
         <img
           src={logo}
           alt={name}
+          width={24}
+          height={24}
           className="h-6 w-6 shrink-0 rounded-full border border-white/10 object-contain p-0.5 bg-black/30"
           loading="lazy"
         />
@@ -1134,7 +1140,7 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="glass rounded-[22px] p-4"
           >
-            <div className="px-2 pb-3 font-mono text-[9.5px] uppercase tracking-[0.22em] text-neutral-500">
+            <div className="px-2 pb-3 font-mono text-[9.5px] uppercase tracking-[0.22em] text-neutral-400">
               Your current stack
             </div>
             {TOOLS.map((t, i) => {
@@ -1190,15 +1196,15 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
           >
             <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-violet-300/50 to-transparent" />
 
-            <div className="font-mono text-[9.5px] uppercase tracking-[0.22em] text-neutral-500">Subscriptions today</div>
+            <div className="font-mono text-[9.5px] uppercase tracking-[0.22em] text-neutral-400">Subscriptions today</div>
             <div className="mt-1 flex items-baseline gap-2">
               <span className="font-display text-4xl font-medium text-white">{count}</span>
-              <span className="text-[13px] text-neutral-500">{count === 1 ? "tool" : "tools"}, billed separately</span>
+              <span className="text-[13px] text-neutral-400">{count === 1 ? "tool" : "tools"}, billed separately</span>
             </div>
 
             <div className="my-4 flex items-center gap-3">
               <span className="h-px flex-1 bg-white/[0.08]" />
-              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-600">vs</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8a8a8a]">vs</span>
               <span className="h-px flex-1 bg-white/[0.08]" />
             </div>
 
@@ -1238,7 +1244,7 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
               </button>
             </div>
 
-            <div className="mt-4 text-center text-[10px] text-neutral-500">
+            <div className="mt-4 text-center text-[10px] text-neutral-400">
               {count === 0 ? (
                 <span className="text-amber-300/80">Select the tools you pay for today ✨</span>
               ) : (
@@ -1267,7 +1273,7 @@ function Pricing() {
           sub="One workspace, every model, no seat-of-the-pants pricing. Cancel anytime."
         />
 
-        <p className="mx-auto mt-6 max-w-xl text-center text-[12.5px] text-neutral-500">
+        <p className="mx-auto mt-6 max-w-xl text-center text-[12.5px] text-neutral-400">
           {ACCESS_NOTE} {RATE_NOTE}
         </p>
 
@@ -1297,22 +1303,22 @@ function Pricing() {
                     <h3 className="font-display text-lg font-medium text-white">{t.name}</h3>
                     {t.popular && <Sparkles className="h-4 w-4 text-violet-300" />}
                   </div>
-                  <p className="mt-1 text-[12.5px] text-neutral-500">{t.tagline}</p>
+                  <p className="mt-1 text-[12.5px] text-neutral-400">{t.tagline}</p>
 
                   <div className="mt-5 flex h-14 items-baseline gap-1.5 overflow-hidden">
                     <span className="font-display text-5xl font-medium tracking-tight text-white">
                       {formatPrice(price, DEFAULT_CURRENCY)}
                     </span>
-                    <span className="text-[12px] text-neutral-500">{price === 0 ? "forever" : "/ month"}</span>
+                    <span className="text-[12px] text-neutral-400">{price === 0 ? "forever" : "/ month"}</span>
                   </div>
-                  <div className="h-4 text-[11px] text-neutral-500">
+                  <div className="h-4 text-[11px] text-neutral-400">
                     {price > 0 ? `or ${formatPrice(t.monthlyINR, "INR")} / month` : ""}
                   </div>
 
                   <ul className="mt-5 flex flex-col gap-2.5 border-t border-white/[0.06] pt-5">
                     {t.features.map((f) => (
                       <li key={f} className="flex items-start gap-2.5 text-[13px] text-neutral-300">
-                        <Check className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${t.popular ? "text-violet-300" : "text-neutral-500"}`} strokeWidth={2.6} />
+                        <Check className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${t.popular ? "text-violet-300" : "text-neutral-400"}`} strokeWidth={2.6} />
                         {f}
                       </li>
                     ))}
@@ -1348,7 +1354,7 @@ function Pricing() {
             </span>
             <div>
               <div className="font-display text-[16px] font-medium text-white">Enterprise</div>
-              <div className="text-[12.5px] text-neutral-500">VPC / on-prem · 99.99% SLA · dedicated support · custom model routes</div>
+              <div className="text-[12.5px] text-neutral-400">VPC / on-prem · 99.99% SLA · dedicated support · custom model routes</div>
             </div>
           </div>
           <a href="#cta" className="flex items-center gap-2 rounded-xl border border-white/15 px-5 py-2.5 text-[13px] font-medium text-white transition-all hover:border-white/35 hover:bg-white/[0.05]">
@@ -1384,20 +1390,20 @@ function FAQ() {
         />
 
         <div className="glass mx-auto mt-10 flex items-center gap-3 rounded-2xl px-4 py-3">
-          <Search className="h-4 w-4 text-neutral-500" />
+          <Search className="h-4 w-4 text-neutral-400" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search answers…"
             aria-label="Search FAQ"
-            className="flex-1 bg-transparent text-[13.5px] text-white placeholder:text-neutral-600 focus:outline-none"
+            className="flex-1 bg-transparent text-[13.5px] text-white placeholder:text-[#8a8a8a] focus:outline-none"
           />
-          <span className="font-mono text-[10px] text-neutral-600">{list.length}/{FAQS.length}</span>
+          <span className="font-mono text-[10px] text-[#8a8a8a]">{list.length}/{FAQS.length}</span>
         </div>
 
         <div className="mt-6 flex flex-col gap-2.5">
           {list.length === 0 && (
-            <p className="py-10 text-center text-[13px] text-neutral-500">Nothing found — try “pricing”, “memory” or “privacy”.</p>
+            <p className="py-10 text-center text-[13px] text-neutral-400">Nothing found — try “pricing”, “memory” or “privacy”.</p>
           )}
           {list.map((f, i) => {
             const isOpen = open === i;
@@ -1410,7 +1416,7 @@ function FAQ() {
                 >
                   <span className={`text-[14px] font-medium transition-colors ${isOpen ? "text-white" : "text-neutral-300"}`}>{f.q}</span>
                   <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
-                    <ChevronDown className={`h-4 w-4 shrink-0 ${isOpen ? "text-violet-300" : "text-neutral-500"}`} />
+                    <ChevronDown className={`h-4 w-4 shrink-0 ${isOpen ? "text-violet-300" : "text-neutral-400"}`} />
                   </motion.span>
                 </button>
                 <AnimatePresence initial={false}>
@@ -1437,7 +1443,7 @@ function FAQ() {
 // ─── WorkspaceSection with Images ──────────────────────
 const finePointerDefault = false;
 
-function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer: boolean }) {
+function FlipCard({ w, i, finePointer, onLaunch }: { w: Workspace; i: number; finePointer: boolean; onLaunch: (w: Workspace) => void }) {
   const [flipped, setFlipped] = useState(false);
   const [hovered, setHovered] = useState(false);
   const timer = useRef<number | null>(null);
@@ -1512,17 +1518,26 @@ function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer:
   return (
     <div
       ref={rootRef}
-      role="button"
-      tabIndex={0}
-      aria-pressed={flipped}
-      aria-label={`${w.title} workspace card. ${flipped ? "Showing capabilities." : "Flip to explore capabilities."}`}
-      onKeyDown={onKey}
+      role="group"
+      aria-label={`${w.title} workspace`}
       onPointerEnter={enter}
       onPointerLeave={leave}
       onPointerMove={move}
       onClick={tap}
-      className="perspective-1200 w-[82vw] max-w-[340px] shrink-0 snap-center outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-4 focus-visible:ring-offset-ink sm:w-auto sm:max-w-none"
+      className="perspective-1200 w-[82vw] max-w-[340px] shrink-0 snap-center rounded-[28px] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-violet-400/70 has-[:focus-visible]:ring-offset-4 has-[:focus-visible]:ring-offset-ink sm:w-auto sm:max-w-none"
     >
+      {/* The keyboard/screen-reader control for the flip. A sibling of the
+          Launch button, not its ancestor: a role="button" card wrapping
+          another button is announced wrongly (axe nested-interactive). */}
+      <button
+        type="button"
+        className="sr-only"
+        aria-pressed={flipped}
+        onClick={(e) => { e.stopPropagation(); setFlipped((f) => !f); }}
+        onKeyDown={onKey}
+      >
+        {`${w.title} workspace: ${flipped ? "hide" : "show"} capabilities`}
+      </button>
       <div style={{ animation: `floaty ${5.4 + (i % 3) * 0.8}s ease-in-out ${i * 0.55}s infinite` }}>
         <motion.div
           className="preserve-3d relative"
@@ -1574,9 +1589,9 @@ function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer:
                       boxShadow: `0 10px 30px -10px ${w.accent}66, inset 0 1px 0 rgba(255,255,255,0.08)`,
                     }}
                   >
-                    <img src={imageSrc} alt={w.title} className="h-7 w-7 object-contain" />
+                    <img src={imageSrc} alt={w.title} width={28} height={28} loading="lazy" decoding="async" className="h-7 w-7 object-contain" />
                   </div>
-                  <span className="font-mono text-[10px] tracking-[0.2em] text-neutral-600">{w.index}</span>
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-[#8a8a8a]">{w.index}</span>
                 </div>
 
                 <div className="mt-auto">
@@ -1585,7 +1600,7 @@ function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer:
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3">
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-neutral-500">
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-neutral-400">
                     {finePointer ? "Hover to explore" : "Tap to flip"}
                   </span>
                   <motion.span
@@ -1613,7 +1628,7 @@ function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer:
                 <div className="flex items-center justify-between">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border" style={{ color: w.accent, background: `${w.accent}1a`, borderColor: `${w.accent}35` }}>
-                      <img src={imageSrc} alt={w.title} className="h-4 w-4 object-contain" />
+                      <img src={imageSrc} alt="" width={16} height={16} loading="lazy" decoding="async" className="h-4 w-4 object-contain" />
                     </span>
                     <span className="truncate font-display text-[14px] font-medium text-white">{w.backTitle}</span>
                   </div>
@@ -1643,7 +1658,7 @@ function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer:
                   transition={{ delay: flipped ? 0.5 : 0, duration: 0.35 }}
                   className="mt-3"
                 >
-                  <div className="mb-1.5 font-mono text-[8.5px] uppercase tracking-[0.2em] text-neutral-500">
+                  <div className="mb-1.5 font-mono text-[8.5px] uppercase tracking-[0.2em] text-neutral-400">
                     {w.models ? "Best models" : "Connected stack"}
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -1664,7 +1679,7 @@ function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer:
                   initial={false}
                   animate={{ opacity: flipped ? 1 : 0, y: flipped ? 0 : 10, scale: flipped ? 1 : 0.96 }}
                   transition={{ delay: flipped ? 0.62 : 0, duration: 0.35, type: "spring", stiffness: 300, damping: 22 }}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); onLaunch(w); }}
                   tabIndex={flipped ? 0 : -1}
                   aria-label={`Launch ${w.title} workspace`}
                   className="group relative mt-auto flex h-[34px] w-full items-center justify-center gap-2 overflow-hidden rounded-xl border text-[11.5px] font-semibold text-white transition-shadow"
@@ -1687,7 +1702,7 @@ function FlipCard({ w, i, finePointer }: { w: Workspace; i: number; finePointer:
   );
 }
 
-function WorkspaceSection() {
+function WorkspaceSection({ onLaunch }: { onLaunch: (w: Workspace) => void }) {
   const scRef = useRef<HTMLDivElement>(null);
   const [dot, setDot] = useState(0);
   const [finePointer, setFinePointer] = useState(finePointerDefault);
@@ -1721,7 +1736,7 @@ function WorkspaceSection() {
         />
 
         <div className="mt-4 flex justify-center">
-          <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-600">
+          <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#8a8a8a]">
             <span className="h-px w-6 bg-white/10" />
             {hintText}
             <span className="h-px w-6 bg-white/10" />
@@ -1734,7 +1749,7 @@ function WorkspaceSection() {
           className="mt-14 flex snap-x snap-mandatory gap-5 overflow-x-auto px-[6vw] pb-4 no-scrollbar sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4 lg:gap-6"
         >
           {workspaces.map((w, i) => (
-            <FlipCard key={w.id} w={w} i={i} finePointer={finePointer} />
+            <FlipCard key={w.id} w={w} i={i} finePointer={finePointer} onLaunch={onLaunch} />
           ))}
         </div>
 
@@ -1792,7 +1807,7 @@ function Testimonials() {
                     {r.n}
                     <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-400" />
                   </div>
-                  <div className="truncate font-mono text-[9.5px] text-neutral-500">
+                  <div className="truncate font-mono text-[9.5px] text-neutral-400">
                     {r.r} · {r.c}
                   </div>
                 </div>
@@ -1820,7 +1835,7 @@ function Footer() {
                 Vatsa<span className="ml-1 align-super font-mono text-[8px] tracking-[0.18em] text-violet-300/90">AI</span>
               </span>
             </div>
-            <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-neutral-500">
+            <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-neutral-400">
               The operating system for intelligence. One workspace, every frontier model, complete work.
             </p>
             <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-1.5 font-mono text-[9.5px] tracking-[0.16em] text-emerald-300">
@@ -1831,12 +1846,12 @@ function Footer() {
 
           {COLS.map((col) => (
             <div key={col.title}>
-              <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-600">{col.title}</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#8a8a8a]">{col.title}</div>
               <ul className="mt-4 flex flex-col gap-2.5">
                 {col.links.map((l) => (
                   <li key={l.label}>
                     <a href={l.href} className="group flex w-fit items-center gap-2 text-[13px] text-neutral-400 transition-colors hover:text-white">
-                      <l.icon className="h-3.5 w-3.5 text-neutral-600 transition-colors group-hover:text-violet-300" />
+                      <l.icon className="h-3.5 w-3.5 text-[#8a8a8a] transition-colors group-hover:text-violet-300" />
                       {l.label}
                     </a>
                   </li>
@@ -1847,8 +1862,8 @@ function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 sm:flex-row">
-          <p className="font-mono text-[10.5px] text-neutral-600">© 2026 Vatsa AI, Inc. All rights reserved.</p>
-          <div className="flex gap-5 font-mono text-[10.5px] text-neutral-600">
+          <p className="font-mono text-[10.5px] text-[#8a8a8a]">© 2026 Vatsa AI, Inc. All rights reserved.</p>
+          <div className="flex gap-5 font-mono text-[10.5px] text-[#8a8a8a]">
             <a href="/privacy" className="transition-colors hover:text-white">Privacy</a>
             <a href="/terms" className="transition-colors hover:text-white">Terms</a>
             <a href="/security" className="transition-colors hover:text-white">Security</a>
@@ -2272,7 +2287,7 @@ function Hero({ onPalette, onAuth, onSuggestionClick, onPromptSubmit }: {
                     onKeyDown={(e) => e.key === "Enter" && handlePromptSubmit()}
                     placeholder={userActive ? "Ask Vatsa anything…" : ""}
                     aria-label="Prompt Vatsa"
-                    className="h-11 flex-1 bg-transparent text-[15.5px] text-white placeholder:text-neutral-600 focus:outline-none"
+                    className="h-11 flex-1 bg-transparent text-[15.5px] text-white placeholder:text-[#8a8a8a] focus:outline-none"
                   />
                   <button
                     className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-neutral-400 transition-colors hover:text-white"
@@ -2322,7 +2337,7 @@ function Hero({ onPalette, onAuth, onSuggestionClick, onPromptSubmit }: {
                 </div>
               </motion.div>
 
-              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-1.5 pl-1 font-mono text-[10px] tracking-wide text-neutral-600">
+              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-1.5 pl-1 font-mono text-[10px] tracking-wide text-[#8a8a8a]">
                 <span className="flex items-center gap-1.5"><kbd className="kbd">⌘K</kbd> command palette</span>
                 <span className="flex items-center gap-1.5"><kbd className="kbd">⌘N</kbd> new chat</span>
                 <span className="flex items-center gap-1.5"><kbd className="kbd">⌘↵</kbd> deep think</span>
@@ -2392,7 +2407,10 @@ export default function LandingPage() {
 
   // Otherwise render the landing page
   return (
-    <>
+    // An explicit dark base under the fixed backdrop: the page is designed
+    // dark-only, and without it the computed background in the light theme
+    // is the white <body>.
+    <div className="bg-[#05060a]">
       <Background />
       <CursorGlow />
 
@@ -2483,13 +2501,13 @@ export default function LandingPage() {
       </section>
 
       <ModelsSection />
-      <WorkspaceSection />
+      <WorkspaceSection onLaunch={(w) => handleAction(`Help me with ${w.title.toLowerCase()}`)} />
       <Compare onSuggestionClick={(title) => handleAction(title)} />
       <Testimonials />
       <Pricing />
       <FAQ />
       <FinalCTA onStart={() => handleAction()} />
       <Footer />
-    </>
+    </div>
   );
 }

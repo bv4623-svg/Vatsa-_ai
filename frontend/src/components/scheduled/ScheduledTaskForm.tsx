@@ -84,7 +84,7 @@ export function ScheduledTaskForm({ task, defaultTimezone, onClose, onSubmit }: 
         <button
           onClick={submit}
           disabled={!title.trim() || !prompt.trim() || saving}
-          className="rounded-lg bg-accent px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50"
+          className="rounded-lg bg-accent-solid px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50"
         >
           {saving ? "Saving..." : task ? "Save changes" : "Create task"}
         </button>

@@ -2,12 +2,15 @@ import { useState, useCallback } from "react";
 import type { Attachment } from "@/types/home";
 import type { Message } from "@/types";
 import { API_BASE } from "@/lib/home/constants";
+import { errorMessageFromBody } from "@/lib/home/attachments";
+import { parseUpgradeGate, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
 
 interface UseVisionAnalysisParams {
   activeConversationId: string | null;
   handleNewChat: (onCreated?: () => void) => Promise<string | null>;
   addMessageToConversation: (convId: string, msg: Message) => void;
   setErrorState: (err: { message: string; stack?: string } | null) => void;
+  onUpgradeRequired?: (info: UpgradeGateInfo) => void;
 }
 
 async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
@@ -33,7 +36,7 @@ function formatVisionResult(data: {
 /** Owns the "Analyze" action on image attachment chips: a one-shot call
  * to /api/vision/analyze, inserted as an assistant message. */
 export function useVisionAnalysis({
-  activeConversationId, handleNewChat, addMessageToConversation, setErrorState,
+  activeConversationId, handleNewChat, addMessageToConversation, setErrorState, onUpgradeRequired,
 }: UseVisionAnalysisParams) {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
@@ -58,8 +61,15 @@ export function useVisionAnalysis({
         body: form,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({} as any));
-        throw new Error(err.detail || `HTTP ${res.status}`);
+        // Free plan / daily limit: open the upgrade flow instead of showing
+        // "[object Object]" (the gate's detail is an object, not a string).
+        const gate = await parseUpgradeGate(res.clone());
+        if (gate) {
+          onUpgradeRequired?.(gate.info);
+          return;
+        }
+        const body = await res.json().catch(() => null);
+        throw new Error(errorMessageFromBody(body, res.status));
       }
       const data = await res.json();
 
@@ -76,7 +86,7 @@ export function useVisionAnalysis({
     } finally {
       setAnalyzingId(null);
     }
-  }, [activeConversationId, handleNewChat, addMessageToConversation, setErrorState]);
+  }, [activeConversationId, handleNewChat, addMessageToConversation, setErrorState, onUpgradeRequired]);
 
   return { analyzingId, analyzeImage };
 }

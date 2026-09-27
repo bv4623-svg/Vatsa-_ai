@@ -66,6 +66,15 @@ export interface Message {
   feedback?: "positive" | "negative";
   createdAt: Date | string;
   isStreaming?: boolean;
+  /** Generated image, shown above the text. */
+  imageUrl?: string;
+  /** Non-fatal caveat, e.g. "answered without live web results". */
+  notice?: string;
+  /** Live progress line while deep research runs. */
+  researchStatus?: string;
+  /** The request failed; the UI offers a retry. */
+  isError?: boolean;
+  attachments?: { name: string; type?: string; size?: number; is_base64?: boolean; content?: string }[];
 }
 
 export interface Conversation {

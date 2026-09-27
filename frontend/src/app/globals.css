@@ -3,6 +3,12 @@
    ======================================== */
 @import "tailwindcss";
 
+/* dark: utilities follow the app's theme (the .dark class set by
+ * THEME_BOOTSTRAP_SCRIPT / the theme switcher), not the OS preference.
+ * Tailwind v4 defaults to prefers-color-scheme, which made dark: styles
+ * ignore the in-app Light/Dark choice. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* -------- Colors (Primary) -------- */
   --color-primary-50: #eff6ff;
@@ -54,6 +60,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: #ffffff;
+  /* Solid accent fill behind white text: 5.4:1 (the #a855f7 accent is 4.0:1). */
+  --color-accent-solid: #9333ea;
   --color-destructive: var(--danger);
   --color-destructive-foreground: #ffffff;
   --color-success: var(--success);
@@ -404,5 +412,16 @@
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+}
+/* Touch screens: every icon control gets a 44x44 hit area (WCAG 2.5.5 /
+ * Apple HIG). Mouse users keep the compact desktop layout. */
+@utility tap-target {
+  @media (pointer: coarse) {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }

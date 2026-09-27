@@ -9,6 +9,7 @@ import { ScheduledPagination } from "./ScheduledPagination";
 import { ScheduledTaskModal } from "./ScheduledTaskModal";
 import { ScheduledDeleteConfirm } from "./ScheduledDeleteConfirm";
 import type { ScheduledTaskActions } from "./ScheduledTaskMenu";
+import { ListStatus, showsEmpty } from "@/components/ui/list-status";
 
 export function ScheduledContent() {
   const user = useUser();
@@ -30,15 +31,15 @@ export function ScheduledContent() {
         </p>
         <button
           onClick={p.openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm text-accent-foreground hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-lg bg-accent-solid px-3 py-1.5 text-sm text-accent-foreground hover:opacity-90"
         >
           <Plus className="h-4 w-4" aria-hidden="true" /> New task
         </button>
       </div>
 
-      {p.error && <p className="text-sm text-red-500">{p.error}</p>}
+      <ListStatus loading={p.loading} error={p.error} count={p.tasks.length} onRetry={() => void p.refetch()} loadingLabel="Loading scheduled tasks…" />
 
-      {!p.loading && p.tasks.length === 0 ? (
+      {showsEmpty({ loading: p.loading, error: p.error, count: p.tasks.length }) ? (
         <ScheduledEmptyState onCreate={p.openCreate} />
       ) : (
         <ScheduledTaskList tasks={p.tasks} viewerTimezone={timezone} runningId={p.runningId} actions={actions} />

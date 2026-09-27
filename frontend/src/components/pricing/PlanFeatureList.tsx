@@ -17,7 +17,7 @@ export function PlanFeatureList({ plan }: { plan: Plan }) {
       {plan.notIncluded.map((feature) => (
         <li key={feature} className="flex items-start gap-2">
           <X className="mt-0.5 h-4 w-4 shrink-0 text-red-400" aria-hidden="true" />
-          <span className="text-sm text-gray-400 line-through dark:text-gray-500">
+          <span className="text-sm text-gray-500 line-through dark:text-gray-400">
             {feature}
             <span className="sr-only"> (not included)</span>
           </span>

@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Integer, Boolean, JSON, DateTime, Foreign
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from app.services.media_urls import refresh_media_tokens
 
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -45,9 +46,10 @@ class Conversation(Base):
             "favorite": self.favorite or False,
             "project_id": self.project_id,
             "projectId": self.project_id,
-            "messages": self.messages or [],
+            # Re-signed on every read so image links never outlive their token.
+            "messages": refresh_media_tokens(self.messages, self.user_id),
             "created_at": created,
             "updated_at": updated,
             "createdAt": created,
             "updatedAt": updated,
-        }
+        }

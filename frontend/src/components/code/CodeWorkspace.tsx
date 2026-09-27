@@ -295,7 +295,7 @@ export function CodeWorkspace() {
           <p className="text-sm text-muted-foreground">{fatalError}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 rounded-lg bg-accent px-4 py-2 text-accent-foreground hover:bg-accent/80"
+            className="mt-4 rounded-lg bg-accent-solid px-4 py-2 text-accent-foreground hover:bg-accent/80"
           >
             Retry
           </button>
@@ -316,7 +316,7 @@ export function CodeWorkspace() {
         )}
         style={{ "--accent": accentColorHex } as React.CSSProperties}
       >
-        <div className="relative z-10 flex h-screen flex-col">
+        <div className="relative z-10 flex h-dvh flex-col">
           <CodeWorkspaceHeader
             pathname={pathname}
             theme={theme}

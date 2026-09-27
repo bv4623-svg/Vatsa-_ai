@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
@@ -17,6 +17,16 @@ export const metadata: Metadata = {
   },
   description:
     "Your intelligent AI workspace for coding, research, writing, and business.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Lets env(safe-area-inset-*) report the notch / home-indicator insets.
+  viewportFit: "cover",
+  // Chrome for Android resizes only the visual viewport for the on-screen
+  // keyboard by default, which hides a bottom-anchored composer behind it.
+  interactiveWidget: "resizes-content",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

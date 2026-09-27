@@ -1,0 +1,9 @@
+#!/bin/sh
+# Blocks commits of .env files, databases, archives and key material, and
+# (if gitleaks is installed) scans the staged diff for secrets.
+# Enable once per clone:   git config core.hooksPath .githooks
+set -e
+python3 tools/security/forbidden_files.py --staged
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --staged --no-banner --redact
+fi

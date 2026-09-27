@@ -80,7 +80,7 @@ function ShareLinkPanel({ item, onClose, onChanged }: ShareLinkPanelProps) {
           </button>
         </div>
       ) : (
-        <button onClick={() => void enable()} disabled={state.loading} className="mt-3 w-full rounded-lg bg-accent px-3 py-2 text-sm text-accent-foreground disabled:opacity-50">
+        <button onClick={() => void enable()} disabled={state.loading} className="mt-3 w-full rounded-lg bg-accent-solid px-3 py-2 text-sm text-accent-foreground disabled:opacity-50">
           {state.loading ? t("creatingLink") : t("createLink")}
         </button>
       )}

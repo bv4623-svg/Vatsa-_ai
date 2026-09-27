@@ -89,6 +89,7 @@ export function useHomeConversations({ router, setUser, setDraftMessage, setErro
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) { router.push("/login"); return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch; the loading flag it sets is the intended render
     fetchProfileAndChats(token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -1,3 +1,5 @@
+> **Start with the [root README](../README.md)** for setup, configuration, testing and the product spec ([PRD.md](../PRD.md)). This file documents the intent-classifier module only.
+
 # Vatsa AI Router — Intent Classifier Backend
 
 Implements the **Intent Catalog v1.0** spec: a service that classifies a user

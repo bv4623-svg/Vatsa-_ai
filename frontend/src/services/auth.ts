@@ -1,5 +1,6 @@
 import type { User } from "@/stores/auth";
 import { API_BASE } from "@/config/api";
+import { describeApiError } from "@/lib/api-client/errors";
 
 
 export interface AuthResponse {
@@ -27,7 +28,7 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
     // no JSON body
   }
   if (!res.ok) {
-    throw new Error(data?.detail || data?.message || `Request failed (${res.status})`);
+    throw new Error(describeApiError(data, res.status));
   }
   return data;
 }

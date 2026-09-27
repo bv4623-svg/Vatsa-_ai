@@ -5,21 +5,32 @@ import tempfile
 # database and known Razorpay credentials instead of the developer's own.
 _tmp = tempfile.mkdtemp(prefix="vatsa-test-")
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+# Uploads and generated images go to the temp dir too, never into Backend/.
+os.environ["DATA_DIR"] = _tmp
 os.environ["JWT_SECRET_KEY"] = "test-secret-not-used-anywhere-else"
 os.environ["RAZORPAY_KEY_ID"] = "rzp_test_unit"
 os.environ["RAZORPAY_KEY_SECRET"] = "unit-test-secret"
 os.environ["RAZORPAY_WEBHOOK_SECRET"] = "unit-test-webhook-secret"
 
+import bcrypt
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database import SessionLocal
-from app.auth.jwt import get_password_hash
 from app.models.user import User
 from app.services import payment_service
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "live: hits a real external provider (opt-in, see tests/test_live_providers.py)")
+
+
 TEST_PASSWORD = "a-long-test-password-1"
+# One real bcrypt hash of TEST_PASSWORD, computed once at cost 4. Production
+# hashes at cost 12 (app/auth/jwt.py); bcrypt.checkpw reads the cost from the
+# hash, so /auth/login still runs the real verification path, just ~100x
+# faster. Hashing twice per test user at cost 12 was most of the suite's time.
+TEST_PASSWORD_HASH = bcrypt.hashpw(TEST_PASSWORD.encode(), bcrypt.gensalt(rounds=4)).decode()
 
 
 @pytest.fixture(scope="session")
@@ -52,7 +63,7 @@ def make_user(db, client):
             email=email or f"user{_counter['n']}@example.com",
             username=f"user{_counter['n']}",
             full_name="Test User",
-            hashed_password=get_password_hash(TEST_PASSWORD),
+            hashed_password=TEST_PASSWORD_HASH,
             is_active=True,
             is_verified=True,
             tier=tier,

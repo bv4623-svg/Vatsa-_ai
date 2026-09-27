@@ -1,0 +1,60 @@
+# Known issues
+
+Everything open or deliberately accepted after the round-2 audit (2026-09-27), KI-01 to KI-18. **No P0, P1 or P2 code defect is open.** KI-01's history purge is done; what remains is secret rotation, which only the owner can do. Each entry has a severity (same scale as BUG_FIXES.md), an owner, and either the plan or the reason it's accepted.
+
+Owners: **Owner** = repository owner / product decision · **Backend** / **Frontend** = engineering · **Ops** = hosting and deployment.
+
+| ID | Sev | Area | Issue | Status | Owner |
+|---|---|---|---|---|---|
+| KI-01 | P1* | Security | Archives with `.env` files and databases were in git history. **Purged from every branch on 2026-09-27** (SECURITY_ACTIONS.md §5). 5 leaked values must still be rotated (the app refuses to start until they are), and GitHub Support asked to drop cached old commits | Waiting on owner: rotation (SECURITY_ACTIONS.md §4) | Owner |
+| KI-02 | P3 | Plans | Free users can attach images to chat (image understanding), though the plans table lists Vision as Pro (was BUG-024) | Accepted risk | Owner |
+| KI-03 | P3 | Scale | Rate limiter and search cache are per process: with N workers, limits are ×N and the cache isn't shared | Accepted for a single worker (the current Render setup) | Backend |
+| KI-04 | P3 | Data | Daily limits are check-then-increment: simultaneous requests can exceed a cap by the number in flight | Accepted | Backend |
+| KI-05 | P3 | Portability | Hard account deletion lists tables via `sqlite_master`/`PRAGMA` (SQLite only); on Postgres the cascade would fail | Open | Backend |
+| KI-06 | P3 | Chat | Regenerate replaces the old reply in the UI, but the server conversation keeps both attempts | Open | Backend + Frontend |
+| KI-07 | P3 | Perf | `GET /api/conversations` returns every message of every conversation: 5.40 MB for 200 conversations × 40 messages (1.82 MB gzipped since BUG-055; ~125 ms server time) | Open | Backend + Frontend |
+| KI-08 | P3 | Dead code | `frontend/src/db/` (drizzle/pg template) is imported nowhere but keeps `pg`, `drizzle-orm`, `drizzle-kit` and a frontend `DATABASE_URL` around; `drizzle.config.json` holds a local-dev default `postgres:postgres@127.0.0.1` (not a secret) | Open | Frontend |
+| KI-09 | P3 | CI | GitHub warns that checkout@v4 / setup-node@v4 / setup-python@v5 target Node 20 and are forced onto Node 24 | Open | Ops |
+| KI-10 | P3 | Launch | `npm run check:business` fails until the legal name, postal address and phone are set (Razorpay verification needs them) | Waiting on owner | Owner |
+| KI-11 | P3 | Legal | Privacy policy statements were corrected to match the code (BUG-040); the whole policy needs legal review. The "anonymous usage analytics" paragraph was not verified | Waiting on owner | Owner |
+| KI-12 | P3 | Voice | Depends on the browser: Firefox has no speech recognition (button disabled with an explanation); Chrome and Edge send audio to the vendor's speech service | Accepted (documented in the privacy policy) | – |
+| KI-13 | P3 | Code | Python runs in the browser with the standard library only (no pip packages) | Accepted; roadmap item | Frontend |
+| KI-14 | P3 | Lint | 16 ESLint warnings remain (no errors): `<img>` vs `next/image`, `window.location` navigation, hook dependency hints | Open | Frontend |
+| KI-15 | P3 | Library | "Revoke link" in the share dialog acts on one click (the old link stops working; re-sharing issues a new one), and its copy button ignores clipboard failures | Open: needs one new string in all 12 locales, which weren't guessed | Frontend |
+| KI-16 | P3 | Dead code | `components/settings/settings-modal.tsx` is mounted with `open={false}` in `RootShell` and can never open; its "Delete all" only cleared local state. The live settings dialog is `components/home/SettingsModal.tsx` | Open: delete it | Frontend |
+| KI-17 | P3 | i18n | Server render of `/library` logs next-intl `ENVIRONMENT_FALLBACK` (no `timeZone` configured, so dates format in the server's zone before hydration). Log noise; the page renders | Open: pass the viewer's time zone to `NextIntlClientProvider` without causing a hydration mismatch | Frontend |
+| KI-18 | P3 | Perf | Signed-out landing page has one layout shift of ~0.07 about 1 s after load, from the hero "Live Router" panel (CLS 0.066–0.082; "good" is < 0.1) | Watch; reserve the panel's final height if it grows | Frontend |
+
+\* KI-01 stays P1 until the secrets are rotated: the values were public before the purge, and removing them from history doesn't un-leak them.
+
+## Details
+
+### KI-01 · Secrets in git history
+The full-history scan (`tools/security/scan_history.py`) finds `vatsaai.com/vatsaai.zip` (`Backend/.env`, `frontend/.env.local`, and three database copies, one nested inside `Backend/vatsa-ai-debug.zip`) plus two source archives. CI tolerates exactly these 9 known items (`tools/security/history-baseline.json`) and fails on anything new. The purge commands were rehearsed locally. **Next step:** follow SECURITY_ACTIONS.md §2 in order.
+
+### KI-02 · Free-plan image attachments (accepted risk)
+Blocking it would take away a capability free users have today; that's a pricing decision, not a bug fix. The cost is bounded: 25 chat messages/day × at most 4 images per message = **at most 100 image inputs per free user per day** (`MAX_IMAGE_ATTACHMENTS`, `DAILY_LIMITS["chat_messages"]["free"]`). **To change:** add a `vision_chat` daily limit in `feature_access.py` and check it in `chat.py::_parse_attachments` when images are present.
+
+### KI-03 · Per-process rate limits and cache
+`app/utils/rate_limit.py` and `search_service._search_cache` live in process memory. They're correct for one worker. **Before scaling out:** move both to Redis (the same keys and windows).
+
+### KI-04 · Daily-limit overshoot under concurrency
+`check_daily_limit` runs before the provider call and `increment_usage` (atomic) after success, so N simultaneous requests at the cap can all pass the check. The overshoot is at most the concurrency of one user. This is accepted because charging before success (the old behaviour) billed users for failures (BUG-018).
+
+### KI-05 · SQLite-only deletion cascade
+`services/account/deletion.py::_tables_with_user_id` uses SQLite catalog queries. **Fix when moving to Postgres:** use `sqlalchemy.inspect(engine).get_table_names()` / `get_columns()`.
+
+### KI-06 · Regenerate keeps history server-side
+The client drops the old exchange before re-sending; the server appends a new pair. Reloading shows both attempts. **Fix:** a `replace_last` flag on `/api/chat` that pops the trailing user/assistant pair before persisting.
+
+### KI-07 · Conversation list payload
+The home page loads all conversations with their full message arrays in one request. Measured with `Backend/scripts/profile_routes.py`: 5.40 MB of JSON (1.82 MB on the wire with gzip) and ~125 ms of server time for 200 conversations × 40 messages. It wasn't changed in round 2 because four features read `conv.messages` from the list: home chat (`useHomeConversations`), code workspace (`useCodeConversations`), sidebar content search (`home/Sidebar.tsx`) and JSON export. The project chat picker (`listAllChats`) uses only summary fields and would benefit immediately. **Fix:** a summary list endpoint (id, title, flags, timestamps) and messages loaded per conversation when opened; the frontend's `useHomeConversations` currently reads `conv.messages` from the list.
+
+### KI-08 · Unused database template in the frontend
+Remove `frontend/src/db/`, `drizzle.config.json` and the `pg`/`drizzle-*` dependencies, regenerate the lockfile, and drop `DATABASE_URL` from the frontend docs.
+
+### KI-09 · Node 20 actions deprecation
+Bump to the current majors of `actions/checkout`, `actions/setup-node` and `actions/setup-python`. The versions weren't verified from inside this session, so they weren't guessed.
+
+### KI-14 · Remaining lint warnings
+All pre-existing. `no-img-element` fires on user-generated and data-URL images, where `next/image` doesn't apply.

@@ -30,7 +30,7 @@ export const RenameModal = memo(({ open, onClose, onRename, currentTitle }: { op
         />
         <div className="flex gap-2 mt-4">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg border border-border hover:bg-accent/10 text-sm">Cancel</button>
-          <button onClick={() => { onRename(value); onClose(); }} className="flex-1 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm">Rename</button>
+          <button onClick={() => { onRename(value); onClose(); }} className="flex-1 px-4 py-2 rounded-lg bg-accent-solid text-accent-foreground text-sm">Rename</button>
         </div>
       </motion.div>
     </div>

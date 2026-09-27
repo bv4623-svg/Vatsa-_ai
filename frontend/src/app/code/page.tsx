@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import Background from "@/components/landing/Background";
 import { CodeWorkspace } from "@/components/code/CodeWorkspace";
 import { useAuthStore, useAuthLoading, useIsAuthenticated } from "@/stores/auth";
+import { useHydrated } from "@/hooks/useHydrated";
 
 const CodePage = () => {
   const router = useRouter();
@@ -14,10 +15,9 @@ const CodePage = () => {
   const isLoading = useAuthLoading();
   const isAuthenticated = useIsAuthenticated();
   const hydrate = useAuthStore((s) => s.hydrate);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
 
   useEffect(() => {
-    setMounted(true);
     hydrate();
   }, [hydrate]);
 

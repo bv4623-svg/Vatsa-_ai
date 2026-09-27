@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useLibraryPage } from "@/hooks/library/useLibraryPage";
 import { downloadItem } from "@/lib/library-client";
 import { LibraryStorageBar } from "./LibraryStorageBar";
@@ -15,9 +16,11 @@ import { LibraryRenameModal } from "./LibraryRenameModal";
 import { LibraryDeleteConfirm } from "./LibraryDeleteConfirm";
 import { LibraryShareModal } from "./LibraryShareModal";
 import type { LibraryItemActions } from "./LibraryItemMenu";
+import { ListStatus, showsEmpty } from "@/components/ui/list-status";
 
 export function LibraryContent() {
   const p = useLibraryPage();
+  const tCommon = useTranslations("common");
 
   const actions: LibraryItemActions = {
     onRename: p.setRenameTarget,
@@ -49,17 +52,19 @@ export function LibraryContent() {
           onDownload={p.handleBulkDownload}
         />
 
-        {p.error && <p className="text-sm text-red-500">{p.error}</p>}
+        <ListStatus loading={p.loading} error={p.error} count={p.items.length} onRetry={() => void p.refetch()} loadingLabel={tCommon("loading")} />
 
-        <LibraryItemsView
-          items={p.items}
-          view={p.view}
-          search={p.filters.search}
-          selected={p.selection.selected}
-          onToggleSelect={p.selection.toggle}
-          onOpen={p.openItem}
-          actions={actions}
-        />
+        {(p.items.length > 0 || showsEmpty({ loading: p.loading, error: p.error, count: 0 })) && (
+          <LibraryItemsView
+            items={p.items}
+            view={p.view}
+            search={p.filters.search}
+            selected={p.selection.selected}
+            onToggleSelect={p.selection.toggle}
+            onOpen={p.openItem}
+            actions={actions}
+          />
+        )}
         <LibraryLoadMore hasMore={p.hasMore} loading={p.loading} onClick={p.loadMore} />
       </div>
 

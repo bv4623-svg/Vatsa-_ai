@@ -15,26 +15,27 @@ export function useAttachments() {
     setShowAttachmentMenu(false);
     const fileArr = Array.from(files);
 
+    const input = e.target;
     const placeholders: Attachment[] = fileArr.map((f) => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: f.name, type: f.type || "application/octet-stream", size: f.size,
       content: "", isBase64: false, status: "processing",
     }));
     setAttachments((prev) => [...prev, ...placeholders]);
+    // Clear right away so picking the same file again re-triggers onChange.
+    input.value = "";
 
-    try {
-      const results = await Promise.all(fileArr.map(readFileAsAttachment));
-      setAttachments((prev) => {
-        const cleaned = prev.filter(
-          (p) => !(p.status === "processing" && results.some((r) => r.name === p.name))
+    // Each file replaces its own placeholder (matched by id, not name) as
+    // soon as it is ready; a placeholder the user removed stays removed.
+    await Promise.all(
+      fileArr.map(async (file, i) => {
+        const id = placeholders[i].id;
+        const result = await readFileAsAttachment(file, id).catch(
+          (): Attachment => ({ ...placeholders[i], status: "error", error: "Could not read file" })
         );
-        return [...cleaned, ...results];
-      });
-    } catch {
-      setAttachments((prev) => prev.map(p => p.status === "processing" ? { ...p, status: "error" } : p));
-    } finally {
-      e.target.value = "";
-    }
+        setAttachments((prev) => prev.map((a) => (a.id === id ? result : a)));
+      })
+    );
   }, []);
 
   const removeAttachment = useCallback((id: string) => {

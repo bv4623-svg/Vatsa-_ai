@@ -20,6 +20,18 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // ── Signed-in visitors skip the landing page ───────────────
+  // Redirecting here saves downloading and rendering the whole marketing
+  // page only for a client effect to bounce them to /home.
+  if (path === "/" && request.cookies.get("vatsa_session")?.value) {
+    const home = new URL("/home", request.url);
+    const response = NextResponse.redirect(home);
+    if (isSupportedLocale(langParam)) {
+      response.cookies.set(LOCALE_COOKIE, langParam, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    }
+    return response;
+  }
+
   // ── Decide whether to proxy ────────────────────────────────
   let shouldProxy = false;
 

@@ -8,7 +8,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.jwt import verify_password
 from app.services.account import (
     generate_totp_secret, generate_qr_data_uri, verify_totp_code,
-    generate_backup_codes, hash_backup_codes,
+    generate_backup_codes, hash_backup_codes, seal_totp_secret,
 )
 from app.routers.account.schemas import Verify2FARequest, Disable2FARequest
 
@@ -20,7 +20,8 @@ def setup_2fa(user: User = Depends(get_current_user), db: Session = Depends(get_
     if user.two_factor_enabled:
         raise HTTPException(status_code=400, detail="Two-factor authentication is already enabled")
     secret = generate_totp_secret()
-    user.totp_secret = secret  # not active until /enable confirms a real code against it
+    # Stored encrypted; not active until /enable confirms a real code against it.
+    user.totp_secret = seal_totp_secret(secret)
     db.commit()
     return {"secret": secret, "qrDataUri": generate_qr_data_uri(secret, user.email)}
 

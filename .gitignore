@@ -4,6 +4,16 @@ __pycache__/
 *.pyc
 .env
 .env.local
+# Any other env file (.env.development, .env.production.local, ...). Committed
+# exceptions: example files and the public, NEXT_PUBLIC_-only frontend file.
+.env.*
+*.env
+*.env.*
+!.env.example
+!**/.env.example
+!frontend/.env.production
+*.sqlite
+*.sqlite3
 *.log
 *.db
 *.db.bak
@@ -13,7 +23,32 @@ tsconfig.tsbuildinfo
 .DS_Store
 .aider*
 Backend/generated_images/
+# Runtime data written by the API (user uploads); lives under DATA_DIR in production
+Backend/uploads/
 
 # Built static site for Netlify Drop (generated, not source)
 netlify-drop/
 render-upload/
+
+# Never commit archives of the project: they have carried .env files and
+# databases before. Share builds through the deploy pipeline instead.
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+# Generated lint/typecheck dumps
+frontend/eslint-*.json
+frontend/lint-*.json
+frontend/lint-*.txt
+frontend/typecheck-errors.txt
+# Test output
+frontend/test-results/
+frontend/playwright-report/
+.pytest_cache/
+frontend/public/pyodide/
+
+# Virtualenvs (the README quick start creates Backend/.venv)
+.venv/
+venv/

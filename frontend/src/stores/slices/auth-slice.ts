@@ -2,6 +2,7 @@
 import type { User, UserSubscription } from "@/types";
 import type { StateCreator } from "zustand";
 import { API_BASE } from "@/config/api";
+import { describeApiError } from "@/lib/api-client/errors";
 
 
 export interface AuthSlice {
@@ -40,8 +41,8 @@ export const createAuthSlice: StateCreator<AuthSlice, [], [], AuthSlice> = (set,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Login failed");
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(describeApiError(data, res.status, "Login failed"));
     localStorage.setItem("access_token", data.access_token);
     set({
       user: data.user,

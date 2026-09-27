@@ -34,10 +34,11 @@ def get_current_user(
         if user:
             return user
         raise credentials_exception
-    if payload.get("scope"):
-        # Scoped tokens (e.g. the media-view token minted for <img src>
-        # URLs) must never be usable as a full session credential --
-        # normal login tokens never carry a "scope" claim.
+    if payload.get("scope") or payload.get("purpose"):
+        # Scoped tokens (the media-view token for <img src>, the 2FA
+        # pending token) and single-purpose tokens (the password-reset
+        # token) must never be usable as a full session credential --
+        # normal login tokens carry neither claim.
         raise credentials_exception
 
     sub = payload.get("sub")
@@ -54,10 +55,10 @@ def get_current_user(
         raise credentials_exception
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user account")
-    # "tv" (token_version) is only present on tokens minted after the
-    # sign-out-other-devices feature shipped -- a token with no "tv"
-    # claim at all predates it and is grandfathered in as valid, so
-    # every session issued before this change keeps working unchanged.
-    if "tv" in payload and payload["tv"] != user.token_version:
+    # Every session token carries "tv" (token_version); bumping it on the
+    # user (password reset, sign-out-everywhere, force reset) revokes all
+    # of their sessions. A token without it can't be revoked, so it isn't
+    # a session.
+    if payload.get("tv") != user.token_version:
         raise credentials_exception
     return user

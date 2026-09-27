@@ -4,6 +4,7 @@ import type { Attachment } from "@/types/home";
 import { API_BASE } from "@/lib/home/constants";
 import { isImageGenQuery } from "@/lib/home/imageQuery";
 import { UpgradeRequiredError, parseUpgradeGate, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
+import { createSseParser, describeHttpError, describeNetworkError, researchStageLabel } from "@/lib/home/sse";
 
 export { UpgradeRequiredError, type UpgradeGateInfo };
 
@@ -17,6 +18,8 @@ interface UseHomeChatParams {
   setAttachments: (updater: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void;
   webSearchEnabled: boolean;
   reasoningEnabled: boolean;
+  /** Send questions to deep research (Business) instead of chat. */
+  researchEnabled?: boolean;
   addMessageToConversation: (convId: string, msg: Message) => void;
   updateConversation: (id: string, updater: (conv: Conversation) => Conversation) => void;
   handleRenameChat: (id: string, title: string) => Promise<void>;
@@ -26,6 +29,8 @@ interface UseHomeChatParams {
   setIsFirstMessage: (v: boolean) => void;
   setErrorState: (err: { message: string; stack?: string } | null) => void;
   onUpgradeRequired?: (info: UpgradeGateInfo) => void;
+  /** A reply finished successfully (used to read it aloud in voice mode). */
+  onAssistantDone?: (messageId: string, content: string) => void;
 }
 
 /**
@@ -36,9 +41,10 @@ interface UseHomeChatParams {
  */
 export function useHomeChat(params: UseHomeChatParams) {
   const {
-    activeConversationId, conversations, messages, privateMode, user,
-    attachments, setAttachments, webSearchEnabled, reasoningEnabled, addMessageToConversation, updateConversation, handleRenameChat,
-    handleNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState, onUpgradeRequired,
+    activeConversationId, conversations, messages, privateMode,
+    attachments, setAttachments, webSearchEnabled, reasoningEnabled, researchEnabled = false,
+    addMessageToConversation, updateConversation, handleRenameChat,
+    handleNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState, onUpgradeRequired, onAssistantDone,
   } = params;
 
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +69,9 @@ export function useHomeChat(params: UseHomeChatParams) {
     }
 
     const willGenImage = isImageGenQuery(content) && !hasAttachments;
+    // Research works from the question alone; attachments and image
+    // requests go through normal chat.
+    const willResearch = researchEnabled && !willGenImage && !hasAttachments;
 
     let convId = activeConversationId;
     if (!convId) {
@@ -75,8 +84,11 @@ export function useHomeChat(params: UseHomeChatParams) {
     const isFirst = !!conv && (conv.messages?.length ?? 0) === 0 && (conv.title === "New Chat" || !conv.title);
 
     const readyAttachments = attachments.filter(a => a.status === "ready");
+    // Text/document attachments travel inlined in the message below; only
+    // images need their bytes in the attachments array (as vision input).
     const payloadAttachments = readyAttachments.map(a => ({
-      name: a.name, type: a.type, size: a.size, is_base64: a.isBase64, content: a.content,
+      name: a.name, type: a.type, size: a.size, is_base64: a.isBase64,
+      ...(a.isBase64 ? { content: a.content } : {}),
     }));
 
     let messageText = content.trim();
@@ -91,7 +103,6 @@ export function useHomeChat(params: UseHomeChatParams) {
       role: "user",
       content: content.trim() || `📎 ${readyAttachments.map(a => a.name).join(", ")}`,
       createdAt: new Date().toISOString(),
-      // @ts-ignore
       attachments: payloadAttachments,
     };
     addMessageToConversation(convId, userMsg);
@@ -111,52 +122,59 @@ export function useHomeChat(params: UseHomeChatParams) {
     abortControllerRef.current = new AbortController();
 
     const token = localStorage.getItem("access_token");
-    const userId = user?.email || `user_${Date.now()}`;
     let streamAssistantId: string | null = null;
     let lastStreamedText = "";
 
+    const patchAssistant = (id: string, patch: Partial<Message>) =>
+      updateConversation(convId!, (c) => ({
+        ...c,
+        messages: (c.messages || []).map((m) => (m.id === id ? { ...m, ...patch } : m)),
+      }));
+
     try {
-      const response = await fetch(`${API_BASE}/api/chat`, {
+      const response = await fetch(`${API_BASE}${willResearch ? "/api/research" : "/api/chat"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "text/event-stream, application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-        body: JSON.stringify({
-          message: messageText,
-          userId: userId,
-          conversation_id: convId,
-          userTier: "free",
-          attachments: payloadAttachments,
-          stream: true,
-          web_search: willGenImage ? false : webSearchEnabled,
-          reasoning: willGenImage ? false : reasoningEnabled,
-        }),
+        body: JSON.stringify(
+          willResearch
+            ? { message: content.trim(), conversation_id: convId }
+            : {
+                message: messageText,
+                conversation_id: convId,
+                attachments: payloadAttachments,
+                stream: true,
+                web_search: willGenImage ? false : webSearchEnabled,
+                reasoning: willGenImage ? false : reasoningEnabled,
+              }
+        ),
         signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
-        const upgradeError = await parseUpgradeGate(response);
+        const upgradeError = await parseUpgradeGate(response.clone());
         if (upgradeError) throw upgradeError;
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        const body = await response.json().catch(() => null);
+        throw new Error(describeHttpError(response.status, body));
       }
 
       const contentType = response.headers.get("content-type") || "";
       let textContent = "";
       let imageUrl: string | undefined;
-      let selectedModel = "Vatsa AI";
 
       if (contentType.includes("text/event-stream") && response.body) {
-        /* ── Streaming path ── */
+        /* ── Streaming path (chat and deep research) ── */
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
         let streamedText = "";
         let thinkingText = "";
         let sseError: string | null = null;
-        let sources: any[] | undefined;
+        let sources: Message["sources"];
+        let notice: string | undefined;
+        let researchStatus: string | undefined;
+        const researchLog: string[] = [];
 
         const assistantId = (Date.now() + 1).toString();
         streamAssistantId = assistantId;
@@ -167,47 +185,64 @@ export function useHomeChat(params: UseHomeChatParams) {
           createdAt: new Date().toISOString(),
           model: "Vatsa AI",
           isStreaming: true,
+          researchStatus: willResearch ? "Starting research…" : undefined,
         });
 
         const flush = () => {
           lastStreamedText = streamedText;
-          updateConversation(convId, (conv) => ({
-            ...conv,
-            messages: (conv.messages || []).map((m) =>
-              m.id === assistantId ? { ...m, content: streamedText, thinking: thinkingText || undefined } : m
-            ),
-          }));
+          patchAssistant(assistantId, {
+            content: streamedText,
+            thinking: thinkingText || undefined,
+            notice,
+            researchStatus,
+          });
         };
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const raw of lines) {
-            const line = raw.trim();
-            if (!line.startsWith("data:")) continue;
-            const payload = line.slice(5).trim();
-            if (!payload || payload === "[DONE]") continue;
-            try {
-              const evt = JSON.parse(payload);
-              if (evt.error) sseError = evt.error;
-              else if (evt.thinking) thinkingText += evt.thinking;
-              else if (evt.delta) streamedText += evt.delta;
-              else if (evt.done && evt.sources) sources = evt.sources;
-              flush();
-            } catch {
-              streamedText += payload;
-              flush();
-            }
-            if (sseError) break;
+        const parser = createSseParser((evt) => {
+          if (evt.error) {
+            sseError = evt.error;
+            return;
           }
-          if (sseError) break;
+          if (evt.stage) {
+            researchStatus = researchStageLabel(evt) || researchStatus;
+            if (evt.stage === "searching" && evt.queries?.length) {
+              researchLog.push("Planned searches:", ...evt.queries.map((q) => `- ${q}`));
+            }
+            if (evt.stage === "writing") researchLog.push(`Read ${evt.source_count ?? 0} sources.`);
+            thinkingText = researchLog.join("\n");
+          }
+          if (evt.notice) notice = evt.notice;
+          if (evt.thinking) thinkingText += evt.thinking;
+          if (evt.delta) {
+            streamedText += evt.delta;
+            researchStatus = undefined;
+          }
+          if (evt.done && Array.isArray(evt.sources)) sources = evt.sources as Message["sources"];
+          flush();
+        });
+
+        while (!sseError) {
+          const { done, value } = await reader.read();
+          if (done) {
+            parser.end();
+            break;
+          }
+          parser.feed(value);
         }
 
-        if (sseError) throw new Error(sseError);
+        if (sseError) {
+          if (streamedText) {
+            // Keep what already arrived and say it was cut short.
+            patchAssistant(assistantId, {
+              content: `${streamedText}\n\n⚠️ ${sseError}`,
+              isStreaming: false, researchStatus: undefined, isError: true,
+            });
+            streamAssistantId = null;
+            setErrorState({ message: sseError });
+            return;
+          }
+          throw new Error(sseError);
+        }
 
         textContent = streamedText;
 
@@ -222,30 +257,22 @@ export function useHomeChat(params: UseHomeChatParams) {
             .trim();
         }
 
-        updateConversation(convId, (conv) => ({
-          ...conv,
-          messages: (conv.messages || []).map((m2) =>
-            m2.id === assistantId
-              ? {
-                  ...m2,
-                  content: textContent || (imageUrl ? "" : "No response from AI"),
-                  isStreaming: false,
-                  sources,
-                  thinking: thinkingText || undefined,
-                  // @ts-ignore
-                  imageUrl,
-                }
-              : m2
-          ),
-        }));
+        const finalContent = textContent || (imageUrl ? "" : "No response from AI");
+        patchAssistant(assistantId, {
+          content: finalContent,
+          isStreaming: false,
+          researchStatus: undefined,
+          sources,
+          notice,
+          thinking: thinkingText || undefined,
+          imageUrl,
+        });
+        onAssistantDone?.(assistantId, finalContent);
       } else {
         /* ── Non-streaming (JSON) path -- e.g. image generation ── */
         const data = await response.json();
         imageUrl = data.image_url;
         textContent = data.response || "No response from AI";
-        selectedModel = data.selected_model || "Vatsa AI";
-        const sources = data.sources;
-        const thinking = data.reasoning || undefined;
 
         if (!imageUrl && textContent) {
           const m = textContent.match(/!\[[^\]]*\]\((data:image\/[^)\s]+|https?:\/\/[^)\s]+)\)/);
@@ -264,81 +291,86 @@ export function useHomeChat(params: UseHomeChatParams) {
           role: "assistant",
           content: textContent || (imageUrl ? "" : "No response from AI"),
           createdAt: new Date().toISOString(),
-          model: selectedModel,
-          sources,
-          thinking,
-          // @ts-ignore
+          model: data.selected_model || "Vatsa AI",
+          sources: data.sources,
+          thinking: data.reasoning || undefined,
+          notice: data.notice,
           imageUrl,
         };
         addMessageToConversation(convId, assistantMsg);
+        onAssistantDone?.(assistantMsg.id, assistantMsg.content);
       }
 
       setErrorState(null);
-    } catch (error: any) {
-      const isAbort = error.name === "AbortError";
+    } catch (error: unknown) {
+      const err = error as Error;
+      const isAbort = err?.name === "AbortError";
       const isUpgradeGate = error instanceof UpgradeRequiredError;
+      const reason = describeNetworkError(error, typeof navigator === "undefined" || navigator.onLine);
       const fallbackContent = isAbort
         ? (lastStreamedText || "⏹️ Generation stopped.")
         : isUpgradeGate
         ? (error.info.error === "daily_limit_reached"
-            ? `You've used all ${error.info.limit} free requests for today.`
+            ? `You've used all ${error.info.limit} ${error.info.feature === "deep_research" ? "deep research reports" : "free requests"} for today.`
+            : error.info.feature === "deep_research"
+            ? "Deep research is available on the Business plan."
             : "That's a Pro feature.")
-        : `⚠️ Failed: ${error.message || "Unknown error"}`;
+        : `⚠️ ${reason}`;
 
       if (isUpgradeGate) {
         onUpgradeRequired?.(error.info);
       }
 
+      const failed = !isAbort && !isUpgradeGate;
       if (streamAssistantId) {
         // A streaming placeholder is already in the conversation -- finish
         // it in place instead of leaving a stuck "isStreaming" bubble and
         // appending a second, disconnected message.
-        updateConversation(convId, (conv) => ({
-          ...conv,
-          messages: (conv.messages || []).map((m) =>
-            m.id === streamAssistantId
-              ? { ...m, content: fallbackContent, isStreaming: false }
-              : m
-          ),
-        }));
+        patchAssistant(streamAssistantId, { content: fallbackContent, isStreaming: false, researchStatus: undefined, isError: failed });
       } else {
         addMessageToConversation(convId, {
           id: (Date.now() + 1).toString(), role: "assistant",
-          content: fallbackContent, createdAt: new Date().toISOString(),
+          content: fallbackContent, createdAt: new Date().toISOString(), isError: failed,
         });
       }
-      setErrorState((isAbort || isUpgradeGate) ? null : { message: error.message || "Unknown error", stack: error.stack });
+      setErrorState(failed ? { message: reason } : null);
     } finally {
       setIsLoading(false);
       setIsImageGenLoading(false);
     }
   }, [
-    activeConversationId, conversations, privateMode, user, attachments, webSearchEnabled, reasoningEnabled,
+    activeConversationId, conversations, privateMode, attachments, webSearchEnabled, reasoningEnabled, researchEnabled,
     isLoading, addMessageToConversation, updateConversation, handleRenameChat, handleNewChat,
-    setDraftMessage, setAttachments, setInputValue, setIsFirstMessage, setErrorState, onUpgradeRequired,
+    setDraftMessage, setAttachments, setInputValue, setIsFirstMessage, setErrorState, onUpgradeRequired, onAssistantDone,
   ]);
 
-  const handleRetry = useCallback(() => {
-    if (messages.length > 0) {
-      const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-      if (lastUserMsg) { sendMessage(lastUserMsg.content); setErrorState(null); }
-    }
-  }, [messages, sendMessage, setErrorState]);
+  /** Drops messages from `fromIndex` on (so the resend doesn't show the
+   * question twice) and sends `content` again. */
+  const resendFrom = useCallback(async (fromIndex: number, content: string) => {
+    if (!activeConversationId) return;
+    updateConversation(activeConversationId, (conv) => ({
+      ...conv,
+      messages: (conv.messages || []).slice(0, fromIndex),
+    }));
+    await sendMessage(content);
+  }, [activeConversationId, updateConversation, sendMessage]);
 
-  const handleRegenerate = useCallback(async (msgId: string, updateConversation: (id: string, updater: (conv: Conversation) => Conversation) => void) => {
+  const handleRetry = useCallback(() => {
+    if (isLoading) return;
+    const idx = messages.map((m) => m.role).lastIndexOf("user");
+    if (idx < 0) return;
+    setErrorState(null);
+    void resendFrom(idx, messages[idx].content);
+  }, [isLoading, messages, resendFrom, setErrorState]);
+
+  const handleRegenerate = useCallback(async (msgId: string, _update?: unknown) => {
     if (isLoading || !activeConversationId) return;
     const idx = messages.findIndex((m) => m.id === msgId);
     if (idx < 1) return;
-    const prevUser = [...messages.slice(0, idx)].reverse().find((m) => m.role === "user");
-    if (!prevUser) return;
-
-    updateConversation(activeConversationId, (conv) => ({
-      ...conv,
-      messages: (conv.messages || []).filter((_, i) => i < idx),
-    }));
-
-    await sendMessage(prevUser.content);
-  }, [isLoading, activeConversationId, messages, sendMessage]);
+    const userIdx = messages.slice(0, idx).map((m) => m.role).lastIndexOf("user");
+    if (userIdx < 0) return;
+    await resendFrom(userIdx, messages[userIdx].content);
+  }, [isLoading, activeConversationId, messages, resendFrom]);
 
   const handleCopy = useCallback(async (msgId: string, content: string) => {
     try {

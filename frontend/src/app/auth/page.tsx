@@ -15,6 +15,7 @@ import Magnetic from "@/components/landing/Magnetic";
 import Background from "@/components/landing/Background";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE } from "@/config/api";
+import { describeApiError } from "@/lib/api-client/errors";
 
 
 // Mock login is disabled: it silently issued a fake session whenever the
@@ -108,7 +109,7 @@ export default function AuthPage() {
       }
 
       if (!res.ok) {
-        throw new Error(data.detail || data.message || "Login failed");
+        throw new Error(describeApiError(data, res.status, "Login failed"));
       }
 
       if (!data.access_token) {
@@ -170,7 +171,7 @@ export default function AuthPage() {
       }
 
       if (!res.ok) {
-        throw new Error(data.detail || data.message || "Registration failed");
+        throw new Error(describeApiError(data, res.status, "Registration failed"));
       }
 
       if (!data.access_token) {
@@ -518,7 +519,7 @@ export default function AuthPage() {
 
               <AnimatePresence>
                 {error && (
-                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  <motion.div role="alert" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                     className="mb-4 rounded-xl bg-red-500/10 border border-red-500/15 px-4 py-2.5 text-xs text-red-400/80 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0 text-red-400/60" /> {error}
                   </motion.div>

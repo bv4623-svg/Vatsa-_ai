@@ -1,0 +1,119 @@
+{
+  "_comment": "Shared by Backend/tests/test_image_generation.py and frontend/src/lib/home/imageQuery.test.ts so the server's detect_image_gen() and the client's isImageGenQuery() can never disagree. `prompt` is what the backend sends to the image model (null = not an image request).",
+  "chat": [
+    {
+      "text": "generate an image of a red fox in snow",
+      "prompt": "a red fox in snow"
+    },
+    {
+      "text": "Create a realistic photo of a mountain lake at dawn",
+      "prompt": "a realistic photo of a mountain lake at dawn"
+    },
+    {
+      "text": "make me a picture of a cyberpunk city",
+      "prompt": "a cyberpunk city"
+    },
+    {
+      "text": "please draw a cat wearing a hat",
+      "prompt": "a cat wearing a hat"
+    },
+    {
+      "text": "Can you draw me a dragon?",
+      "prompt": "a dragon"
+    },
+    {
+      "text": "paint a sunset over the ocean",
+      "prompt": "a sunset over the ocean"
+    },
+    {
+      "text": "/imagine a castle on a floating island",
+      "prompt": "a castle on a floating island"
+    },
+    {
+      "text": "imagine a robot reading a book",
+      "prompt": "a robot reading a book"
+    },
+    {
+      "text": "image of an astronaut riding a horse",
+      "prompt": "an astronaut riding a horse"
+    },
+    {
+      "text": "design a logo for a coffee shop called Bean There",
+      "prompt": "a logo for a coffee shop called Bean There"
+    },
+    {
+      "text": "generate a high-quality illustration of a lighthouse",
+      "prompt": "a high-quality illustration of a lighthouse"
+    },
+    {
+      "text": "create an image",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "how do I draw conclusions from this data?",
+      "prompt": null
+    },
+    {
+      "text": "draw a comparison between Python and Go",
+      "prompt": null
+    },
+    {
+      "text": "draw a bar chart of monthly sales in matplotlib",
+      "prompt": null
+    },
+    {
+      "text": "make an image carousel component in React",
+      "prompt": null
+    },
+    {
+      "text": "create a picture gallery website",
+      "prompt": null
+    },
+    {
+      "text": "build an image uploader with drag and drop",
+      "prompt": null
+    },
+    {
+      "text": "write a function to resize an image in python",
+      "prompt": null
+    },
+    {
+      "text": "explain the image of a function in set theory",
+      "prompt": null
+    },
+    {
+      "text": "what paint should I use for a bathroom?",
+      "prompt": null
+    },
+    {
+      "text": "create an image classifier with PyTorch",
+      "prompt": null
+    },
+    {
+      "text": "generate an image processing pipeline",
+      "prompt": null
+    },
+    {
+      "text": "what is in this picture of my receipt",
+      "prompt": null
+    },
+    {
+      "text": "summarise this document",
+      "prompt": null
+    },
+    {
+      "text": "",
+      "prompt": null
+    }
+  ],
+  "code_workspace": [
+    {
+      "text": "draw a cat using HTML canvas",
+      "prompt": null
+    },
+    {
+      "text": "generate an image of a red fox",
+      "prompt": null
+    }
+  ]
+}

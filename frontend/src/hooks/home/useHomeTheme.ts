@@ -24,10 +24,11 @@ export function useHomeTheme() {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("vatsa-theme") as ThemeMode | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage after hydration (reading it during render would mismatch the server HTML)
     if (savedTheme) handleThemeChange(savedTheme);
     const savedLang = localStorage.getItem("vatsa-language");
     if (savedLang) setLanguage(savedLang);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
   useEffect(() => {

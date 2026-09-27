@@ -148,9 +148,12 @@ export const STYLES = `
             transform: translateX(20px);
           }
           .footer-link {
-            color: #9ca3af;
+            color: #6b7280;
             transition: color 0.15s ease;
             font-size: 0.8rem;
+          }
+          .dark .footer-link {
+            color: #9ca3af;
           }
           .footer-link:hover {
             color: #111827;

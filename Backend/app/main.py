@@ -20,6 +20,7 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -28,7 +29,7 @@ from app.middleware import SecurityHeadersMiddleware
 from app.config.urls import allowed_origins
 
 from app.routers import chat, profile, conversations, auth as auth_router
-from app.routers import memory, payment, payment_history, tokens, upload, files, vision
+from app.routers import memory, payment, payment_history, tokens, upload, files, vision, research
 from app.routers import library as library_router
 from app.routers import scheduled_tasks as scheduled_tasks_router
 from app.routers import chat_projects as chat_projects_router
@@ -38,6 +39,7 @@ from intents_data import INTENTS
 from app.database import init_db
 from app.services.scheduled_tasks import init_scheduler, shutdown_scheduler
 from app.services.account import register_account_jobs
+from app.core.secrets_check import enforce_secrets
 
 # Initialize intent classifier singleton
 intent_classifier = IntentClassifier()
@@ -45,6 +47,8 @@ intent_classifier = IntentClassifier()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail fast on missing, malformed or leaked secrets (app/core/secrets_check.py).
+    enforce_secrets()
     init_db()
     init_scheduler()
     register_account_jobs()
@@ -67,6 +71,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Outermost: compresses JSON bodies over 1 KB (the conversation list is
+# ~5x smaller on the wire). text/event-stream is excluded by Starlette, so
+# chat and research streams still arrive chunk by chunk
+# (tests/test_compression.py).
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # Include all routers
 app.include_router(chat.router)
 app.include_router(profile.router)
@@ -79,6 +89,7 @@ app.include_router(tokens.router)
 app.include_router(upload.router)
 app.include_router(files.router)
 app.include_router(vision.router)
+app.include_router(research.router)
 app.include_router(library_router.router)
 app.include_router(scheduled_tasks_router.router)
 app.include_router(chat_projects_router.router)

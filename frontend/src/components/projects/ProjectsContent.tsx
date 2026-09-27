@@ -7,6 +7,7 @@ import { ProjectEmptyState } from "./ProjectEmptyState";
 import { ProjectFormModal } from "./ProjectFormModal";
 import { ProjectDeleteConfirm } from "./ProjectDeleteConfirm";
 import type { ProjectCardActions } from "./ProjectCardMenu";
+import { ListStatus, showsEmpty } from "@/components/ui/list-status";
 
 export function ProjectsContent() {
   const p = useChatProjectsPage();
@@ -25,15 +26,15 @@ export function ProjectsContent() {
         </p>
         <button
           onClick={p.openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm text-accent-foreground hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-lg bg-accent-solid px-3 py-1.5 text-sm text-accent-foreground hover:opacity-90"
         >
           <Plus className="h-4 w-4" aria-hidden="true" /> New project
         </button>
       </div>
 
-      {p.error && <p className="text-sm text-red-500">{p.error}</p>}
+      <ListStatus loading={p.loading} error={p.error} count={p.projects.length} onRetry={() => void p.refetch()} loadingLabel="Loading projects…" />
 
-      {!p.loading && p.projects.length === 0 ? (
+      {showsEmpty({ loading: p.loading, error: p.error, count: p.projects.length }) ? (
         <ProjectEmptyState onCreate={p.openCreate} />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

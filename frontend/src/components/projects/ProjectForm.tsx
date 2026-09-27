@@ -76,7 +76,7 @@ export function ProjectForm({ project, onClose, onSubmit }: ProjectFormProps) {
 
       <div className="mt-2 flex justify-end gap-2">
         <button onClick={onClose} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent/10">Cancel</button>
-        <button onClick={submit} disabled={!name.trim() || saving} className="rounded-lg bg-accent px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50">
+        <button onClick={submit} disabled={!name.trim() || saving} className="rounded-lg bg-accent-solid px-3 py-1.5 text-sm text-accent-foreground disabled:opacity-50">
           {saving ? "Saving..." : project ? "Save changes" : "Create project"}
         </button>
       </div>

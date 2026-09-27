@@ -131,7 +131,7 @@ def increment_usage(db: Session, user: User, feature: str) -> None:
     db.commit()
 
 
-def require_feature(feature: str):
+def require_feature(feature: str, charge: bool = True):
     """
     FastAPI dependency (NOT a Python decorator) that gates a route behind
     a tier's feature access and daily limit, incrementing usage on
@@ -146,6 +146,10 @@ def require_feature(feature: str):
     Usage: user: User = Depends(require_feature("vision"))
     -- replaces Depends(get_current_user) directly; the route still
     receives the checked User the same way.
+
+    charge=False checks access and the daily limit but leaves recording the
+    use to the route, which calls increment_usage() only once the work has
+    succeeded (so an upstream outage doesn't burn the user's allowance).
     """
     def _dependency(
         current_user: User = Depends(get_current_user),
@@ -170,6 +174,7 @@ def require_feature(feature: str):
                 "resets_at": "midnight UTC",
                 "upgrade_url": "/pricing",
             })
-        increment_usage(db, current_user, feature)
+        if charge:
+            increment_usage(db, current_user, feature)
         return current_user
     return _dependency

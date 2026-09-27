@@ -81,6 +81,7 @@ export function useCodeConversations(
 
   useEffect(() => {
     if (accessToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch; the loading flag it sets is the intended render
       fetchConversations();
     }
   }, [accessToken, fetchConversations]);

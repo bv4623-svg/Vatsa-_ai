@@ -33,7 +33,7 @@ export function LibraryStorageBar({ usage, loading }: LibraryStorageBarProps) {
         <span className="text-muted-foreground">{usage.percent}%</span>
       </div>
 
-      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={usage.percent} aria-valuemin={0} aria-valuemax={100}>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("usedOf", { used: usedStr, limit: limitStr })} aria-valuenow={usage.percent} aria-valuemin={0} aria-valuemax={100}>
         <div className={cn("h-full rounded-full transition-all", barColor)} style={{ width: `${Math.min(usage.percent, 100)}%` }} />
       </div>
 

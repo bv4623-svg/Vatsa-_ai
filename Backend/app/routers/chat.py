@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any, Union, AsyncGenerator, Tuple
 from datetime import datetime
 import json
 import logging
+import re
 import uuid
 
 import os
@@ -15,14 +16,14 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
 from app.auth.jwt import create_media_token
-from app.services.ai_service import AIService, detect_image_gen
+from app.services.ai_service import AIService, GENERIC_AI_ERROR, detect_image_gen
 from app.services.image_service import generate_and_store_image
 from app.services.memory_extractor import extract_facts
 from app.services.library import sync_conversation_item, check_quota
 from app.services.account import notify_quota_warning
 from app.services.chat_projects import get_project_instructions_for_conversation
 from app.services.memory_service import MemoryService
-from app.services.search_service import SearchService
+from app.services.search_service import SearchService, build_search_query
 from app.services.feature_access import check_daily_limit, increment_usage
 
 from app.config.urls import BACKEND_PUBLIC_URL  # env BACKEND_PUBLIC_URL, else the live API
@@ -58,15 +59,22 @@ def _extract_and_save_memory(user_id: int, message_text: str) -> None:
     finally:
         db.close()
 
+# Generous enough for a long prompt plus inlined text attachments (each
+# capped at 50k chars by /api/upload), small enough that one request can't
+# pin a worker building a multi-megabyte prompt.
+MAX_MESSAGE_CHARS = 200_000
+MAX_ATTACHMENTS = 10
+
+
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=MAX_MESSAGE_CHARS)
     # Ownership always comes from the authenticated session (see get_current_user
     # below) -- a client-supplied user_id/userId is never trusted for identity.
     conversation_id: Optional[str] = None
     model: Optional[str] = None
     preferred_model: Optional[str] = Field(None, alias="preferredModel")
     workspace: Optional[str] = "chat"
-    attachments: Optional[List[Union[str, Dict[str, Any]]]] = None
+    attachments: Optional[List[Union[str, Dict[str, Any]]]] = Field(None, max_length=MAX_ATTACHMENTS)
     stream: Optional[bool] = False
     web_search: Optional[bool] = Field(False, alias="webSearch")
     reasoning: Optional[bool] = False
@@ -94,6 +102,11 @@ def _load_history(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[C
     return conv, history
 
 
+MAX_IMAGE_ATTACHMENTS = 4
+MAX_IMAGE_ATTACHMENT_BYTES = 8 * 1024 * 1024
+_IMAGE_DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/=\s]+)$")
+
+
 def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     """
     Normalizes the client's attachment shape into what AIService._build_messages
@@ -101,27 +114,45 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     via /api/upload or read as plain text) and {"filename", "image_data_url"}
     for images, so the model can actually see them instead of the attachment
     being a UI-only decoration.
+
+    Image data URLs are validated (type, base64, decoded size) and a bad one
+    is rejected with 400 -- an attachment the user can see in the composer
+    must never be silently dropped.
     """
     parsed = []
+    images = 0
     if req.attachments:
         for att in req.attachments:
             if not isinstance(att, dict):
                 continue
+            name = str(att.get("name") or "file")[:255]
             if att.get("text"):
-                parsed.append({"filename": att.get("name", "file"), "text": att["text"]})
-            elif att.get("is_base64") and str(att.get("type", "")).startswith("image/") and att.get("content"):
-                parsed.append({"filename": att.get("name", "image"), "image_data_url": att["content"]})
+                parsed.append({"filename": name, "text": str(att["text"])})
+            elif att.get("is_base64") and att.get("content"):
+                if not str(att.get("type", "")).startswith("image/"):
+                    raise HTTPException(400, f"Attachment type not supported: {name}")
+                m = _IMAGE_DATA_URL_RE.match(str(att["content"]))
+                if not m:
+                    raise HTTPException(400, f"Image attachment is not a valid PNG, JPEG, WEBP or GIF: {name}")
+                if len(m.group(2)) * 3 // 4 > MAX_IMAGE_ATTACHMENT_BYTES:
+                    raise HTTPException(413, f"Image attachment too large (max 8 MB): {name}")
+                images += 1
+                if images > MAX_IMAGE_ATTACHMENTS:
+                    raise HTTPException(400, f"At most {MAX_IMAGE_ATTACHMENTS} images per message.")
+                parsed.append({"filename": name, "image_data_url": att["content"]})
     return parsed
 
 
-def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
+def _check_daily_limit(db: Session, user: User, feature: str) -> None:
     """
     Raises 429 (with the shape the frontend's upgrade UI expects) once a
-    user's free/pro/business daily cap for `feature` is hit, else records
-    this call against today's count. Chat and Code share one endpoint
-    (distinguished only by req.workspace in the body), so this can't be
-    a route-level dependency the way vision's require_feature() is --
-    it has to run after the request body is parsed.
+    user's free/pro/business daily cap for `feature` is hit. Does NOT
+    record usage: callers call increment_usage() only after the work
+    succeeded, so a provider outage never burns the user's allowance.
+    Chat and Code share one endpoint (distinguished only by req.workspace
+    in the body), so this can't be a route-level dependency the way
+    vision's require_feature() is -- it has to run after the request body
+    is parsed.
     """
     allowed, used, limit = check_daily_limit(db, user, feature)
     if not allowed:
@@ -133,7 +164,6 @@ def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
             "resets_at": "midnight UTC",
             "upgrade_url": "/pricing",
         })
-    increment_usage(db, user, feature)
 
 
 def _enforce_storage_quota(db: Session, user: User, estimated_bytes: int) -> None:
@@ -155,27 +185,35 @@ def _enforce_storage_quota(db: Session, user: User, estimated_bytes: int) -> Non
         notify_quota_warning(db, user, usage["used_bytes"], usage["limit_bytes"], at_limit=False)
 
 
-async def _get_search_context(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+SEARCH_NOTICE_LIMIT = "Daily web search limit reached -- answered without live results. Resets at midnight UTC."
+SEARCH_NOTICE_UNAVAILABLE = "Web search is unavailable right now -- answered without live results."
+
+
+async def _get_search_context(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[str], List[Dict[str, Any]], Optional[str]]:
     """
     Best-effort multi-source web search grounding. Never raises -- if no
-    provider is configured/reachable, or the user's daily search quota
-    is used up, the chat just proceeds without it rather than breaking
-    the whole response over an optional feature.
-    Returns (formatted_context_for_the_prompt, raw_results_for_the_client).
+    provider is reachable, or the user's daily search quota is used up,
+    the chat proceeds without it rather than breaking the whole response
+    over an optional feature. The third value is a user-facing notice so
+    the user knows the answer is NOT grounded in live results.
+    Returns (formatted_context_for_the_prompt, raw_results_for_the_client, notice).
     """
     if not req.web_search:
-        return None, []
+        return None, [], None
     allowed, used, limit = check_daily_limit(db, user, "web_search")
     if not allowed:
         logger.info(f"Web search daily limit reached for user {user.id} ({used}/{limit})")
-        return None, []
+        return None, [], SEARCH_NOTICE_LIMIT
+    query = build_search_query(req.message)
+    if not query:
+        return None, [], None
     try:
-        results = await SearchService.search(req.message)
+        results = await SearchService.search(query)
         increment_usage(db, user, "web_search")
-        return SearchService.format_context(results, req.message), results
+        return SearchService.format_context(results, query), results, None
     except Exception as e:
         logger.warning(f"Web search unavailable for user {user.id}: {e}")
-        return None, []
+        return None, [], SEARCH_NOTICE_UNAVAILABLE
 
 
 def _persist_conversation(
@@ -246,7 +284,11 @@ async def _stream_chat_response(
     reasoning: bool = False,
     project_instructions: Optional[str] = None,
     response_style_instructions: Optional[str] = None,
+    search_notice: Optional[str] = None,
+    message_feature: str = "chat_messages",
 ) -> AsyncGenerator[str, None]:
+    if search_notice:
+        yield f"data: {json.dumps({'notice': search_notice})}\n\n"
     full_text = ""
     reasoning_text = ""
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -269,8 +311,8 @@ async def _stream_chat_response(
             elif "delta" in event:
                 yield f"data: {json.dumps({'delta': event['delta']})}\n\n"
             elif "error" in event:
-                logger.warning(f"Stream error for user {user.id}: {event['error']}")
-                yield f"data: {json.dumps({'error': event['error']})}\n\n"
+                logger.warning(f"Stream error for user {user.id}: {event.get('code')}")
+                yield f"data: {json.dumps(event)}\n\n"
                 return
             elif event.get("done"):
                 full_text = event["content"]
@@ -280,10 +322,11 @@ async def _stream_chat_response(
         # Never forward exception text to the client -- may name a
         # provider/model (see ai_service.py). Log server-side only.
         logger.error(f"Stream error for user {user.id}: {e}")
-        yield f"data: {json.dumps({'error': 'AI service is temporarily unavailable. Please try again.'})}\n\n"
+        yield f"data: {json.dumps({'error': GENERIC_AI_ERROR, 'code': 'ai_unavailable', 'retryable': True})}\n\n"
         return
 
     if full_text:
+        increment_usage(db, user, message_feature)
         _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources, reasoning_text=reasoning_text, user_settings=user.settings)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
@@ -314,9 +357,14 @@ async def chat_endpoint(
     # the streaming frontend clients already fall back to plain JSON when
     # the response isn't text/event-stream, so this stays consistent even
     # when the caller asked for stream=true). ---
-    img_prompt = detect_image_gen(req.message)
+    parsed_attachments = _parse_attachments(req)
+    # An attached file means "work with this", never "make a new picture"
+    # (same rule the client uses to predict the image loading state). Text
+    # attachments arrive inlined into the message after a "--- File:" marker.
+    has_attachment = bool(parsed_attachments) or "\n\n--- File:" in req.message
+    img_prompt = None if has_attachment else detect_image_gen(req.message, workspace)
     if img_prompt:
-        _enforce_daily_limit(db, user, "image_gen")
+        _check_daily_limit(db, user, "image_gen")
         # A processed PNG from this pipeline is typically 1-3MB; 2MB is a
         # conservative pre-check so a user right at their ceiling is
         # blocked before spending the generation call, not after.
@@ -326,6 +374,7 @@ async def chat_endpoint(
         except Exception as e:
             logger.error(f"Image generation failed for user {user.id}: {e}")
             raise HTTPException(status_code=502, detail="Image generation is temporarily unavailable. Please try again.")
+        increment_usage(db, user, "image_gen")
 
         media_token = create_media_token(user.id)
         image_url = f"{BACKEND_PUBLIC_URL}/api/files/{img_data['image_id']}/preview?token={media_token}"
@@ -347,13 +396,13 @@ async def chat_endpoint(
             "primary_intent": "image_generation"
         }
 
-    # --- 2. Daily message-limit check (per workspace) ---
-    _enforce_daily_limit(db, user, "code_messages" if workspace == "code" else "chat_messages")
+    # --- 2. Daily message-limit check (per workspace; charged on success) ---
+    message_feature = "code_messages" if workspace == "code" else "chat_messages"
+    _check_daily_limit(db, user, message_feature)
 
     # --- 3. Load Conversation History + Attachments ---
     conv, history_messages = _load_history(req, user, db)
-    parsed_attachments = _parse_attachments(req)
-    search_context, sources = await _get_search_context(req, user, db)
+    search_context, sources, search_notice = await _get_search_context(req, user, db)
     # A chat that belongs to a Project gets that project's systemPrompt +
     # instructions applied to every message, not just the ones sent while
     # viewing the project UI.
@@ -366,6 +415,7 @@ async def chat_endpoint(
                 req, user, db, conv, history_messages, parsed_attachments,
                 chosen_model, workspace, background_tasks, search_context, sources,
                 req.reasoning, project_instructions, response_style_instructions,
+                search_notice, message_feature,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -395,8 +445,11 @@ async def chat_endpoint(
         logger.error(f"AI service error for user {user.id}: {e}")
         raise HTTPException(status_code=502, detail="AI service is temporarily unavailable. Please try again.")
 
+    increment_usage(db, user, message_feature)
     if sources:
         result["sources"] = sources
+    if search_notice:
+        result["notice"] = search_notice
     _persist_conversation(
         conv, db, req.message, result["response"], result["selected_model"],
         sources=sources, reasoning_text=result.get("reasoning"), user_settings=user.settings,

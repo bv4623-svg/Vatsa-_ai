@@ -22,6 +22,9 @@ import { UsageBar } from "@/components/billing/UsageBar";
 import { UpgradeBanner } from "@/components/billing/UpgradeBanner";
 import { useUpgrade } from "@/components/billing/UpgradeProvider";
 import { clearSession } from "@/lib/session";
+import { useSpeechRecognition, useSpeechSynthesis } from "@/hooks/useVoice";
+import { appendTranscript } from "@/lib/voice";
+import type { ComposerResearchProps, ComposerVoiceProps } from "@/components/home/ComposerExtras";
 import type { UpgradeGateInfo } from "@/hooks/home/useHomeChat";
 
 const CommandPalette = dynamic(
@@ -58,7 +61,8 @@ export default function HomePage() {
   const [showWebSearchPopover, setShowWebSearchPopover] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
-  const [showVoicePopover, setShowVoicePopover] = useState(false);
+  const [researchEnabled, setResearchEnabled] = useState(false);
+  const [voiceConversation, setVoiceConversation] = useState(false);
 
   const tier: "free" | "pro" | "business" = user?.tier || "free";
   const isFree = tier === "free";
@@ -80,6 +84,90 @@ export default function HomePage() {
     setReasoningEnabled((v) => !v);
   }, [isFree, openUpgradeModal]);
 
+  const isBusiness = tier === "business";
+  const handleToggleResearch = useCallback(() => {
+    if (!isBusiness) {
+      openUpgradeModal("Deep research (multi-step web research with a cited report) is a Business feature.", "deep_research", "business");
+      return;
+    }
+    setResearchEnabled((v) => !v);
+  }, [isBusiness, openUpgradeModal]);
+
+  // ── Voice: dictation (speech-to-text) and read-aloud (text-to-speech),
+  // both performed by the browser. Pro feature, like the rest of Voice.
+  const tts = useSpeechSynthesis();
+  const voiceConversationRef = useRef(false);
+  const latestInputRef = useRef("");
+  const sendMessageRef = useRef<(content: string) => void>(() => {});
+  useEffect(() => { voiceConversationRef.current = voiceConversation; }, [voiceConversation]);
+  useEffect(() => { latestInputRef.current = inputValue; }, [inputValue]);
+
+  const onDictated = useCallback((text: string) => {
+    setInputValue((prev) => {
+      const next = appendTranscript(prev, text);
+      setDraftMessage(next);
+      latestInputRef.current = next;
+      return next;
+    });
+  }, [setDraftMessage]);
+
+  const onDictationEnd = useCallback((sessionText: string) => {
+    // Voice conversation: a finished utterance is sent right away.
+    if (voiceConversationRef.current && sessionText && latestInputRef.current.trim()) {
+      sendMessageRef.current(latestInputRef.current);
+    }
+  }, []);
+
+  const stt = useSpeechRecognition({ onFinal: onDictated, onEnd: onDictationEnd });
+
+  const handleToggleVoice = useCallback(() => {
+    if (isFree) {
+      openUpgradeModal("Voice (dictation and read-aloud) is a Pro feature.", "tts", "pro");
+      return;
+    }
+    tts.stop();
+    stt.toggle();
+  }, [isFree, openUpgradeModal, stt, tts]);
+
+  const handleToggleVoiceConversation = useCallback(() => {
+    if (isFree) {
+      openUpgradeModal("Voice (dictation and read-aloud) is a Pro feature.", "tts", "pro");
+      return;
+    }
+    setVoiceConversation((on) => {
+      if (on) tts.stop();
+      return !on;
+    });
+  }, [isFree, openUpgradeModal, tts]);
+
+  const handleReadAloud = useCallback((msgId: string, content: string) => {
+    if (isFree) {
+      openUpgradeModal("Voice (dictation and read-aloud) is a Pro feature.", "tts", "pro");
+      return;
+    }
+    tts.toggle(msgId, content);
+  }, [isFree, openUpgradeModal, tts]);
+
+  const handleAssistantDone = useCallback((msgId: string, content: string) => {
+    if (voiceConversationRef.current && content) tts.speak(msgId, content);
+  }, [tts]);
+
+  const voiceProps: ComposerVoiceProps = {
+    supported: stt.supported,
+    listening: stt.listening,
+    interim: stt.interim,
+    error: stt.error,
+    onToggle: handleToggleVoice,
+    conversationMode: voiceConversation,
+    onToggleConversationMode: handleToggleVoiceConversation,
+    locked: isFree,
+  };
+  const researchProps: ComposerResearchProps = {
+    enabled: researchEnabled,
+    onToggle: handleToggleResearch,
+    locked: !isBusiness,
+  };
+
   const handleUpgradeGate = useCallback((info: UpgradeGateInfo) => {
     const featureLabel = (info.feature || "").replace(/_/g, " ");
     if (info.error === "daily_limit_reached") {
@@ -89,6 +177,9 @@ export default function HomePage() {
         "pro",
         info.used != null && info.limit != null ? { used: info.used, limit: info.limit } : undefined,
       );
+    } else if (info.feature === "deep_research") {
+      setResearchEnabled(false);
+      openUpgradeModal("Deep research is a Business feature.", info.feature, "business");
     } else {
       openUpgradeModal(`${featureLabel || "This feature"} is a Pro feature.`, info.feature, info.suggestedTier || "pro");
     }
@@ -119,7 +210,7 @@ export default function HomePage() {
   } = useAttachments();
 
   const { analyzingId, analyzeImage } = useVisionAnalysis({
-    activeConversationId, handleNewChat, addMessageToConversation, setErrorState,
+    activeConversationId, handleNewChat, addMessageToConversation, setErrorState, onUpgradeRequired: handleUpgradeGate,
   });
 
   const resetComposerForNewChat = useCallback(() => {
@@ -138,10 +229,12 @@ export default function HomePage() {
     sendMessage, handleRetry, handleRegenerate, handleCopy, handleFeedback, handleShare,
   } = useHomeChat({
     activeConversationId, conversations, messages, privateMode, user,
-    attachments, setAttachments, webSearchEnabled, reasoningEnabled, addMessageToConversation, updateConversation, handleRenameChat,
+    attachments, setAttachments, webSearchEnabled, reasoningEnabled, researchEnabled,
+    addMessageToConversation, updateConversation, handleRenameChat,
     handleNewChat: onNewChat, setDraftMessage, setInputValue, setIsFirstMessage, setErrorState,
-    onUpgradeRequired: handleUpgradeGate,
+    onUpgradeRequired: handleUpgradeGate, onAssistantDone: handleAssistantDone,
   });
+  useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);
 
   const handleToggleSidebar = useCallback(() => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -250,13 +343,15 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="relative z-10 flex h-screen flex-col">
+        {/* h-dvh: the visible viewport, not 100vh (which is taller than the
+            screen while mobile browser toolbars are showing). */}
+        <div className="relative z-10 flex h-dvh flex-col" data-chat-shell>
           <header className="flex h-9 shrink-0 items-center justify-between px-4 backdrop-blur-sm bg-background/40 border-b border-border/40">
             <div className="w-8" />
             <div className="flex items-center gap-2">
               <div className="flex items-center rounded-md border border-border/60 bg-black/20 p-0.5">
-                <button onClick={() => router.push("/")} className={cn("px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Chat</button>
-                <button onClick={() => router.push("/code")} className={cn("px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/code" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Code</button>
+                <button onClick={() => router.push("/")} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Chat</button>
+                <button onClick={() => router.push("/code")} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/code" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Code</button>
               </div>
               {privateMode && (<div className="flex items-center gap-1 text-xs text-accent font-medium"><Lock className="w-3 h-3" /> Private</div>)}
             </div>
@@ -330,8 +425,8 @@ export default function HomePage() {
                   reasoningEnabled={reasoningEnabled}
                   onToggleReasoning={handleToggleReasoning}
                   isFree={isFree}
-                  showVoicePopover={showVoicePopover}
-                  setShowVoicePopover={setShowVoicePopover}
+                  voice={voiceProps}
+                  research={researchProps}
                   fileInputRef={fileInputRef}
                   folderInputRef={folderInputRef}
                   onFileUpload={handleFileUpload}
@@ -370,6 +465,11 @@ export default function HomePage() {
                   folderInputRef={folderInputRef}
                   onFileUpload={handleFileUpload}
                   modKey={MOD_KEY}
+                  voice={voiceProps}
+                  research={researchProps}
+                  onReadAloud={tts.supported ? handleReadAloud : undefined}
+                  speakingMsgId={tts.speakingId}
+                  onRetry={handleRetry}
                   banner={
                     showUpgradeBanner ? (
                       <UpgradeBanner onDismiss={() => setBannerDismissedAtCount(messages.length)} />

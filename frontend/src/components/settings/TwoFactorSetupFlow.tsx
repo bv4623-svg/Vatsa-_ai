@@ -44,7 +44,7 @@ export function TwoFactorSetupFlow({ onEnabled }: { onEnabled: () => void }) {
         </div>
         <button
           onClick={onEnabled}
-          className="mt-3 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
+          className="mt-3 rounded-lg bg-accent-solid px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
         >
           Done
         </button>
@@ -72,7 +72,7 @@ export function TwoFactorSetupFlow({ onEnabled }: { onEnabled: () => void }) {
             <button
               type="submit"
               disabled={loading || !code.trim()}
-              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg bg-accent-solid px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Verifying…" : "Enable"}
             </button>

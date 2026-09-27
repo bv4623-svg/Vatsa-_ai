@@ -13,11 +13,16 @@ too, same as it does for the AI model and the image generator.
 """
 import os
 import re
+import copy
 import json
+import time
+import socket
 import asyncio
 import logging
+import ipaddress
+from collections import OrderedDict
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from urllib.parse import urlparse, quote
 import aiohttp
 
@@ -54,6 +59,64 @@ _META_DESC_RE = re.compile(
     r'<meta[^>]+(?:property=["\']og:description["\']|name=["\']description["\'])[^>]+content=["\']([^"\']+)["\']',
     re.IGNORECASE,
 )
+
+
+# Identical queries within this window reuse the previous results instead of
+# re-running every provider (saves quota, and makes regenerate/retry fast).
+SEARCH_CACHE_TTL_SECONDS = int(os.getenv("SEARCH_CACHE_TTL_SECONDS") or "600")
+SEARCH_CACHE_MAX_ENTRIES = 256
+_search_cache: "OrderedDict[Tuple[str, int], Tuple[float, List[Dict[str, Any]]]]" = OrderedDict()
+
+# A search query is a question, not a document. Anything past this is noise
+# for every provider (and some reject long queries outright).
+MAX_QUERY_CHARS = 400
+_ATTACHMENT_MARKERS = ("\n\n--- File:", "\n\n--- Attachment:")
+
+
+def build_search_query(message: str) -> str:
+    """The user's own words only: drops text attachments the client inlined
+    into the message and caps the length."""
+    q = message or ""
+    for marker in _ATTACHMENT_MARKERS:
+        q = q.split(marker, 1)[0]
+    q = " ".join(q.split())
+    return q[:MAX_QUERY_CHARS].strip()
+
+
+def _cache_key(query: str, max_results: int) -> Tuple[str, int]:
+    return (" ".join(query.lower().split()), max_results)
+
+
+def clear_search_cache() -> None:
+    _search_cache.clear()
+
+
+async def _is_public_url(url: str) -> bool:
+    """SSRF guard for server-side fetches of search-result URLs: only
+    http(s) to hosts whose every resolved address is public. Blocks
+    loopback, private, link-local (cloud metadata at 169.254.169.254),
+    reserved and multicast ranges."""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return False
+    host = parsed.hostname
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(host, parsed.port or 443, type=socket.SOCK_STREAM)
+    except Exception:
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if not addr.is_global:
+            return False
+    return True
 
 
 def _strip_html(text: str) -> str:
@@ -394,12 +457,16 @@ class SearchService:
         effort -- a failure here just leaves the original snippet."""
         if r.get("provider") == "wikipedia" or len(r.get("snippet", "")) >= 200:
             return
+        if not await _is_public_url(r.get("url", "")):
+            return
         try:
             async with session.get(
                 r["url"],
                 headers={"User-Agent": "Mozilla/5.0 (compatible; VatsaAI/1.0)"},
                 timeout=aiohttp.ClientTimeout(total=6),
-                allow_redirects=True,
+                # A redirect could point at an internal address the check
+                # above never saw -- don't follow it.
+                allow_redirects=False,
             ) as resp:
                 if resp.status != 200:
                     return
@@ -520,8 +587,27 @@ class SearchService:
         the query -- not just by domain authority -- before returning
         the top `max_results` with citation-ready metadata (index,
         domain, quality, favicon). Raises RuntimeError if every
-        provider came back empty.
+        provider came back empty. Results are cached per query for
+        SEARCH_CACHE_TTL_SECONDS.
         """
+        query = build_search_query(query)
+        if not query:
+            raise ValueError("Search query is empty.")
+        key = _cache_key(query, max_results)
+        cached = _search_cache.get(key)
+        if cached and cached[0] > time.monotonic():
+            _search_cache.move_to_end(key)
+            return copy.deepcopy(cached[1])
+
+        top = await SearchService._search_uncached(query, max_results)
+
+        _search_cache[key] = (time.monotonic() + SEARCH_CACHE_TTL_SECONDS, copy.deepcopy(top))
+        while len(_search_cache) > SEARCH_CACHE_MAX_ENTRIES:
+            _search_cache.popitem(last=False)
+        return top
+
+    @staticmethod
+    async def _search_uncached(query: str, max_results: int) -> List[Dict[str, Any]]:
         variations = _expand_query(query)
         batches = await asyncio.gather(*(SearchService._search_once(v, max_results) for v in variations))
 

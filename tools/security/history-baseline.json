@@ -1,0 +1,4 @@
+{
+  "_comment": "Findings tolerated until a planned history purge. The purge ran on 2026-09-27 (SECURITY_ACTIONS.md \u00a75), so nothing is tolerated: any secret-bearing file in history fails CI. Never add an entry without a purge plan.",
+  "known": []
+}

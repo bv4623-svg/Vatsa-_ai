@@ -54,7 +54,8 @@ def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db
     db.add(otp)
     db.commit()
 
-    print(f"\n[OTP] Generated for {email}: {code}  (purpose={purpose})\n", flush=True)
+    # Never log the code itself: anyone with log access could take over the
+    # account (a reset OTP is enough to set a new password).
 
     missing = [k for k in ("EMAIL_USERNAME", "EMAIL_PASSWORD") if not os.getenv(k)]
     if missing:
@@ -132,8 +133,14 @@ def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
         if not user.is_active:
             raise HTTPException(400, "User account is deactivated")
 
+        # An emailed code proves the inbox, not the second factor: 2FA users
+        # still finish at POST /auth/2fa/verify-login, as with a password.
+        if user.two_factor_enabled:
+            pending_token = create_access_token({"sub": str(user.id), "scope": "2fa_pending"}, expires_delta=timedelta(minutes=10))
+            return {"verified": True, "requires_2fa": True, "pending_token": pending_token}
+
         token = create_access_token(
-            {"sub": str(user.id), "email": user.email, "name": user.full_name}
+            {"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version}
         )
         return {
             "verified": True,

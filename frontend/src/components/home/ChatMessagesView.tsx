@@ -185,7 +185,7 @@ export function ChatMessagesView({
                         aria-label={speakingMsgId === msg.id ? "Stop reading aloud" : "Read aloud"}
                         aria-pressed={speakingMsgId === msg.id}
                         className={cn(
-                          "p-1 rounded hover:bg-accent/10 transition-colors",
+                          "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
                           speakingMsgId === msg.id ? "text-accent" : "text-muted-foreground/60 hover:text-foreground"
                         )}
                       >
@@ -198,7 +198,7 @@ export function ChatMessagesView({
                       onClick={() => onCopy(msg.id, msg.content)}
                       aria-label={isCopied ? "Copied" : "Copy"}
                       className={cn(
-                        "p-1 rounded hover:bg-accent/10 transition-colors",
+                        "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
                         isCopied ? "text-green-500" : "text-muted-foreground/60 hover:text-foreground"
                       )}
                     >
@@ -210,7 +210,7 @@ export function ChatMessagesView({
                       onClick={() => onRegenerate(msg.id)}
                       aria-label="Regenerate"
                       disabled={isLoading}
-                      className="p-1 rounded hover:bg-accent/10 text-muted-foreground/60 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="tap-target p-1 rounded hover:bg-accent/10 text-muted-foreground/60 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <RefreshCw className={cn("w-4 h-4", isLoading && isLast && "animate-spin")} />
                     </button>
@@ -221,7 +221,7 @@ export function ChatMessagesView({
                       aria-label="Good response"
                       aria-pressed={fb === "up"}
                       className={cn(
-                        "p-1 rounded hover:bg-accent/10 transition-colors",
+                        "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
                         fb === "up" ? "text-green-500" : "text-muted-foreground/60 hover:text-foreground"
                       )}
                     >
@@ -234,7 +234,7 @@ export function ChatMessagesView({
                       aria-label="Bad response"
                       aria-pressed={fb === "down"}
                       className={cn(
-                        "p-1 rounded hover:bg-accent/10 transition-colors",
+                        "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
                         fb === "down" ? "text-red-500" : "text-muted-foreground/60 hover:text-foreground"
                       )}
                     >
@@ -245,7 +245,7 @@ export function ChatMessagesView({
                     <button
                       onClick={() => onShare(msg.content)}
                       aria-label="Share"
-                      className="p-1 rounded hover:bg-accent/10 text-muted-foreground/60 hover:text-foreground"
+                      className="tap-target p-1 rounded hover:bg-accent/10 text-muted-foreground/60 hover:text-foreground"
                     >
                       <Share2 className="w-4 h-4" />
                     </button>
@@ -292,7 +292,7 @@ export function ChatMessagesView({
           <div className="flex items-end gap-2 rounded-2xl border border-border/50 bg-card/80 p-2 shadow-sm focus-within:border-accent/50">
             <div className="relative">
               <Tooltip text="Attach File">
-                <button onClick={() => setShowAttachmentMenu((p) => !p)} className="p-2 hover:bg-accent/10 rounded-full transition-colors">
+                <button onClick={() => setShowAttachmentMenu((p) => !p)} aria-label="Attach files" aria-haspopup="menu" aria-expanded={showAttachmentMenu} className="tap-target p-2 hover:bg-accent/10 rounded-full transition-colors">
                   <Paperclip className="h-5 w-5 text-muted-foreground" />
                 </button>
               </Tooltip>
@@ -330,7 +330,7 @@ export function ChatMessagesView({
                   onClick={onToggleWebSearch}
                   aria-label={webSearchEnabled ? "Web search on" : "Web search off"}
                   aria-pressed={webSearchEnabled}
-                  className={`rounded-full p-2 hover:bg-accent/10 ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                  className={`tap-target rounded-full p-2 hover:bg-accent/10 ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
                 >
                   <Globe className="h-4 w-4" />
                 </button>
@@ -338,7 +338,9 @@ export function ChatMessagesView({
               <Tooltip text={isFree ? "Reasoning is a Pro feature" : reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
                 <button
                   onClick={onToggleReasoning}
-                  className={`relative rounded-full p-2 hover:bg-accent/10 ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                  aria-label={isFree ? "Step-by-step reasoning (Pro feature)" : "Step-by-step reasoning"}
+                  aria-pressed={reasoningEnabled}
+                  className={`tap-target relative rounded-full p-2 hover:bg-accent/10 ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
                 >
                   <Brain className="h-4 w-4" />
                   {isFree && <Lock className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" />}
@@ -360,7 +362,7 @@ export function ChatMessagesView({
                   disabled={!isLoading && !inputValue.trim() && !hasReadyAttachments}
                   aria-label={isLoading ? "Stop generating" : "Send message"}
                   className={cn(
-                    "rounded-full p-2 text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                    "tap-target rounded-full p-2 text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
                     isLoading || inputValue.trim() || hasReadyAttachments ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
                   )}
                 >

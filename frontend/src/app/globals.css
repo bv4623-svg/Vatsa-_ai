@@ -406,3 +406,14 @@
     -webkit-backdrop-filter: none !important;
   }
 }
+/* Touch screens: every icon control gets a 44x44 hit area (WCAG 2.5.5 /
+ * Apple HIG). Mouse users keep the compact desktop layout. */
+@utility tap-target {
+  @media (pointer: coarse) {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

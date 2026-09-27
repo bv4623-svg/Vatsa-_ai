@@ -22,7 +22,7 @@ export interface ComposerResearchProps {
   locked: boolean;
 }
 
-const pill = "relative flex items-center gap-1 rounded-full text-sm transition-colors hover:bg-accent/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent";
+const pill = "tap-target relative flex items-center gap-1 rounded-full text-sm transition-colors hover:bg-accent/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent";
 
 export function VoiceButton({ voice, compact }: { voice: ComposerVoiceProps; compact?: boolean }) {
   const label = voice.locked

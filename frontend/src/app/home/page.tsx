@@ -348,8 +348,8 @@ export default function HomePage() {
             <div className="w-8" />
             <div className="flex items-center gap-2">
               <div className="flex items-center rounded-md border border-border/60 bg-black/20 p-0.5">
-                <button onClick={() => router.push("/")} className={cn("px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Chat</button>
-                <button onClick={() => router.push("/code")} className={cn("px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/code" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Code</button>
+                <button onClick={() => router.push("/")} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Chat</button>
+                <button onClick={() => router.push("/code")} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/code" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Code</button>
               </div>
               {privateMode && (<div className="flex items-center gap-1 text-xs text-accent font-medium"><Lock className="w-3 h-3" /> Private</div>)}
             </div>

@@ -34,7 +34,7 @@ export function CodeCopyButton({ text }: { text: string }) {
       onClick={copy}
       aria-label={LABEL[state]}
       title={LABEL[state]}
-      className="rounded bg-black/20 p-1 text-white/60 hover:bg-black/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      className="tap-target rounded bg-black/20 p-1 text-white/60 hover:bg-black/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
     >
       <Icon className="h-4 w-4" aria-hidden />
     </button>

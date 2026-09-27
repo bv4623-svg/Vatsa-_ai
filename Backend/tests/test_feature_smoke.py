@@ -237,3 +237,13 @@ def test_authenticated_reads(client, make_user, path):
     _, h = make_user()
     assert client.get(path).status_code in (401, 403)
     assert client.get(path, headers=h).status_code == 200
+
+
+def test_production_password_hashing_uses_cost_12():
+    """The test fixture uses a cheap precomputed hash for speed; production
+    hashing must stay at bcrypt cost 12."""
+    from app.auth.jwt import get_password_hash, verify_password
+    hashed = get_password_hash("correct horse battery staple")
+    assert hashed.startswith("$2b$12$")
+    assert verify_password("correct horse battery staple", hashed)
+    assert not verify_password("wrong", hashed)

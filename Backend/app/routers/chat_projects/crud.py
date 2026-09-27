@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.chat_project import ChatProject
 from app.auth.dependencies import get_current_user
-from app.services.chat_projects import to_public_dict, detach_all
+from app.services.chat_projects import to_public_dict, to_public_dicts, detach_all
 from app.routers.chat_projects.deps import get_owned_project
 from app.routers.chat_projects.schemas import CreateProjectRequest, UpdateProjectRequest
 
@@ -42,7 +42,7 @@ def list_projects(
     if archived is not None:
         q = q.filter(ChatProject.archived == archived)
     projects = q.order_by(ChatProject.updated_at.desc()).all()
-    return {"items": [to_public_dict(db, p) for p in projects]}
+    return {"items": to_public_dicts(db, projects)}
 
 
 @router.get("/api/projects/{project_id}")

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader, Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Building2 } from "lucide-react";
+import { Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Building2 } from "lucide-react";
 import { getPlan } from "@/data/plans";
 
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { useHomeChat } from "@/hooks/home/useHomeChat";
 import { useAttachments } from "@/hooks/home/useAttachments";
 import { useVisionAnalysis } from "@/hooks/home/useVisionAnalysis";
 import { Sidebar } from "@/components/home/Sidebar";
+import { HomeSkeleton } from "@/components/home/HomeSkeleton";
 import { SettingsModal } from "@/components/home/SettingsModal";
 import { ChatEmptyState } from "@/components/home/ChatEmptyState";
 import { ChatMessagesView } from "@/components/home/ChatMessagesView";
@@ -310,16 +311,7 @@ export default function HomePage() {
     return () => container?.removeEventListener("scroll", handleScroll);
   }, [setScrollPosition]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader className="w-8 h-8 animate-spin text-purple-500" />
-          <p className="text-sm text-muted-foreground">Loading your workspace...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <HomeSkeleton />;
 
   const isEmpty = !activeConv || (activeConv.messages?.length ?? 0) === 0;
   const hasReadyAttachments = attachments.some(a => a.status === "ready");

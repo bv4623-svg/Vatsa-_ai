@@ -121,7 +121,7 @@ export function FeedbackModal({ open, onClose }: { open: boolean; onClose: () =>
 
         {!signedIn && (
           <div>
-            <label htmlFor="feedback-email" className={LABEL}>Email (optional, if you'd like a reply)</label>
+            <label htmlFor="feedback-email" className={LABEL}>Email (optional, if you want a reply)</label>
             <input id="feedback-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={FIELD} />
           </div>
         )}

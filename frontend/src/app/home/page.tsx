@@ -31,10 +31,6 @@ const CommandPalette = dynamic(
   () => import("@/components/layout/command-palette").then(mod => mod.CommandPalette),
   { ssr: false }
 );
-const ToastContainer = dynamic(
-  () => import("@/components/ui/toast").then(mod => mod.ToastContainer),
-  { ssr: false }
-);
 
 import Background from "@/components/landing/Background";
 
@@ -481,7 +477,6 @@ export default function HomePage() {
           </div>
 
           <Suspense fallback={null}><CommandPalette /></Suspense>
-          <Suspense fallback={null}><ToastContainer /></Suspense>
 
           {isNotificationCenterOpen && (
             <div className="fixed top-12 right-4 z-50 w-80 rounded-2xl border border-border bg-background/90 p-4 backdrop-blur-xl shadow-2xl">

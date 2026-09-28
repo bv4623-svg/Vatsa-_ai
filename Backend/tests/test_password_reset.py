@@ -1,12 +1,10 @@
-"""Password reset and OTP login, end to end through the real routes.
-Email delivery is faked (it's the only external call); everything else
-(OTP storage, reset token, bcrypt, token_version revocation) is real."""
+"""Password reset, end to end through the real routes. Email delivery is
+faked (it's the only external call); everything else (OTP storage, reset
+token, bcrypt, token_version revocation) is real."""
 import pyotp
 import pytest
 
 from conftest import TEST_PASSWORD
-from app.database import SessionLocal
-from app.models.user import User
 
 NEW_PASSWORD = "a-brand-new-password-2"
 
@@ -64,33 +62,14 @@ def test_otp_code_is_never_written_to_the_log(client, make_user, outbox, capsys)
     assert code not in captured.out + captured.err
 
 
-def test_otp_login_respects_two_factor(client, make_user, outbox):
+def test_an_emailed_code_never_logs_anyone_in(client, make_user, outbox):
+    """Codes are for password reset only: even for a 2FA account, verifying
+    one yields a reset token, never a session or a 2FA-pending login."""
     user, headers = make_user()
     secret = client.post("/api/account/2fa/setup", headers=headers).json()["secret"]
     assert client.post("/api/account/2fa/enable", json={"code": pyotp.TOTP(secret).now()}, headers=headers).status_code == 200
 
-    code = _otp(client, outbox, user.email, "signup")
+    code = _otp(client, outbox, user.email, "reset")
     body = client.post("/auth/otp/verify", json={"email": user.email, "otp": code}).json()
-    assert "access_token" not in body, "an emailed code alone must not bypass 2FA"
-    assert body["requires_2fa"] is True
-    finished = client.post("/auth/2fa/verify-login", json={"pending_token": body["pending_token"], "code": pyotp.TOTP(secret).now()})
-    assert finished.status_code == 200 and finished.json()["access_token"]
-
-
-def test_otp_login_session_is_revoked_by_token_version(client, make_user, outbox):
-    """Sign-out-everywhere, password reset and the force-reset script all
-    work by bumping token_version; an OTP-login token must honour it."""
-    user, _ = make_user()
-    code = _otp(client, outbox, user.email, "signup")
-    token = client.post("/auth/otp/verify", json={"email": user.email, "otp": code}).json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-    assert client.get("/auth/me", headers=headers).status_code == 200
-
-    db = SessionLocal()
-    try:
-        row = db.query(User).filter_by(id=user.id).first()
-        row.token_version = (row.token_version or 0) + 1
-        db.commit()
-    finally:
-        db.close()
-    assert client.get("/auth/me", headers=headers).status_code == 401
+    assert set(body) == {"verified", "reset_token"}
+    assert client.post("/auth/otp/send", json={"email": user.email, "purpose": "login"}).status_code == 410

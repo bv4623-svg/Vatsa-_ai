@@ -19,6 +19,8 @@ import {
   type ComposerResearchProps, type ComposerVoiceProps,
 } from "@/components/home/ComposerExtras";
 import { ChatImage } from "@/components/home/ChatImage";
+import { RelativeTime } from "@/components/home/RelativeTime";
+import { MessageCounter } from "@/components/home/MessageCounter";
 import type { Message } from "@/types";
 import type { Attachment } from "@/types/home";
 
@@ -85,7 +87,11 @@ export function ChatMessagesView({
             if (isUser) {
               const msgAttachments = msg.attachments || [];
               return (
-                <div key={msg.id} className="flex justify-end">
+                <div key={msg.id} className="group relative flex justify-end">
+                  <RelativeTime
+                    date={msg.createdAt}
+                    className="pointer-events-none absolute -bottom-5 right-2 text-[11px] text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100"
+                  />
                   <div className="max-w-[450px] rounded-[18px] bg-zinc-100 dark:bg-[#1B1B1B] px-4 py-2.5 text-sm text-foreground" style={{ wordBreak: "break-word" }}>
                     {msgAttachments.length > 0 && (
                       <div className="mb-1 flex flex-wrap gap-1">
@@ -105,7 +111,10 @@ export function ChatMessagesView({
             const isLast = msgIdx === messages.length - 1;
             return (
               <div key={msg.id} className="flex flex-col items-start gap-1 group">
-                <span className="text-xs font-medium text-muted-foreground/60">Vatsa AI</span>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/60">
+                  Vatsa AI
+                  <RelativeTime date={msg.createdAt} className="font-normal before:mr-1.5 before:content-['·']" />
+                </span>
 
                 {msgImageUrl && (
                   <ChatImage src={msgImageUrl} alt="Generated image" className="my-3 max-w-[420px] rounded-xl shadow-lg" />
@@ -287,7 +296,8 @@ export function ChatMessagesView({
           )}
 
           <VoiceStatus voice={voice} />
-          <div className="flex items-end gap-2 rounded-2xl border border-border/50 bg-card/80 p-2 shadow-sm focus-within:border-accent/50">
+          <div className="relative flex items-end gap-2 rounded-2xl border border-border/50 bg-card/80 p-2 shadow-sm focus-within:border-accent/50">
+            <MessageCounter length={inputValue.length} />
             <div className="relative">
               <Tooltip text="Attach File">
                 <button onClick={() => setShowAttachmentMenu((p) => !p)} aria-label="Attach files" aria-haspopup="menu" aria-expanded={showAttachmentMenu} className="tap-target p-2 hover:bg-accent/10 rounded-full transition-colors">

@@ -6,7 +6,6 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=12)
     full_name: Optional[str] = None
-    verification_token: str
 
 
 class LoginRequest(BaseModel):
@@ -24,7 +23,7 @@ class OnboardingRequest(BaseModel):
 
 class OtpSendRequest(BaseModel):
     email: EmailStr
-    purpose: str = "signup"
+    purpose: str = "reset"
 
 
 class OtpVerifyRequest(BaseModel):

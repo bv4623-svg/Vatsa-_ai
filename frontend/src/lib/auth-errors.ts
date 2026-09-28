@@ -8,5 +8,5 @@ export function describeSignupError(message: string): { emailError?: string; for
   if (lower.includes("failed to fetch")) {
     return { formError: "Can't reach the server. Check your connection and try again." };
   }
-  return { formError: message || "Could not send a verification code. Try again." };
+  return { formError: message || "Could not create your account. Try again." };
 }

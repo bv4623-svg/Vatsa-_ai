@@ -80,6 +80,7 @@ def init_db():
     import app.models.api_key
     import app.models.connected_account
     import app.models.notification
+    import app.models.feedback
     Base.metadata.create_all(bind=engine)
     _ensure_column("conversations", "project_id", "VARCHAR(36)")
     _ensure_column("library_items", "project_id", "VARCHAR(36)")

@@ -7,7 +7,6 @@ from app.utils.rate_limit import client_ip, enforce_rate_limit, reset_rate_limit
 
 from app.database import get_db
 from app.models.user import User
-from app.models.otp import OTP
 from app.models.token import TokenAccount, TokenTransaction
 from app.auth.jwt import get_password_hash, verify_password, needs_rehash, create_access_token
 from app.auth.dependencies import get_current_user
@@ -36,18 +35,6 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
 
     validate_password_strength(req.password)
 
-    # Proves this exact email actually received and echoed back a real OTP
-    # (see /auth/otp/send + /auth/otp/verify, purpose="signup") before an
-    # account is created for it -- registering no longer activates an
-    # account for an email address nobody confirmed ownership of.
-    verified_otp = (
-        db.query(OTP)
-        .filter(OTP.email == email, OTP.purpose == "signup", OTP.verification_token == req.verification_token)
-        .first()
-    )
-    if not verified_otp:
-        raise HTTPException(status_code=400, detail="Email verification required. Request a code via /auth/otp/send first.")
-
     display_name = req.full_name or email.split("@")[0]
 
     # Ensure unique username
@@ -64,7 +51,9 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
         username=username,
         hashed_password=get_password_hash(req.password),
         is_active=True,
-        is_verified=True,
+        # Sign-up doesn't prove the inbox: unverified keeps the account out of
+        # admin access, and a Google/GitHub sign-in with this email takes it over.
+        is_verified=False,
         profile_completed=False,
         tier="free",
     )

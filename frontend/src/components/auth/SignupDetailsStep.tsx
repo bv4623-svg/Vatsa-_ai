@@ -7,24 +7,18 @@ import { AuthShell, FormAlert, SubmitButton } from "@/components/auth/AuthShell"
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { PasswordFields } from "@/components/auth/PasswordFields";
 import { NameEmailFields } from "@/components/auth/NameEmailFields";
-import { sendOtp } from "@/services/auth";
+import { register } from "@/services/auth";
 import { describeSignupError } from "@/lib/auth-errors";
 import { validateEmail, validatePassword, validateConfirmPassword, isClean, type FieldError } from "@/lib/validation";
-
-export interface SignupDetails {
-  fullName: string;
-  email: string;
-  password: string;
-}
 
 export function SignupDetailsStep({
   planSubtitle,
   loginHref,
-  onVerificationSent,
+  onRegistered,
 }: {
   planSubtitle: string;
   loginHref: string;
-  onVerificationSent: (details: SignupDetails) => void;
+  onRegistered: (accessToken: string, user: unknown) => void;
 }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,9 +43,8 @@ export function SignupDetailsStep({
 
       setLoading(true);
       try {
-        const trimmedEmail = email.trim();
-        await sendOtp(trimmedEmail, "signup");
-        onVerificationSent({ fullName: fullName.trim(), email: trimmedEmail, password });
+        const data = await register(email.trim(), password, fullName.trim() || undefined);
+        onRegistered(data.access_token, data.user);
       } catch (err: any) {
         const { emailError, formError: nextFormError } = describeSignupError(String(err?.message || ""));
         if (emailError) setErrors((prev) => ({ ...prev, email: emailError }));
@@ -60,7 +53,7 @@ export function SignupDetailsStep({
         setLoading(false);
       }
     },
-    [email, password, confirm, fullName, onVerificationSent]
+    [email, password, confirm, fullName, onRegistered]
   );
 
   const footer = (
@@ -91,7 +84,7 @@ export function SignupDetailsStep({
           confirmError={errors.confirm}
         />
 
-        <SubmitButton loading={loading}>{loading ? "Sending code…" : "Continue"}</SubmitButton>
+        <SubmitButton loading={loading}>{loading ? "Creating account…" : "Continue"}</SubmitButton>
       </form>
 
       <OAuthButtons />

@@ -23,7 +23,11 @@ router = APIRouter(tags=["authentication"])
 @router.post("/api/auth/otp/send")
 def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
-    purpose = req.purpose or "signup"
+    purpose = req.purpose or "reset"
+    # Emailed codes are for password reset only: sign-up needs no code, and
+    # there is no passwordless code login.
+    if purpose != "reset":
+        raise HTTPException(410, "Email codes are only used for password reset. Sign up with email and password.")
 
     # Per-IP cap on top of the per-email one below, so one source can't
     # spray OTP requests (and outbound emails) across many target addresses.
@@ -88,11 +92,12 @@ def resend_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_
 def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
 
-    # Latest active OTP for this email
+    # Latest active reset code for this email (older sign-up/login codes never count)
     record = (
         db.query(OTP)
         .filter(
             OTP.email == email,
+            OTP.purpose == "reset",
             OTP.is_used == False,       # noqa: E712
             OTP.is_verified == False,   # noqa: E712
             OTP.expires_at > datetime.utcnow(),
@@ -119,47 +124,12 @@ def verify_otp(req: OtpVerifyRequest, db: Session = Depends(get_db)):
     record.mark_as_used()
     db.commit()
 
-    # Password-reset flow: hand back a short-lived reset token, do NOT log in
-    if record.purpose == "reset":
-        reset_token = create_access_token(
-            {"sub": email, "email": email, "purpose": "password_reset"},
-            expires_delta=timedelta(minutes=10),
-        )
-        return {"verified": True, "reset_token": reset_token}
-
-    # Existing user (e.g. OTP-based login) → login token
-    user = db.query(User).filter(User.email == email).first()
-    if user:
-        if not user.is_active:
-            raise HTTPException(400, "User account is deactivated")
-
-        # An emailed code proves the inbox, not the second factor: 2FA users
-        # still finish at POST /auth/2fa/verify-login, as with a password.
-        if user.two_factor_enabled:
-            pending_token = create_access_token({"sub": str(user.id), "scope": "2fa_pending"}, expires_delta=timedelta(minutes=10))
-            return {"verified": True, "requires_2fa": True, "pending_token": pending_token}
-
-        token = create_access_token(
-            {"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version}
-        )
-        return {
-            "verified": True,
-            "access_token": token,
-            "token_type": "bearer",
-            "full_name": user.full_name,
-            "profile_completed": user.profile_completed,
-            "user": user.to_dict(),
-        }
-
-    # New user (signup flow) → verification token
-    vtoken = secrets.token_hex(16)
-    try:
-        record.verification_token = vtoken
-        db.commit()
-    except Exception:
-        db.rollback()
-
-    return {"verified": True, "verification_token": vtoken}
+    # A short-lived reset token, never a login session.
+    reset_token = create_access_token(
+        {"sub": email, "email": email, "purpose": "password_reset"},
+        expires_delta=timedelta(minutes=10),
+    )
+    return {"verified": True, "reset_token": reset_token}
 
 
 @router.post("/auth/reset-password")

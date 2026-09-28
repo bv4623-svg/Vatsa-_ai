@@ -17,6 +17,14 @@ def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) 
     email = email.lower().strip()
     user = db.query(User).filter(User.email == email).first()
     if user:
+        if not user.is_verified:
+            # Email sign-up doesn't prove the inbox, so whoever set this password
+            # may not own the address: the provider-verified owner takes the
+            # account over, the unproven password stops working, its sessions end.
+            user.hashed_password = get_password_hash(secrets.token_hex(24))
+            user.token_version = (user.token_version or 0) + 1
+            user.is_verified = True
+            db.commit()
         return user
 
     base_username = email.split("@")[0] + "_" + provider

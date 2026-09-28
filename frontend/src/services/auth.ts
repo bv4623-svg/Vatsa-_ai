@@ -51,31 +51,18 @@ export async function verifyLogin2FA(pendingToken: string, code: string): Promis
   return parseJsonOrThrow(res);
 }
 
-export async function register(
-  email: string,
-  password: string,
-  full_name: string | undefined,
-  verification_token: string
-): Promise<AuthResponse> {
+export async function register(email: string, password: string, full_name: string | undefined): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, full_name, verification_token }),
+    body: JSON.stringify({ email, password, full_name }),
   });
   return parseJsonOrThrow(res);
 }
 
-export async function sendOtp(email: string, purpose: "signup" | "login" | "reset"): Promise<{ success: boolean; message: string }> {
+// Emailed codes exist only for password reset.
+export async function sendOtp(email: string, purpose: "reset"): Promise<{ success: boolean; message: string }> {
   const res = await fetch(`${API_BASE}/auth/otp/send`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, purpose }),
-  });
-  return parseJsonOrThrow(res);
-}
-
-export async function resendOtp(email: string, purpose: "signup" | "login" | "reset"): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(`${API_BASE}/auth/otp/resend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, purpose }),
@@ -86,12 +73,6 @@ export async function resendOtp(email: string, purpose: "signup" | "login" | "re
 export interface VerifyOtpResponse {
   verified: boolean;
   reset_token?: string;
-  verification_token?: string;
-  access_token?: string;
-  token_type?: string;
-  full_name?: string;
-  profile_completed?: boolean;
-  user?: User;
 }
 
 export async function verifyOtp(email: string, otp: string): Promise<VerifyOtpResponse> {

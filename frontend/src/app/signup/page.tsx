@@ -1,11 +1,10 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AuthShell } from "@/components/auth/AuthShell";
-import { SignupDetailsStep, type SignupDetails } from "@/components/auth/SignupDetailsStep";
-import { SignupVerifyStep } from "@/components/auth/SignupVerifyStep";
+import { SignupDetailsStep } from "@/components/auth/SignupDetailsStep";
 import { establishSession } from "@/lib/session";
 import { safeRedirect } from "@/lib/redirect";
 
@@ -25,26 +24,14 @@ function SignupFlow() {
       ? `You'll continue to checkout for the ${plan} plan after signing up.`
       : "Start free. No credit card required.";
 
-  const [pendingDetails, setPendingDetails] = useState<SignupDetails | null>(null);
-
-  if (pendingDetails) {
-    return (
-      <SignupVerifyStep
-        details={pendingDetails}
-        onBack={() => setPendingDetails(null)}
-        onRegistered={(accessToken, user) => {
-          establishSession(user as any, accessToken);
-          router.replace(redirectTo);
-        }}
-      />
-    );
-  }
-
   return (
     <SignupDetailsStep
       planSubtitle={planSubtitle}
       loginHref={loginHref}
-      onVerificationSent={setPendingDetails}
+      onRegistered={(accessToken, user) => {
+        establishSession(user as any, accessToken);
+        router.replace(redirectTo);
+      }}
     />
   );
 }

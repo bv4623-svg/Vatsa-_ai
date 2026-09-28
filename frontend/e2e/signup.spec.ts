@@ -41,6 +41,14 @@ test.describe("sign-up", () => {
     await expect(page.getByText(/verification code/i)).toHaveCount(0);
   });
 
+  test("the sign-up page shows the real logo, not the old drawn mark", async ({ page }) => {
+    await mockBackend(page);
+    await gotoSignedOut(page, "/signup");
+    const logo = page.getByRole("img", { name: "Vatsa AI" }).first();
+    await expect(logo).toBeVisible();
+    await expect(logo).toHaveAttribute("src", /logo\.png/);
+  });
+
   test("an email that already has an account is flagged on the field", async ({ page }) => {
     await mockBackend(page);
     await page.route(`${API}/auth/register`, (route: Route) =>

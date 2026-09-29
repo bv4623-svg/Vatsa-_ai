@@ -36,9 +36,9 @@ RESEND_COOLDOWN_SECONDS = 45
 @router.post("/api/auth/otp/send")
 def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db)):
     email = req.email.lower().strip()
-    purpose = req.purpose or "reset"
-    # Emailed codes are for password reset only: sign-up needs no code, and
-    # there is no passwordless code login.
+    # Omitted -> "reset" (the schema default). Anything else, including an
+    # empty string, is refused: emailed codes are for password reset only.
+    purpose = req.purpose
     if purpose != "reset":
         raise HTTPException(410, "Email codes are only used for password reset. Sign-up now uses Google or GitHub.")
 

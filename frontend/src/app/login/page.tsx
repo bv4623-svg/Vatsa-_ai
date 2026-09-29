@@ -82,7 +82,7 @@ function LoginContent() {
             <OAuthButton provider="github" onClick={() => start("github")} loading={pendingProvider === "github"} />
           </div>
 
-          <p className="mt-8 text-center text-xs leading-relaxed text-gray-500">
+          <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
             By continuing, you agree to our{" "}
             <Link href="/terms" className="underline hover:text-gray-300">Terms</Link>
             {" "}&{" "}

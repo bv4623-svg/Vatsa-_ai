@@ -71,7 +71,7 @@ export function PageFooter() {
         </div>
 
         <div className="mt-14 border-t border-gray-200 pt-8 dark:border-gray-800">
-          <p className="text-center text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+          <p className="text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Powered by leading AI models
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-8 gap-y-4">
@@ -83,7 +83,7 @@ export function PageFooter() {
           </div>
         </div>
 
-        <p className="mt-10 text-center text-xs text-gray-400 dark:text-gray-500">
+        <p className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400">
           &copy; {currentYear === null ? "" : `${currentYear} `}Vatsa AI. Intelligence, orchestrated.
         </p>
       </div>

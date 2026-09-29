@@ -28,8 +28,10 @@ function priceSentence(): string {
   const business = getPlan("business");
   if (!pro || !business) return "";
   return (
-    `Pro is ${formatPrice(pro.priceUSD, "USD")} per month and Business is ${formatPrice(business.priceUSD, "USD")} per month ` +
-    `(${formatPrice(pro.priceINR, "INR")} and ${formatPrice(business.priceINR, "INR")} if you pay in INR). ${RATE_NOTE} ` +
+    // No fixed rupee amounts here: this text is built once, but the INR
+    // price follows the live rate (the plan cards show today's figure).
+    `Pro is ${formatPrice(pro.priceUSD, "USD")} per month and Business is ${formatPrice(business.priceUSD, "USD")} per month; ` +
+    `if you pay in INR, each plan shows today's rupee price. ${RATE_NOTE} ` +
     `Prices include all taxes -- the amount you see is the amount you pay.`
   );
 }

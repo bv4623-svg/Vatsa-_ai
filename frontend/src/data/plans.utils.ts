@@ -1,4 +1,4 @@
-import { ACCESS_DAYS, USD_TO_INR } from "@/config/pricing";
+import { ACCESS_DAYS } from "@/config/pricing";
 import { DEFAULT_CURRENCY, type Currency, type Plan } from "./plans.types";
 
 export function listPrice(plan: Plan, currency: Currency): number {
@@ -28,10 +28,10 @@ export function formatBothPrices(plan: Plan): string {
 
 /** The one place the exchange rate is explained to customers. INR prices
  * are computed from a live rate refreshed hourly (see GET
- * /api/pricing/exchange-rate); this fixed rate is shown only as a
- * reference point and used as the displayed/charged figure if that live
- * lookup is ever unavailable. */
-export const RATE_NOTE = `INR prices are based on the live USD/INR rate (updated hourly) and rounded to the nearest multiple of ten -- reference rate ${formatPrice(1, "USD")} ≈ ${formatPrice(USD_TO_INR, "INR")}.`;
+ * /api/pricing/exchange-rate), and checkout charges that same figure. No
+ * fixed rate is quoted: USD_TO_INR (83) is neither the live rate nor the
+ * backend's fallback (exchange_rate.py uses 88 when both providers fail). */
+export const RATE_NOTE = "INR prices are based on the live USD/INR rate (updated hourly) and rounded to the nearest multiple of ten -- the same amount checkout charges.";
 
 /** What one payment buys -- there is no auto-renewal. */
 export const ACCESS_NOTE = `Prices include all taxes. One payment gives ${ACCESS_DAYS} days of access; nothing renews automatically.`;

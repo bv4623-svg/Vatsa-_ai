@@ -26,6 +26,7 @@ import { useAppStore } from "@/stores/app-store";
 import { PRICES_USD } from "@/config/pricing";
 import { ACCESS_NOTE, RATE_NOTE, formatPrice, getPlan, listPrice, DEFAULT_CURRENCY } from "@/data/plans";
 import { useLocalHour } from "@/hooks/useLocalTime";
+import { useLiveInrPrices } from "@/hooks/useLiveInrPrices";
 
 // ─────────────────────────────────────────────────────────────
 // 1. DATA (full – unchanged)
@@ -287,7 +288,6 @@ const TIERS = (["free", "pro", "business"] as const).map((id) => {
     name: plan.name,
     tagline: LANDING_TAGLINES[id],
     monthly: listPrice(plan, DEFAULT_CURRENCY),
-    monthlyINR: plan.priceINR,
     features: plan.features,
     cta: plan.cta,
     popular: plan.popular,
@@ -1255,6 +1255,9 @@ function Compare({ onSuggestionClick }: { onSuggestionClick: (title: string) => 
 
 // ─── Pricing ─────────────────────────────────────────────
 function Pricing() {
+  // The live INR figures checkout charges, as on /pricing (not the fixed
+  // fallback rate the plan data carries).
+  const { prices: liveInr, loading: loadingInr } = useLiveInrPrices();
   return (
     <section id="pricing" className="relative z-10 scroll-mt-28 px-4 py-28 sm:px-6">
       <div className="mx-auto max-w-6xl">
@@ -1307,7 +1310,9 @@ function Pricing() {
                     <span className="text-[12px] text-neutral-400">{price === 0 ? "forever" : "/ month"}</span>
                   </div>
                   <div className="h-4 text-[11px] text-neutral-400">
-                    {price > 0 ? `or ${formatPrice(t.monthlyINR, "INR")} / month` : ""}
+                    {price > 0 && !loadingInr && (t.id === "pro" || t.id === "business")
+                      ? `or ${formatPrice(liveInr[t.id], "INR")} / month`
+                      : ""}
                   </div>
 
                   <ul className="mt-5 flex flex-col gap-2.5 border-t border-white/[0.06] pt-5">

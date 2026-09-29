@@ -134,11 +134,13 @@ def _themes(rows, attr: str, top: int = 3):
 
 def _stats_sentence(stats: dict, tags, pros, cons) -> str:
     parts = [f"Based on {stats['count']} review{'s' if stats['count'] != 1 else ''}, the average rating is {stats['average']} out of 5."]
-    if tags:
-        parts.append("People most often mention " + " and ".join(t["tag"] for t in tags[:2]) + ".")
-    if pros:
+    # "Most often" is only true once something is said more than once.
+    common_tags = [t["tag"] for t in tags[:2] if t["count"] >= 2]
+    if common_tags:
+        parts.append("People most often mention " + " and ".join(common_tags) + ".")
+    if pros and pros[0]["count"] >= 2:
         parts.append(f"Most-cited strength: \"{pros[0]['text']}\".")
-    if cons:
+    if cons and cons[0]["count"] >= 2:
         parts.append(f"Most-cited complaint: \"{cons[0]['text']}\".")
     return " ".join(parts)
 
@@ -207,6 +209,7 @@ def my_wall(user: User = Depends(get_current_user), db: Session = Depends(get_db
     visible = {r.id: r for r in visible_reviews(db).filter(Review.id.in_(ids))} if ids else {}
     by_id = {item["id"]: item for item in serialize(db, visible.values(), user)}
     return {
+        "user_id": user.id,
         "items": [
             {"review_id": p.review_id, "is_public": p.is_public, "position": p.position, "review": by_id.get(p.review_id)}
             for p in pins
@@ -227,6 +230,10 @@ def user_wall(user_id: int, viewer: Optional[User] = Depends(get_current_user_op
     )
     ids = [p.review_id for p in pins]
     visible = {r.id: r for r in visible_reviews(db).filter(Review.id.in_(ids))} if ids else {}
+    # A wall exists only once its owner shares something. Otherwise any id
+    # would reveal that person's name, and looping over ids would list every user.
+    if not visible:
+        raise HTTPException(404, "User not found")
     by_id = {item["id"]: item for item in serialize(db, visible.values(), viewer)}
     return {
         "user": {"id": owner.id, "name": display_name(owner)},

@@ -223,10 +223,14 @@ def test_pin_to_my_wall_share_reorder_and_unpin(client, trusted, make_user):
     _, author = trusted()
     first, second = post(client, author), post(client, author)
     me, headers = make_user()
+    assert client.get(f"/api/users/{me.id}/wall").status_code == 404  # nothing shared yet: no name leaks
 
     assert client.post(f"/api/reviews/{first['id']}/pin", headers=headers).json() == {"pinned": True, "is_public": False}
+    assert client.get(f"/api/users/{me.id}/wall").status_code == 404  # private pins only
     client.post(f"/api/reviews/{second['id']}/pin", json={"is_public": True}, headers=headers)
-    wall = client.get("/api/wall/me", headers=headers).json()["items"]
+    mine = client.get("/api/wall/me", headers=headers).json()
+    assert mine["user_id"] == me.id
+    wall = mine["items"]
     assert [p["review_id"] for p in wall] == [first["id"], second["id"]] and wall[0]["review"]["pinned"] is True
 
     public = client.get(f"/api/users/{me.id}/wall").json()

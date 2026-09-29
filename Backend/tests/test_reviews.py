@@ -7,13 +7,20 @@ import pytest
 from app.models.review import Review
 from app.models.usage_daily import UsageDaily
 from app.models.user import User
+from llm_fakes import fake_llm  # noqa: F401  (fixture)
 
 _admins = {"n": 0}
 
 
+def token(n=10):
+    """A unique, letters-only marker. Hex digits would sometimes form a run
+    of 10+ digits, which moderation (rightly) scores as a phone number."""
+    return uuid.uuid4().hex[:n].translate(str.maketrans("0123456789", "ghijklmnop"))
+
+
 def body(text="Really useful for coding help and the answers come back fast."):
     # Unique per call: identical text from another account counts as spam.
-    return f"{text} Ref {uuid.uuid4().hex[:10]}."
+    return f"{text} Ref {token()}."
 
 
 def review(**overrides):
@@ -163,7 +170,7 @@ def test_only_the_author_can_delete(client, trusted):
 
 def test_votes_toggle_switch_and_rank_most_helpful(client, trusted):
     _, author = trusted()
-    marker = uuid.uuid4().hex[:8]
+    marker = token(8)
     low = post(client, author, body=body(f"Solid tool for daily coding work, marker {marker}"))
     high = post(client, author, body=body(f"Great for research and quick answers, marker {marker}"))
     voters = [trusted()[1] for _ in range(3)]
@@ -252,7 +259,7 @@ def test_only_published_reviews_can_be_pinned(client, make_user):
 
 
 def test_filters_search_and_cursor_pagination(client, trusted):
-    marker = uuid.uuid4().hex[:8]
+    marker = token(8)
     ids = {}
     for rating in (5, 4, 3, 5, 2):
         _, h = trusted()
@@ -290,9 +297,8 @@ def test_public_wall_first_page_has_featured_and_stats(client, trusted, admin):
         assert "featured" not in later and "stats" not in later
 
 
-def test_summary_uses_stats_without_a_key_and_the_llm_with_one(client, trusted, monkeypatch):
+def test_summary_uses_stats_without_a_key_and_the_llm_with_one(client, trusted, monkeypatch, fake_llm):
     from app.routers.reviews import public
-    from app.services.ai_service import AIService
 
     _, h = trusted()
     for _ in range(3):
@@ -303,20 +309,19 @@ def test_summary_uses_stats_without_a_key_and_the_llm_with_one(client, trusted, 
     assert plain["generated_by"] == "stats" and plain["text"].startswith("Based on")
     assert plain["stats"]["count"] >= 1 and plain["top_pros"]
 
-    async def fake_llm(messages, model, max_tokens=1500, temperature=0.7):
-        assert "reviews" in messages[0]["content"].lower()
-        return {"content": "People love the speed; some find it pricey."}
+    assert fake_llm["calls"] == []  # no key: the model is never called
 
+    fake_llm["default"] = "People love the speed; some find it pricey."
     public._summary_cache.clear()
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(AIService, "call_openrouter", staticmethod(fake_llm))
     posted = client.get("/api/reviews/summary").json()
     assert posted["generated_by"] == "ai" and posted["text"] == "People love the speed; some find it pricey."
+    assert "reviews" in fake_llm["messages"][-1][0]["content"].lower()
     assert posted["top_cons"][0]["text"] == "Pricey"
 
 
 def test_similar_reviews_rank_by_content(client, trusted):
-    marker = uuid.uuid4().hex[:8]
+    marker = token(8)
     _, h = trusted()
     target = post(client, h, body=body(f"Python debugging help is superb {marker} python debugging traceback fixes"))
     near = post(client, h, body=body(f"Superb python debugging, it explained my traceback {marker}"))

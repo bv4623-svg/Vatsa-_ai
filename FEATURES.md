@@ -52,16 +52,20 @@ Legend: **Exists** · **Partial** (some of it, gap stated) · **Missing** · **B
 
 ## 2. Part 2: Reviews + wall
 
-Being built on branch `feat/reviews-wall` (see STATUS.md for what is done).
+Built on branch `feat/reviews-wall`.
 
-| Area | Status |
-|---|---|
-| 6.1 Data model (reviews, votes, replies, reports, wall_pins) | In progress |
-| 6.2 Public wall + personal pinned wall | In progress |
-| 6.3 API endpoints | In progress |
-| 6.4 Frontend components | In progress |
-| 6.5 AI review features | Partial plan: heuristic sentiment, spam and toxicity checks work without an LLM; LLM summary needs `OPENROUTER_API_KEY` |
-| 6.6 Moderation flow | In progress |
+| Area | Status | Evidence / gap |
+|---|---|---|
+| 6.1 Data model | Exists | `Backend/app/models/review.py`: reviews, review_votes, review_replies, review_reports, wall_pins, plus review_bans. Integer ids and JSON lists (see §0). |
+| 6.2 Public wall | Exists | `/wall` (`components/reviews/ReviewWall.tsx`): rating/tag/date/verified filters, recent/top/helpful sort, search, cursor infinite scroll, admin-featured section. Search is a case-insensitive substring match, not Postgres full-text. |
+| 6.2 Pin to wall | Exists | 📌 on every card; `/wall/me` with drag-and-drop and up/down reorder and a per-pin public switch; `/users/[id]/wall`. |
+| 6.3 API | Exists | 22 endpoints in `Backend/app/routers/reviews/`. Differences: the summary is `GET /api/reviews/summary` (it summarizes all reviews, so there is no `:id`); added `/mine`, `/similar`, `/appeal`, `PUT /api/wall/me/order`, and unban. |
+| 6.4 Components | Exists, minus media | ReviewForm, ReviewCard (helpful, pin, report, reply thread, verified badge), ReviewStats, AISummaryCard, filters/sort, empty states, skeletons. **Missing: media upload + MediaGallery** (`media_urls` column exists, the API doesn't accept it yet). Grid is CSS masonry, not virtualized. |
+| 6.5 Sentiment, spam, toxicity, auto-tags | Exists (heuristic) | `Backend/app/services/review_moderation.py`: rule-based, no LLM; English + romanized Hindi abuse list. |
+| 6.5 AI summary | Exists | LLM text when `OPENROUTER_API_KEY` is set (10-min cache), otherwise built from the numbers. Not verified against the real LLM locally (no key here). |
+| 6.5 Helpful prediction / similar | Exists | Wilson-score ranking; TF-IDF similar reviews. |
+| 6.5 Language detection + translate | Missing | — |
+| 6.6 Moderation | Exists | Queue, approve/reject/hide with a note to the author, feature, shadow ban, full ban, unban, one appeal per review, 3 reports requeue an untrusted review. Page: `/admin/reviews`. |
 
 ## 3. Part 3: bonus features
 

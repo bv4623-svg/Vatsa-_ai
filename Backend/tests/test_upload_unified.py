@@ -69,7 +69,8 @@ def test_file_over_25mb_is_rejected(client, make_user):
     _, headers = make_user(email="upload-toobig@example.com")
     big = b"a" * (25 * 1024 * 1024 + 1)
     res = _upload(client, headers, "big.txt", big, "text/plain")
-    assert res.status_code == 400, res.text
+    # 413 Payload Too Large; the read stops at the cap instead of buffering it all.
+    assert res.status_code == 413, res.text
     assert "too large" in res.json()["detail"].lower()
 
 
@@ -79,15 +80,15 @@ def test_empty_file_is_rejected(client, make_user):
     assert res.status_code == 400, res.text
 
 
-def test_unauthenticated_upload_is_not_persisted_but_still_extracts_text(client):
-    """Anonymous uploads (no account) can't be measured against a plan, so
-    they're allowed through for immediate use, but nothing is written to
-    storage or Library -- there's no user to own that row."""
+def test_unauthenticated_upload_is_refused_and_nothing_is_stored(client, db):
+    """Uploads need an account: parsing arbitrary documents costs server CPU,
+    and per-user limits need a user to count against."""
+    from app.models.library_item import LibraryItem
+    before = db.query(LibraryItem).count()
     res = _upload(client, {}, "anon.txt", b"anonymous content", "text/plain")
-    assert res.status_code == 200, res.text
-    body = res.json()
-    assert body["text"] == "anonymous content"
-    assert body["url"] is None
+    assert res.status_code in (401, 403), res.text
+    db.expire_all()
+    assert db.query(LibraryItem).count() == before
 
 
 def test_upload_over_quota_is_rejected_with_413(client, make_user):

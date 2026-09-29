@@ -73,7 +73,10 @@ test.describe("PDF and image uploads", () => {
     await box.fill("What is in this image?");
     await box.press("Enter");
     await expect(page.getByText("Hello from Vatsa.")).toBeVisible();
-    const att = (api.calls[0].body.attachments as { content: string; is_base64: boolean }[])[0];
+    // Every attachment is uploaded (persisted) first, so find the chat call by path.
+    expect(api.calls.some((c) => c.path === "/api/upload")).toBe(true);
+    const chat = api.calls.find((c) => c.path === "/api/chat")!;
+    const att = (chat.body.attachments as { content: string; is_base64: boolean }[])[0];
     expect(att.is_base64).toBe(true);
     expect(att.content).toMatch(/^data:image\/png;base64,/);
   });

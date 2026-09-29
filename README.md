@@ -81,7 +81,7 @@ All secrets come from environment variables. Never commit `.env` files: every `.
 | `DATABASE_URL` | backend | no | Defaults to SQLite in `DATA_DIR` |
 | `ALLOWED_ORIGINS`, `FRONTEND_REDIRECT_URL`, `BACKEND_PUBLIC_URL` | backend | prod | CORS and absolute URLs |
 | `EMAIL_*`, `MAIL_FROM` | backend | for OTP email | SMTP |
-| `GOOGLE_*`, `GITHUB_*`, `MICROSOFT_*` | backend | for OAuth | OAuth apps |
+| `GOOGLE_*`, `GITHUB_*` | backend | at least one (the only way to sign up) | OAuth apps |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | backend | for payments | Checkout and webhooks |
 | `ADMIN_EMAILS` | backend | no | Admin allow-list |
 | `NEXT_PUBLIC_API_URL` | frontend (build time) | yes | Public API origin |

@@ -52,6 +52,9 @@ frontend/eslint-*.json
 frontend/lint-*.json
 frontend/lint-*.txt
 frontend/typecheck-errors.txt
+# Stray command output once committed at the root (a 33k-line file listing)
+/backend_files.txt
+/Please add
 # Test output
 frontend/test-results/
 frontend/playwright-report/

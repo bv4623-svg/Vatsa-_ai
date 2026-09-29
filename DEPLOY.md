@@ -26,11 +26,11 @@ If a service already exists, open it → **Settings** and check it matches: **Ro
 | `BACKEND_PUBLIC_URL` | **required** | this service's URL, e.g. `https://vatsaai-backend.onrender.com` |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | for payments | a **newly regenerated** pair from https://dashboard.razorpay.com (Account & Settings → API Keys) |
 | `RAZORPAY_WEBHOOK_SECRET` | for payments | `openssl rand -hex 32`; paste the same value into the Razorpay webhook (step 3) |
-| `EMAIL_USERNAME`, `EMAIL_PASSWORD`, `MAIL_FROM` | for sign-up/reset emails | Gmail address + a **new** app password from https://myaccount.google.com/apppasswords |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | a **reset** secret from https://console.cloud.google.com/apis/credentials |
+| `EMAIL_USERNAME`, `EMAIL_PASSWORD`, `MAIL_FROM` | for password-reset emails | Gmail address + a **new** app password from https://myaccount.google.com/apppasswords |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google and/or GitHub: the only way to sign up | a **reset** secret from https://console.cloud.google.com/apis/credentials |
 | `GOOGLE_REDIRECT_URI` | with Google sign-in | `https://vatsaai-backend.onrender.com/auth/google/callback` (blank = Google sign-in fails) |
 | `GOOGLE_LINK_REDIRECT_URI` | with Google sign-in | `https://vatsaai-backend.onrender.com/auth/google/link/callback` (blank = falls back to the sign-in URL and "Connect Google" in Settings fails) |
-| `GITHUB_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET` | optional | only if you use those sign-in buttons |
+| `GITHUB_CLIENT_ID`/`_SECRET` | Google and/or GitHub | only if you use the GitHub button |
 | `SERPER_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY` | optional | extra search providers |
 | `ADMIN_EMAILS` | optional | your email, for `/api/admin/*` (also needs 2FA) |
 

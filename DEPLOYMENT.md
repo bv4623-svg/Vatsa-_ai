@@ -49,7 +49,7 @@ Required environment variables (names in `Backend/.env.example`):
 | `ADMIN_EMAILS` | comma-separated emails allowed to look payments up at `/api/admin/payments?email=`; leave empty to disable. Each admin also needs 2FA on and a normal login session |
 | `OPENROUTER_API_KEY` | AI provider |
 | `EMAIL_*`, `MAIL_FROM` | SMTP for OTP/notification mail |
-| `GOOGLE_*`, `GITHUB_*`, `MICROSOFT_*` | only if you keep social login; the `*_REDIRECT_URI` values must use the backend's https URL and be registered with each provider |
+| `GOOGLE_*`, `GITHUB_*` | at least one of the two: Google/GitHub are the only way to sign up. The `*_REDIRECT_URI` values must use the backend's https URL and be registered with each provider |
 
 **Storage.** SQLite is the database, and uploads and generated images are written to disk too. Set `DATA_DIR` to a directory on a **persistent disk** (e.g. `/data`) and all three go there; leave it unset locally. On an ephemeral filesystem every redeploy wipes users, payments and files. `render.yaml` at the repo root is a Render Blueprint that does this (paid instance + 5 GB disk + `DATA_DIR=/data`, `rootDir: Backend`). It pins Python 3.11.9, the version CI tests, and runs the pre-deploy gate before the server. It has not been applied on Render from here. Copy-paste steps: [DEPLOY.md](DEPLOY.md).
 

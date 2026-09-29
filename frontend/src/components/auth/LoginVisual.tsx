@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
+
+const WIDE = "(min-width: 1024px)";
+
+function subscribeToWidth(onChange: () => void) {
+  const mq = window.matchMedia(WIDE);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+const isWide = () => window.matchMedia(WIDE).matches;
+// Server render and hydration: never wide, so no video markup to mismatch.
+const notWideOnServer = () => false;
 
 /** The login page's left-panel visual: a looping muted background video with
  * overlaid brand copy. The parent hides this whole panel below lg with CSS
@@ -11,15 +23,7 @@ import Image from "next/image";
  * itself is only mounted once a lg-or-wider viewport is confirmed, meaning
  * mobile never issues a single byte of network request for it. */
 export function LoginVisual() {
-  const [showVideo, setShowVideo] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    setShowVideo(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setShowVideo(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+  const showVideo = useSyncExternalStore(subscribeToWidth, isWide, notWideOnServer);
 
   return (
     <div className="relative flex h-full w-full flex-col justify-between overflow-hidden p-12">

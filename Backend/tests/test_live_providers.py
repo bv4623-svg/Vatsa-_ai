@@ -44,29 +44,36 @@ def _run(coro):
 
 # ---- chat (OpenRouter) ----------------------------------------------------------
 
+def _router():
+    """The real router, built from this environment (not a test fake)."""
+    from app.ai_router import get_router, reset_router
+    reset_router()
+    return get_router()
+
+
 def test_live_chat_completion():
     _require("OPENROUTER_API_KEY")
-    from app.services.ai_service import AIService
-    result = _run(AIService.call_openrouter(
-        [{"role": "user", "content": "Reply with exactly the word: pong"}],
-        AIService.map_model("auto"), max_tokens=10, temperature=0,
-    ))
-    assert "pong" in result["content"].lower(), result["content"]
-    assert result["total_tokens"] > 0
+    from app.ai_router.types import RouteRequest
+    result = _run(_router().generate(RouteRequest(
+        messages=[{"role": "user", "content": "Reply with exactly the word: pong"}],
+        route="auto", max_tokens=10, temperature=0,
+    )))
+    assert "pong" in result.content.lower(), result.content
+    assert result.usage and result.usage.total_tokens > 0
 
 
 def test_live_chat_streaming():
     _require("OPENROUTER_API_KEY")
-    from app.services.ai_service import AIService
+    from app.ai_router.types import RouteRequest
 
     async def collect():
         text = ""
-        async for evt in AIService.stream_openrouter(
-            [{"role": "user", "content": "Count from 1 to 5 separated by spaces."}],
-            AIService.map_model("auto"), max_tokens=30, temperature=0,
-        ):
-            if evt["type"] == "delta":
-                text += evt["content"]
+        async for evt in _router().stream(RouteRequest(
+            messages=[{"role": "user", "content": "Count from 1 to 5 separated by spaces."}],
+            route="auto", max_tokens=30, temperature=0,
+        )):
+            if evt.type.value == "delta":
+                text += evt.content
         return text
 
     text = _run(collect())
@@ -78,18 +85,19 @@ def test_live_chat_streaming():
 def test_live_vision_describes_image():
     _require("OPENROUTER_API_KEY")
     import base64
-    from app.routers.vision import VISION_MODEL, _ANALYSIS_PROMPT, _parse_vision_response
-    from app.services.ai_service import AIService
+    from app.ai_router.types import Capability, RouteRequest
+    from app.routers.vision import _ANALYSIS_PROMPT, _parse_vision_response
     buf = io.BytesIO()
     Image.new("RGB", (256, 256), (220, 20, 20)).save(buf, format="PNG")
     url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
-    result = _run(AIService.call_openrouter([
-        {"role": "user", "content": [
+    result = _run(_router().generate(RouteRequest(
+        messages=[{"role": "user", "content": [
             {"type": "text", "text": "What single colour fills this image? " + _ANALYSIS_PROMPT},
             {"type": "image_url", "image_url": {"url": url}},
-        ]},
-    ], VISION_MODEL, max_tokens=300))
-    parsed = _parse_vision_response(result["content"])
+        ]}],
+        route="vision", max_tokens=300, required=frozenset({Capability.CHAT, Capability.VISION}),
+    )))
+    parsed = _parse_vision_response(result.content)
     assert "red" in (parsed["description"] + " ".join(parsed["tags"])).lower(), parsed
 
 

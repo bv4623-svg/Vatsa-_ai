@@ -33,7 +33,8 @@ def _priority_for(user: User, is_code: bool) -> int:
 PUBLIC_MODEL_NAME = "Vatsa AI"
 
 # The only failure text a client ever sees for an upstream model failure.
-GENERIC_AI_ERROR = "AI service is temporarily unavailable. Please try again."
+# One public wording for an AI outage, the router's own.
+GENERIC_AI_ERROR = PUBLIC_UNAVAILABLE
 
 # Appended last to every system prompt so it has the highest priority
 # and cannot be pushed out of context by earlier instructions.

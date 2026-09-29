@@ -148,22 +148,26 @@ def _stats_sentence(stats: dict, tags, pros, cons) -> str:
 async def _llm_sentence(rows) -> Optional[str]:
     if not os.getenv("OPENROUTER_API_KEY"):
         return None
-    from app.services.ai_service import AIService
+    from app.ai_router import get_router
+    from app.ai_router.types import RouteRequest
 
     sample = "\n".join(f"- {r.rating}/5: {r.body[:400]}" for r in rows[:40])
+    request = RouteRequest(
+        messages=[
+            {"role": "system", "content": "Summarize product reviews in 2-3 plain sentences: the main praise, the main complaints, and the overall mood. Only use what the reviews say. No preamble."},
+            {"role": "user", "content": sample},
+        ],
+        route="vatsa-fast",
+        max_tokens=200,
+        temperature=0.2,
+        # Lowest priority: a summary must never make a chat reply wait.
+        priority=4,
+    )
     try:
-        result = await AIService.call_openrouter(
-            [
-                {"role": "system", "content": "Summarize product reviews in 2-3 plain sentences: the main praise, the main complaints, and the overall mood. Only use what the reviews say. No preamble."},
-                {"role": "user", "content": sample},
-            ],
-            model=AIService.map_model("vatsa-fast"),
-            max_tokens=200,
-            temperature=0.2,
-        )
+        result = await get_router().generate(request)
     except Exception:
         return None
-    text = (result.get("content") or "").strip()
+    text = (result.content or "").strip()
     return text[:1200] or None
 
 

@@ -18,9 +18,10 @@ import re
 from typing import Any, AsyncGenerator, Dict, List, Optional
 from urllib.parse import urlparse
 
-from app.services.ai_service import (
-    AIService, FREE_FALLBACK_MODELS, GENERIC_AI_ERROR, IDENTITY_SEAL,
-)
+from app.ai_router import get_router
+from app.ai_router.errors import PUBLIC_UNAVAILABLE, RouterError
+from app.ai_router.types import RouteRequest
+from app.services.ai_service import IDENTITY_SEAL
 from app.services.search_service import SearchService, build_search_query
 
 logger = logging.getLogger("ResearchService")
@@ -35,7 +36,8 @@ REPORT_MAX_TOKENS = 3500
 # Upper bound used for the token-allowance pre-check.
 ESTIMATED_TOKENS = 6000
 
-RESEARCH_MODEL_KEY = "auto"
+# Router route for both steps; the router picks the model and falls back.
+RESEARCH_ROUTE = "auto"
 
 _PLAN_PROMPT = (
     "You plan web research. Break the user's question into {min_q}-{max_q} short, "
@@ -59,11 +61,6 @@ Rules:
 - Cite every factual claim with the source numbers that support it.
 - Never invent facts, numbers, quotes or sources. If the sources don't cover something, say so.
 - Do not list the sources at the end; the app shows them."""
-
-
-def _candidate_models() -> List[str]:
-    target = AIService.map_model(RESEARCH_MODEL_KEY)
-    return [target] + [m for m in FREE_FALLBACK_MODELS if m != target]
 
 
 def parse_plan(raw: str, question: str) -> List[str]:
@@ -101,19 +98,21 @@ def parse_plan(raw: str, question: str) -> List[str]:
     return out or [base]
 
 
-async def plan_queries(question: str) -> List[str]:
+async def plan_queries(question: str, user_id: Optional[int] = None) -> List[str]:
     messages = [
         {"role": "system", "content": _PLAN_PROMPT.format(min_q=MIN_QUERIES, max_q=MAX_QUERIES)},
         {"role": "user", "content": build_search_query(question)},
     ]
-    for model in _candidate_models():
-        try:
-            result = await AIService.call_openrouter(messages, model, max_tokens=PLAN_MAX_TOKENS, temperature=0.2)
-            return parse_plan(result.get("content", ""), question)
-        except Exception as e:
-            logger.warning(f"Research planner model {model} failed: {type(e).__name__}: {e}")
-    # Planning is an optimisation; research still works from the question alone.
-    return parse_plan("", question)
+    request = RouteRequest(
+        messages=messages, route=RESEARCH_ROUTE, max_tokens=PLAN_MAX_TOKENS, temperature=0.2, user_id=user_id,
+    )
+    try:
+        result = await get_router().generate(request)
+        return parse_plan(result.content, question)
+    except Exception as e:
+        # Planning is an optimisation; research still works from the question alone.
+        logger.warning(f"Research planning failed: {type(e).__name__}: {e}")
+        return parse_plan("", question)
 
 
 def merge_sources(batches: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
@@ -169,7 +168,9 @@ def build_report_messages(question: str, sources: List[Dict[str, Any]], user_nam
     return [{"role": "system", "content": system}, {"role": "user", "content": question}]
 
 
-async def run_research(question: str, user_name: Optional[str] = None) -> AsyncGenerator[Dict[str, Any], None]:
+async def run_research(
+    question: str, user_name: Optional[str] = None, user_id: Optional[int] = None,
+) -> AsyncGenerator[Dict[str, Any], None]:
     """Yields, in order:
       {"stage": "planning"}
       {"stage": "searching", "queries": [...]}
@@ -178,7 +179,7 @@ async def run_research(question: str, user_name: Optional[str] = None) -> AsyncG
       {"done": True, "content": str, "queries": [...], "sources": [...], "usage": {...}}
     or a terminal {"error": str, "code": str, "retryable": bool}."""
     yield {"stage": "planning"}
-    queries = await plan_queries(question)
+    queries = await plan_queries(question, user_id)
 
     yield {"stage": "searching", "queries": queries}
     sources = await gather_sources(queries)
@@ -193,35 +194,37 @@ async def run_research(question: str, user_name: Optional[str] = None) -> AsyncG
     yield {"stage": "writing", "source_count": len(sources)}
     messages = build_report_messages(question, sources, user_name)
 
+    request = RouteRequest(
+        messages=messages, route=RESEARCH_ROUTE, max_tokens=REPORT_MAX_TOKENS, temperature=0.3, user_id=user_id,
+    )
     text = ""
-    usage: Dict[str, Any] = {}
-    started = False
-    last_error: Optional[Exception] = None
-    for model in _candidate_models():
-        try:
-            async for event in AIService.stream_openrouter(messages, model, max_tokens=REPORT_MAX_TOKENS, temperature=0.3):
-                if event["type"] == "delta":
-                    started = True
-                    text += event["content"]
-                    yield {"delta": event["content"]}
-                elif event["type"] == "usage":
-                    usage = event["usage"]
-            break
-        except Exception as e:
-            last_error = e
-            logger.warning(f"Research writer model {model} failed: {type(e).__name__}: {e}")
-            if started:
-                # Partial report already streamed; switching models would
-                # splice two different reports together.
-                break
-
-    if not text:
-        logger.error(f"Research synthesis failed: {last_error}")
-        yield {"error": GENERIC_AI_ERROR, "code": "ai_unavailable", "retryable": True}
+    usage = None
+    try:
+        # The router falls back to another model only before any output;
+        # once the report has started it ends the stream instead of splicing
+        # two different reports together.
+        async for event in get_router().stream(request):
+            if event.type.value == "delta":
+                text += event.content
+                yield {"delta": event.content}
+            elif event.type.value in ("usage", "done") and event.usage:
+                usage = event.usage
+    except RouterError as e:
+        # public_message is sanitized: never a provider or model name.
+        logger.warning(f"Research synthesis failed: {type(e).__name__}: {e}")
+        yield {"error": e.public_message, "code": e.code, "retryable": True, "retry_after": e.retry_after}
+        return
+    except Exception:
+        logger.exception("Unexpected research synthesis failure")
+        yield {"error": PUBLIC_UNAVAILABLE, "code": "ai_unavailable", "retryable": True}
         return
 
-    prompt_tokens = usage.get("prompt_tokens") or sum(len(m["content"]) for m in messages) // 4
-    completion_tokens = usage.get("completion_tokens") or len(text) // 4
+    if not text:
+        yield {"error": PUBLIC_UNAVAILABLE, "code": "ai_unavailable", "retryable": True}
+        return
+
+    prompt_tokens = (usage.prompt_tokens if usage else 0) or sum(len(m["content"]) for m in messages) // 4
+    completion_tokens = (usage.completion_tokens if usage else 0) or len(text) // 4
     yield {
         "done": True,
         "content": text,

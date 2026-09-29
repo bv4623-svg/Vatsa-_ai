@@ -5,10 +5,16 @@ from datetime import date
 
 import pytest
 
+from app.ai_router import get_router
+from app.ai_router.errors import ErrorKind, ProviderError
+from app.ai_router.providers.base import ProviderResult
+from app.ai_router.types import Usage
 from app.services import research_service
 from app.services.research_service import merge_sources, parse_plan
 from app.services.search_service import SearchService, clear_search_cache
-from llm_fakes import fake_llm, sse_events  # noqa: F401  (fixture)
+from llm_fakes import fake_llm, registry, sse_events  # noqa: F401  (fixture)
+
+ALL_MODELS = [spec.model for spec in registry().models()]
 
 
 @pytest.fixture(autouse=True)
@@ -40,20 +46,19 @@ def fake_search(monkeypatch):
 
 @pytest.fixture()
 def research_llm(fake_llm, monkeypatch):
-    """Planner (non-streaming) returns fake_llm['plan']; writer streams
-    fake_llm['default']."""
+    """Planner (non-streaming, router.generate) returns fake_llm['plan'];
+    writer (router.stream) streams fake_llm['default']."""
     fake_llm.setdefault("plan", '["q one", "q two"]')
 
-    async def _call(messages, model, max_tokens=1500, temperature=0.7):
+    async def _generate(model, messages, *, max_tokens, temperature, timeout_s):
         fake_llm["calls"].append(model)
         fake_llm["messages"].append(messages)
         outcome = fake_llm["script"].get(("plan", model), fake_llm["plan"])
         if isinstance(outcome, Exception):
-            raise outcome
-        return {"content": outcome, "reasoning": "", "model": model, "prompt_tokens": 5, "completion_tokens": 5, "total_tokens": 10}
+            raise ProviderError(ErrorKind.SERVER_ERROR, status=500, detail=str(outcome))
+        return ProviderResult(content=outcome, usage=Usage(5, 5))
 
-    from app.services.ai_service import AIService
-    monkeypatch.setattr(AIService, "call_openrouter", staticmethod(_call))
+    monkeypatch.setattr(get_router().adapters["openrouter"], "generate", _generate)
     return fake_llm
 
 
@@ -163,7 +168,7 @@ def test_report_prompt_contains_sources_and_identity_seal(client, make_user, res
 
 def test_planner_failure_still_researches_the_question(client, make_user, research_llm, fake_search):
     _, headers = make_user(tier="business")
-    for m in research_service._candidate_models():
+    for m in ALL_MODELS:
         research_llm["script"][("plan", m)] = RuntimeError("OpenRouter [500]")
     res = client.post("/api/research", json={"message": "fusion energy timeline"}, headers=headers)
     events = sse_events(res.text)
@@ -192,7 +197,7 @@ def test_no_sources_is_a_clear_error_and_free(client, make_user, research_llm, f
 def test_writer_failure_does_not_leak_or_charge(client, make_user, research_llm, fake_search, db):
     from app.models.usage_daily import UsageDaily
     user, headers = make_user(tier="business")
-    for m in research_service._candidate_models():
+    for m in ALL_MODELS:
         research_llm["script"][m] = RuntimeError("OpenRouter [402]: openai/gpt-4o no credits")
     res = client.post("/api/research", json={"message": "topic"}, headers=headers)
     err = sse_events(res.text)[-1]

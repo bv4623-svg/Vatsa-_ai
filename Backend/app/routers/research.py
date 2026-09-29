@@ -46,7 +46,7 @@ def _research_log(queries, source_count: int) -> str:
 
 async def _stream(req: ResearchRequest, user: User, db: Session, conv: Optional[Conversation]) -> AsyncGenerator[str, None]:
     try:
-        async for event in run_research(req.message, user.full_name or None):
+        async for event in run_research(req.message, user.full_name or None, user.id):
             if not event.get("done"):
                 yield _sse(event)
                 if "error" in event:

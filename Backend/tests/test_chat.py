@@ -5,8 +5,7 @@ reaches the network.
 """
 import pytest
 
-from app.services import ai_service
-from llm_fakes import fake_llm, sse_events as _sse_events  # noqa: F401  (fixture)
+from llm_fakes import fake_llm, registry, sse_events as _sse_events  # noqa: F401  (fixture)
 
 
 def _new_conv(client, headers, workspace="chat"):
@@ -64,7 +63,7 @@ def test_streaming_happy_path_persists(client, make_user, fake_llm):
 
 def test_fallback_chain_used_when_primary_fails(client, make_user, fake_llm):
     _, headers = make_user(tier="pro")
-    primary = ai_service.MODEL_NAME_MAPPING["auto"]
+    primary = registry().resolve("auto").primary.model
     fake_llm["script"][primary] = RuntimeError("OpenRouter [503]: upstream down")
     res = client.post("/api/chat", json={"message": "hi", "stream": True}, headers=headers)
     events = _sse_events(res.text)
@@ -76,9 +75,7 @@ PROVIDER_LEAK = RuntimeError("OpenRouter [402]: {\"error\": \"openai/gpt-4o requ
 
 
 def _fail_all(fake_llm):
-    models = set(ai_service.MODEL_NAME_MAPPING.values()) | set(ai_service.FREE_FALLBACK_MODELS)
-    models.add(ai_service.REASONING_MODEL)
-    for m in models:
+    for m in {spec.model for spec in registry().models()}:
         fake_llm["script"][m] = PROVIDER_LEAK
 
 
@@ -108,15 +105,21 @@ def test_failed_stream_is_not_persisted(client, make_user, fake_llm):
     assert client.get(f"/api/conversations/{conv_id}", headers=headers).json()["messages"] == []
 
 
-def test_daily_limit_returns_upgrade_shape(client, make_user, fake_llm, db):
+def test_chat_has_no_daily_cap_but_capped_features_return_upgrade_shape(client, make_user, fake_llm, db):
+    """Pricing: chat is unlimited on every tier; features that do have a
+    daily cap (here image generation, 5/day on free) answer 429 with the
+    shape the upgrade UI expects."""
     from datetime import date
     from app.models.usage_daily import UsageDaily
     user, headers = make_user()
     db.add(UsageDaily(user_id=user.id, feature="chat_messages", date=date.today(), count=25))
+    db.add(UsageDaily(user_id=user.id, feature="image_gen", date=date.today(), count=5))
     db.commit()
-    res = client.post("/api/chat", json={"message": "hi"}, headers=headers)
+    assert client.post("/api/chat", json={"message": "hi"}, headers=headers).status_code == 200
+    res = client.post("/api/chat", json={"message": "generate an image of a red apple"}, headers=headers)
     assert res.status_code == 429
     assert res.json()["detail"]["error"] == "daily_limit_reached"
+    assert res.json()["detail"]["feature"] == "image_gen"
 
 
 def test_cannot_write_into_someone_elses_conversation(client, make_user, fake_llm):

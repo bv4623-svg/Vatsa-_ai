@@ -252,9 +252,10 @@ def test_vision_rejects_empty_and_huge(client, make_user, fake_llm, monkeypatch)
 
 def test_vision_failure_does_not_use_quota_or_leak(client, make_user, fake_llm, db):
     from app.models.usage_daily import UsageDaily
-    from app.routers import vision
+    from llm_fakes import registry
     user, headers = make_user(tier="pro")
-    fake_llm["script"][vision.VISION_MODEL] = RuntimeError("OpenRouter [500]: openai/gpt-4o exploded")
+    for spec in registry().resolve("vision").candidates():
+        fake_llm["script"][spec.model] = RuntimeError("OpenRouter [500]: openai/gpt-4o exploded")
     res = _vision(client, headers, _png())
     assert res.status_code == 502 and "openai" not in res.text.lower()
     row = db.query(UsageDaily).filter_by(user_id=user.id, feature="vision").first()

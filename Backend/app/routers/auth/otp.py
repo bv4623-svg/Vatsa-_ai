@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+import logging
 import os
 import secrets
 
@@ -14,10 +15,22 @@ from app.services.password_policy import validate_password_strength
 from app.routers.auth.schemas import OtpSendRequest, OtpVerifyRequest, ResetPasswordRequest
 
 router = APIRouter(tags=["authentication"])
+logger = logging.getLogger("AuthOTP")
+
+# Minimum gap between two OTP sends to the same email+purpose, so mashing
+# "Resend code" can't spray outbound emails or churn through the 5-per-10-min
+# cap in a few seconds. Backed by the same (Redis-ready) limiter as every
+# other auth rate limit -- see app/utils/rate_limit.py.
+RESEND_COOLDOWN_SECONDS = 45
 
 
 # ═══════════════════════════════════════════════════════════
-# OTP  (REAL EMAIL)
+# OTP -- password reset only. Sign-up and OTP-based login were removed
+# alongside email/password registration (see core.py:register); this is
+# the one surviving purpose because it is the only way back into the
+# account for an existing password-only user who forgot their password
+# and has not linked Google/GitHub yet (see User.oauth_linked). Once the
+# forced link-account gate ships, this endpoint retires too.
 # ═══════════════════════════════════════════════════════════
 @router.post("/auth/otp/send")
 @router.post("/api/auth/otp/send")
@@ -27,11 +40,16 @@ def send_otp(req: OtpSendRequest, request: Request, db: Session = Depends(get_db
     # Emailed codes are for password reset only: sign-up needs no code, and
     # there is no passwordless code login.
     if purpose != "reset":
-        raise HTTPException(410, "Email codes are only used for password reset. Sign up with email and password.")
+        raise HTTPException(410, "Email codes are only used for password reset. Sign-up now uses Google or GitHub.")
 
     # Per-IP cap on top of the per-email one below, so one source can't
     # spray OTP requests (and outbound emails) across many target addresses.
     enforce_rate_limit(f"otp-send:ip:{client_ip(request)}", limit=20, window_seconds=600)
+
+    # Minimum gap between consecutive sends to this email+purpose (see
+    # RESEND_COOLDOWN_SECONDS) -- independent of the 5-per-10-min cap below,
+    # which only stops sustained abuse, not a user double-clicking "resend".
+    enforce_rate_limit(f"otp-cooldown:{email}:{purpose}", limit=1, window_seconds=RESEND_COOLDOWN_SECONDS)
 
     # Rate limit — max 5 in 10 min
     recent = (
@@ -156,13 +174,3 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     user.token_version = (user.token_version or 0) + 1
     db.commit()
     return {"success": True, "message": "Password reset successfully"}
-
-
-@router.get("/api/auth/check-username")
-def check_username(username: str, db: Session = Depends(get_db)):
-    return {"available": db.query(User).filter(User.username == username.strip()).first() is None}
-
-
-@router.get("/api/auth/check-email")
-def check_email(email: str, db: Session = Depends(get_db)):
-    return {"available": db.query(User).filter(User.email == email.lower().strip()).first() is None}

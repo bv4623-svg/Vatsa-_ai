@@ -24,6 +24,13 @@ def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) 
             user.hashed_password = get_password_hash(secrets.token_hex(24))
             user.token_version = (user.token_version or 0) + 1
             user.is_verified = True
+        # A provider-verified email match is proof this person controls
+        # this account too -- marks a legacy password-only account as
+        # migrated off the "still needs to link a provider" safety-net
+        # population without requiring the separate, explicit Settings ->
+        # Connected accounts flow.
+        if not user.oauth_linked:
+            user.oauth_linked = True
             db.commit()
         return user
 
@@ -40,6 +47,7 @@ def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) 
         hashed_password=get_password_hash(secrets.token_hex(24)),
         is_active=True, is_verified=True,
         profile_completed=False, tier="free",
+        oauth_linked=True,
     )
     db.add(user)
     db.flush()  # assigns user.id within the same transaction, without committing yet

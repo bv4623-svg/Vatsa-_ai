@@ -1,10 +1,15 @@
 {
   "brandName": "Vatsa AI",
-  "legalName": "",
-  "addressLines": [],
-  "locality": "Purnea, Bihar, India",
+  "legalName": "Bighnesh Vatsa",
+  "addressLines": [
+    "J-15, Khandagiri Marg",
+    "Dharam Vihar, Khandagiri",
+    "Bhubaneswar, Odisha 751030",
+    "India"
+  ],
+  "locality": "Bhubaneswar, Odisha, India",
   "phone": "",
-  "supportEmail": "bv4623@gmail.com",
+  "supportEmail": "contact@vatsaai.com",
   "contactEmail": "contact@vatsaai.com",
   "hours": "Monday - Friday, 10:00 AM - 6:00 PM IST"
 }

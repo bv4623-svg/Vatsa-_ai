@@ -1,5 +1,4 @@
 import io
-import os
 import re
 import json
 import base64
@@ -12,14 +11,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.services.token_service import TokenService
-from app.services.ai_service import AIService, PUBLIC_MODEL_NAME
+from app.services.ai_service import PUBLIC_MODEL_NAME
 from app.services.feature_access import require_feature, increment_usage
+from app.ai_router import get_router
+from app.ai_router.errors import RouterError
+from app.ai_router.types import Capability, RouteRequest
 
 logger = logging.getLogger("VisionRouter")
 router = APIRouter(prefix="/api/vision", tags=["vision"])
-
-# A vision-capable OpenRouter model -- gpt-4o supports image input directly.
-VISION_MODEL = os.getenv("VISION_MODEL", "openai/gpt-4o")
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -89,8 +88,10 @@ async def analyze_image(
     if prompt and len(prompt) > 2000:
         raise HTTPException(400, "Prompt too long (max 2000 characters).")
 
+    ai_router_engine = get_router()
     estimated_tokens = 1500
-    allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, model=VISION_MODEL)
+    is_premium = ai_router_engine.registry.is_route_premium("vision")
+    allowed, reason = TokenService.check_allowance(db, user, estimated_tokens=estimated_tokens, premium=is_premium)
     if not allowed:
         raise HTTPException(status_code=402, detail=reason)
 
@@ -109,16 +110,26 @@ async def analyze_image(
         },
     ]
 
+    request = RouteRequest(
+        messages=messages, route="vision", max_tokens=800,
+        required=frozenset({Capability.CHAT, Capability.VISION}), user_id=user.id,
+    )
     try:
-        result = await AIService.call_openrouter(messages, VISION_MODEL, max_tokens=800)
+        result = await ai_router_engine.generate(request)
+    except RouterError as e:
+        logger.warning(f"Vision analysis failed for user {user.id}: {type(e).__name__}: {e}")
+        status = 503 if e.code == "ai_busy" else 502
+        raise HTTPException(status_code=status, detail=e.public_message)
     except Exception as e:
         logger.error(f"Vision analysis failed for user {user.id}: {e}")
         raise HTTPException(status_code=502, detail="Image analysis is temporarily unavailable. Please try again.")
 
-    parsed = _parse_vision_response(result["content"])
+    parsed = _parse_vision_response(result.content)
     increment_usage(db, user, "vision")
 
-    total_tokens = result.get("prompt_tokens", 0) + result.get("completion_tokens", 0)
+    prompt_tokens = result.usage.prompt_tokens if result.usage else 0
+    completion_tokens = result.usage.completion_tokens if result.usage else 0
+    total_tokens = prompt_tokens + completion_tokens
     TokenService.deduct_tokens(
         db=db, user_id=user.id, tokens=total_tokens or estimated_tokens,
         reason="Vision analysis", model=PUBLIC_MODEL_NAME,
@@ -131,8 +142,8 @@ async def analyze_image(
         "objects": parsed["objects"],
         "extracted_text": parsed["extracted_text"],
         "usage": {
-            "prompt_tokens": result.get("prompt_tokens", 0),
-            "completion_tokens": result.get("completion_tokens", 0),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
         },
     }

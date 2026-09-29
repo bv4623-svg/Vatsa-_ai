@@ -19,13 +19,16 @@ export interface FeatureRow {
   values: Record<PlanId, string | boolean>;
 }
 
-/** Daily caps enforced at the API layer (Backend app/services/feature_access.py).
- * Mirrored here so quota banners can show the real ceiling without a round trip. */
+/** Caps enforced at the API layer (Backend app/services/feature_access.py).
+ * Mirrored here so quota banners can show the real ceiling without a round
+ * trip. `null` means unlimited for that plan (chat is unlimited on every
+ * tier; web search only on Pro/Business) -- codeApps is a standing project
+ * count, not a daily reset, unlike the other three. */
 export interface DailyLimits {
-  chat: number;
-  code: number;
+  chat: number | null;
+  codeApps: number;
   image: number;
-  search: number;
+  search: number | null;
 }
 
 export interface Plan {

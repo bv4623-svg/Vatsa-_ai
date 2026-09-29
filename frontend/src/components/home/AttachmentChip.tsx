@@ -17,7 +17,9 @@ export const AttachmentChip = memo(({ file, onRemove, onAnalyze, analyzing }: At
   const isError = file.status === "error";
   const detail =
     file.status === "processing"
-      ? "Processing…"
+      ? file.progress && file.progress < 100
+        ? `Uploading… ${file.progress}%`
+        : "Processing…"
       : isError
       ? file.error || "Failed"
       : file.warning || formatBytes(file.size);
@@ -57,6 +59,21 @@ export const AttachmentChip = memo(({ file, onRemove, onAnalyze, analyzing }: At
         >
           {detail}
         </p>
+        {file.status === "processing" && (
+          <div
+            role="progressbar"
+            aria-label={`Uploading ${file.name}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={file.progress ?? 0}
+            className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-accent/10"
+          >
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-150"
+              style={{ width: `${file.progress ?? 0}%` }}
+            />
+          </div>
+        )}
       </div>
       {isImage && file.status === "ready" && onAnalyze && (
         <button

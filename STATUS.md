@@ -1,65 +1,68 @@
 # STATUS.md
 
 Source of truth for what is done. Only verified facts; each has evidence.
-Last verified: 2026-09-29. Feature-by-feature PRD mapping: see FEATURES.md.
+Last verified: 2026-09-30. Feature-by-feature PRD mapping: see FEATURES.md. Merge report: RECONCILIATION.md.
 
 ## Branches and deploys (verified with `git ls-remote` and the GitHub API)
 
 | Thing | State | Evidence |
 |---|---|---|
-| PR #4 `feat/feedback-and-cleanup` → `main` | **Open, not merged, CI green** | GitHub API `pulls/4`: open, head `0c32543`; CI run 36382501583 all 4 jobs passed |
-| `feat/reviews-wall` (this work) | Stacked on PR #4 | branched from `0c32543` |
-| Production backend `api.vatsaai.com` (Render) | Runs `feat/ai-router-engine-and-auth-hardening` (`bd3163c`), **not `main`** | Render service settings (checked in an earlier session) |
-| Production frontend `vatsaai.com` (Hostinger) | Built from the live branch | earlier session |
-| `main` vs live branch | Share history; diverged at `600498f` (2026-09-20). main +65 commits, live +39; trial merge = 36 conflicts | `git merge-base` on a full clone. **Correction:** an earlier version of this file said "no shared history"; that came from a shallow clone. |
+| PR #4 `feat/feedback-and-cleanup` → `main` | **Open, not merged**, CI green | GitHub API `pulls/4` (2026-09-30): open, head `0c32543` |
+| PR #5 `feat/reviews-wall` → `feat/feedback-and-cleanup` | **Open, not merged**, CI green (run 36591274233) | GitHub API `pulls/5`: open, head `d3e8fa5` |
+| `integration/main-plus-live` | Live merged into PR #5's head (`774bbd5`) + 13 follow-ups; contains `origin/main` (`6a9b902`) | `git merge-base --is-ancestor origin/main HEAD` |
+| PR to `main` from `integration/main-plus-live` | see the PR link in the session report | — |
+| Production backend `api.vatsaai.com` (Render) | Still runs live `bd3163c` | nothing deployed from this work |
 | Backup of live | `backup/live-before-merge` → `bd3163c` (local + GitHub) | `git ls-remote origin refs/heads/backup/live-before-merge` |
 
-Consequence: nothing merged to `main` reaches users until live is merged in. Deploying `main` as-is would break sign-ups (`users.oauth_linked` NOT NULL without a DB default). Full report, risks, options and plan: **RECONCILIATION.md**. Waiting on 4 owner decisions listed there.
+Merging PR #4 and #5 through the API was blocked for me (auto-mode classifier); the owner merges them, or merges the integration PR, which contains both.
 
-## Done (PR #4, verified by tests and a local run)
+## Done: integration branch (2026-09-30)
 
-| Task | Commit | Proof |
+| Commit | What | Proof |
 |---|---|---|
-| Sign-up without email code | `212c567` | `Backend/tests/test_signup_no_otp.py`, `frontend/e2e/signup.spec.ts` |
-| New logo everywhere | `a688940` | `frontend/src/components/brand/brand.test.ts` |
-| Feedback API | `1b8551d` | `Backend/tests/test_feedback.py` (17 tests) |
-| Feedback button + modal, toasts fixed | `148991a`, `ee3d475` | `frontend/e2e/feedback.spec.ts` |
-| Feedback admin page | `aba83da` | `frontend/e2e/feedback-admin.spec.ts` |
-| Timestamps + character counter | `f73dbe9` | `frontend/src/lib/chat-limits.test.ts`, `e2e/ux-extras.spec.ts` |
-| `/home` loading skeleton | `84fac6a` | `e2e/ux-extras.spec.ts` |
-| 404 + error boundaries | `0c32543` | `e2e/ux-extras.spec.ts` |
+| `774bbd5` | Merge of live: 40 conflicts, owner decisions (Google/GitHub-only sign-up, no Microsoft, real-time INR, AI router only) | reasons per file in the commit message |
+| `1bf0827` | Deep research + review summary through `app/ai_router`; test fakes on the router | backend starts; `tests/llm_fakes.py` |
+| `7f3026e`, `d009b35` | Review-test flake (digits read as a phone number); empty OTP purpose refused | `test_reviews.py`, `test_otp*` |
+| `3b63dd2` | Voice settings reachable: Settings → Voice (on/off, voice, auto-read) | `e2e/voice.spec.ts`, `lib/voice/tts.test.ts` |
+| `db3adc9`, `105794a` | Lint fix; test expectations (413, sign-in for uploads, no email sign-up) | `test_upload_unified.py`, `test_email_codes_and_unverified_accounts.py` |
+| `b85a735` | `/signup` Google/GitHub only; `?redirect` kept across OAuth (pricing → checkout) | `e2e/signup.spec.ts`, `src/lib/oauth.test.ts` |
+| `fad4666`, `5ac2eb3` | Microsoft gone from copy/docs; a11y contrast (6 axe failures) | `e2e/a11y.spec.ts` |
+| `5dea0fa` | **Security:** Google/GitHub sign-in now asks for the 2FA code (it never did, on any branch; production still doesn't) | `test_two_factor.py` (+2), `e2e/signup.spec.ts` |
+| `c6a50d8`, `be986cb` | Error-wording e2e on the reset form; `.env.example` line that failed CI's secret check | `e2e/errors.spec.ts`, `forbidden_files.py --tracked` |
+| `3cf80db` | Live INR everywhere: landing + FAQ quoted ₹83-rate prices (₹1,992) while checkout charges the live rate (₹2,300) | `e2e/landing.spec.ts` |
 
-Test totals on `0c32543`: backend 325 passed / 12 skipped; frontend unit 140/140; Playwright 140 passed / 46 skipped / 0 failed.
+## Test totals on the integration branch (2026-09-30)
 
-## PRD (AI smartness + reviews/wall): open decisions (PRD §12)
-
-Defaults I am using until the owner answers:
-
-| Question | Default | Why |
-|---|---|---|
-| LLM provider priority | OpenRouter (existing) | Already the single gateway to OpenAI/Anthropic/Google |
-| Vector DB | pgvector later; TF-IDF (scikit-learn, already installed) for v1 | No new service on the 512 MB Render plan |
-| Reviews scoped to agent or global | Global (reviews of Vatsa AI); optional `conversation_id` | The app has no "agent" entity |
-| "Verified" reviewer | Paid plan, or ≥ 10 chat/code messages sent | Uses existing `users.tier` and `usage_daily` |
-| Pre- or post-moderation | PRD §6.6 hybrid: toxic → rejected, spammy/new → queue, trusted → published | As specified |
-| Language | English-first | UI is i18n-ready; no auto-translate in v1 |
-
-Blocked on the owner: Langfuse (needs an account + keys), anything needing `OPENROUTER_API_KEY` to verify locally (LLM review summary, eval judge).
-
-## Done: reviews + wall v1 (branch `feat/reviews-wall`, stacked on PR #4)
-
-| Part | Proof |
+| Suite | Result |
 |---|---|
-| Backend API + moderation (22 endpoints, 6 tables) | `Backend/tests/test_reviews.py` (31 API tests), `Backend/tests/test_review_moderation.py` (19 unit tests) |
-| Frontend: `/wall`, `/wall/me`, `/users/[id]/wall`, `/admin/reviews`, sidebar "Reviews" link (12 languages) | `frontend/e2e/reviews.spec.ts` (12 tests × desktop/mobile), `frontend/src/services/reviews.test.ts` (5) |
-| Checked by hand against the real local backend (2026-09-29) | New email sign-up → wall → helpful vote, pin, report → write review (validation errors, then "will appear once checked") → My wall shows it pending → admin approves → live on wall. Public pin → `/users/7/wall`. Admin signed in with 2FA → `/admin/reviews` shows the report reason; reject with note moves it approved 4→3, rejected 0→1. |
+| Backend pytest | 648 passed / 13 skipped / 0 failed |
+| Frontend | eslint 0 errors (15 warnings); tsc clean; vitest 154/154; `check:pricing` PASS; `next build --webpack` OK |
+| Playwright (desktop + mobile) | **172 passed, 52 skipped (desktop-only/mobile-only by design), 0 failed** (224) |
+| Security | `scan_history.py --baseline`: 207 commits, 0 findings (gitleaks only in CI); `forbidden_files.py --tracked`: OK, 906 files; `tools/security` tests 24 pass, 6 Linux-only (run in CI) |
+| `predeploy_check` with CI's env | passed |
+| `users.oauth_linked` | raw SQL through `init_db()`: old table gets `BOOLEAN NOT NULL DEFAULT 0` (legacy row 0), new Google sign-up 1, no NULLs (SQLite; Postgres to check on staging) |
 
-Suite totals on this branch (2026-09-29): backend 375 passed / 12 skipped; frontend unit 145/145; Playwright 160 passed / 50 skipped / 0 failed.
+Smoke-tested by hand against the real local backend + frontend (2026-09-30):
+- `/signup` is Google/GitHub only.
+- The Google and GitHub buttons reach the backend, which answers "not configured": there are no OAuth apps locally, so the real round trip is for staging.
+- The admin 2FA account, through the new OAuth path: wrong code → 400, right code → 200; `/admin/reviews` loads.
+- Posting a review → 201 and it's on the wall; hiding it as admin → the counts update.
+- Chat goes through the router; with no `OPENROUTER_API_KEY` locally it shows the clean "temporarily unavailable" + Retry.
+- `/pricing`: live $1 = ₹95.98 → ₹2,300 / ₹9,500.
 
-E2E flake fixed: `landing.spec.ts` timed out (45 s) in a loaded full run. Cause: every page loads fonts from Google, and the shared sign-out helper waits for "networkidle", so one stalled font request ate the whole budget. Reproduced with a 50 s simulated stall (timeout at `mock-api.ts:57`); `e2e/fixtures.ts` now answers Google Fonts locally for every test, and the same stall then costs 1.6 s.
+## Earlier work (still true)
 
-Not done in v1: media upload/gallery, language detection/translation, LLM-based moderation, virtualized grid, Postgres full-text search. LLM summary path is unit-tested with a stubbed LLM only (no key locally).
+- PR #4: feedback system, logo, UX extras (email sign-up without a code was superseded by Google/GitHub-only).
+- Reviews + wall v1: 22 endpoints, `/wall`, `/wall/me`, `/users/[id]/wall`, `/admin/reviews`. Not in v1: media upload, translation, LLM moderation.
 
-## Not started (PRD part 1, AI smartness)
+## Open
 
-See FEATURES.md §1. Cheapest real gaps first: save chat 👍/👎 (today they're lost on reload), stop sending the user's email to the LLM, relevance-ranked memory. Tracing (Langfuse) is blocked on an account + keys.
+- **Deploy** (needs Render/Neon/Hostinger access): the PR's deployment checklist, staging first.
+- **Phase 0 Fix 2:** the user's email still goes into every system prompt (`ai_service.py:297`).
+- **Phase 0 Fix 3:** chat 👍/👎 are not saved (`hooks/home/useHomeChat.ts:384`).
+- **Phases 1–5 of the PRD:** not started (FEATURES.md §1).
+- **Small, flagged:**
+  - Unused `frontend/src/db`.
+  - An unreachable second settings dialog.
+  - DEPLOY.md/DEPLOYMENT.md still describe main's pip deploy.
+  - If the rate request fails, the frontend shows its ₹83 fallback while the backend's fallback charge rate is ₹88.

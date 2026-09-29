@@ -7,6 +7,13 @@ shallow (cut at `757788e` / `808148a`), so git could not see the ancestor.
 "live" = `feat/ai-router-engine-and-auth-hardening`, which Render deploys to
 `api.vatsaai.com`. Backup made: `backup/live-before-merge` → `bd3163c` (local + GitHub).
 
+## Status (2026-09-30)
+
+- Merged on branch `integration/main-plus-live`: merge commit `774bbd5` (parents: PR #5 head `d3e8fa5`, live `bd3163c`), 40 conflicts (the trial's 36 plus 4 from the reviews branch), then follow-up commits. Every resolution has a one-line reason in the merge commit message.
+- Built from PR #5's head, not `main`: PR #4 and PR #5 are still open (merging them through the API was blocked for me; the owner merges them). The PR to `main` therefore also carries their commits.
+- Junk files: already gone. main's `6e82980` deleted all 11 (incl. the 33,653-line `backend_files.txt`), live never touched them after the merge-base, so the merge kept the deletion; `.gitignore` now covers the two names it missed.
+- Test results and the PR link: STATUS.md.
+
 ## Facts
 
 | | Value | How measured |
@@ -39,13 +46,18 @@ shallow (cut at `757788e` / `808148a`), so git could not see the ancestor.
 2. `main` has no Dockerfile; the live Render service builds with Docker. Switching the service to plain `main` would fail to build. That failure is safe (Render keeps the old deploy), but it is a dead end.
 3. `main` refuses to start with leaked/missing secrets. Production env vars must pass `scripts/predeploy_check` first.
 4. `main` adds 7 tables (feedback, reviews…). `create_all` creates them on Postgres, which is safe. Existing tables' columns are otherwise identical (checked model by model).
+5. **Found during the merge, in production today:** Google/GitHub sign-in skipped 2FA on both branches, and `require_admin` only checks that 2FA is *on*. With sign-in now Google/GitHub only, 2FA was never asked for, and an admin needed only a provider login. Fixed on the integration branch (`5dea0fa`); production keeps the hole until this is deployed.
+6. Existing 2FA secrets in production are plaintext (live never encrypted them). The merged code still reads them and re-encrypts each on its next successful use (`test_legacy_plaintext_secret_and_hashes_still_work_and_get_upgraded`); `scripts/reencrypt_two_factor.py` does all at once after deploy.
 
-## Decisions only the owner can make (they decide the 36 conflicts)
+Risk 1 is resolved by the merge (the column is kept). On SQLite, the app's own `init_db()` adds it as `BOOLEAN NOT NULL DEFAULT 0` to an old table (legacy row → 0), a new Google sign-up gets 1, no NULLs (checked with raw SQL, 2026-09-30). The Postgres DDL (`DEFAULT FALSE`) is still unverified: check it on the staging Neon branch (PR checklist).
 
-1. **Sign-up policy:** live = Google/GitHub only (Task 1); PR #4 = email + password with no code. Pick one.
-2. **Microsoft sign-in:** live removed it; main still has it.
-3. **Rate limits/cache:** keep live's Redis (Upstash) versions, plus main's security fixes on top? (Recommended: yes.)
-4. **INR price:** live's real-time rate or main's fixed rate?
+## Owner decisions (answered 2026-09-29, applied in the merge)
+
+1. **Sign-up policy:** Google/GitHub only. Email sign-up returns 410; password reset by emailed code stays for older password accounts.
+2. **Microsoft sign-in:** removed (code, env vars, copy; the 12 locale files had no keys left).
+3. **Rate limits/cache:** live's Redis (Upstash) backends + main's X-Forwarded-For fix and pruning.
+4. **INR price:** live's real-time rate, with the fixed rate as fallback.
+5. **AI engine** (asked during the merge): live's `app/ai_router` is the only way the backend calls a model; deep research and the review summary were ported to it.
 
 ## Strategy
 
@@ -59,8 +71,8 @@ shallow (cut at `757788e` / `808148a`), so git could not see the ancestor.
 ## Plan (nothing destructive; production untouched until step 6)
 
 1. Merge PR #4, then the reviews PR, into `main` (normal PR merges; production doesn't deploy `main`).
-2. Branch `integrate/live-into-main` from `main`; `git merge --no-ff origin/feat/ai-router-engine-and-auth-hardening`; resolve the 36 conflicts per the four decisions above; delete the junk files.
-3. Full backend + frontend + Playwright suites locally; open a PR; CI green.
+2. ~~Branch from `main`, merge live, resolve per the decisions, delete the junk.~~ **Done** as `integration/main-plus-live` (see Status).
+3. ~~Full suites locally; open a PR; CI green.~~ Suites **done** locally (STATUS.md); PR opened to `main`; CI result on the PR.
 4. Staging: a second Render service (or Render preview) on the integration branch, against a **Neon branch** of the production database (instant copy; production data untouched). Check health, sign-up, sign-in, chat, payments test mode.
 5. Add an Alembic migration for the new tables so Alembic history stays true.
 6. Production: merge the PR; point the Render service at `main` (same Dockerfile, same env vars). Rollback = redeploy `backup/live-before-merge` (`bd3163c`) from the Render dashboard.

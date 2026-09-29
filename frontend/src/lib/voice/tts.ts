@@ -30,12 +30,15 @@ if (isTtsSupported()) {
  * Maps each label to a real available voice via a gender-leaning heuristic,
  * deterministically (same label -> same voice on a given browser) so
  * "Test voice" and auto-read never disagree. */
+const FEMALE_HINT = /female|woman|zira|samantha|victoria|karen|moira|tessa|susan|anna|salli|joanna/i;
+// Whole words: a bare /male|man/ also matches "Female" and "Woman".
+const MALE_HINT = /\bmale\b|\bman\b|david|mark|daniel|alex|fred|george|guy|matthew/i;
 const VOICE_NAME_HINTS: Record<string, RegExp> = {
-  Amy: /female|woman|zira|samantha|victoria|karen|moira|tessa|susan|anna|salli|joanna/i,
-  Emma: /female|woman|zira|samantha|victoria|karen|moira|tessa|susan|anna|salli|joanna/i,
-  Sofia: /female|woman|zira|samantha|victoria|karen|moira|tessa|susan|anna|salli|joanna/i,
-  Brian: /male|man|david|mark|daniel|alex|fred|george|guy|matthew/i,
-  James: /male|man|david|mark|daniel|alex|fred|george|guy|matthew/i,
+  Amy: FEMALE_HINT,
+  Emma: FEMALE_HINT,
+  Sofia: FEMALE_HINT,
+  Brian: MALE_HINT,
+  James: MALE_HINT,
 };
 
 export function resolveVoice(label?: string): SpeechSynthesisVoice | null {

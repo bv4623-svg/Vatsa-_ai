@@ -7,7 +7,7 @@ import { Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Building2 }
 import { getPlan } from "@/data/plans";
 
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/stores/app-store";
+import { useAppStore, useSettings } from "@/stores/app-store";
 import { MOD_KEY } from "@/lib/home/constants";
 import { useHomeTheme } from "@/hooks/home/useHomeTheme";
 import { useHomeConversations } from "@/hooks/home/useHomeConversations";
@@ -92,7 +92,12 @@ export default function HomePage() {
 
   // ── Voice: dictation (speech-to-text) and read-aloud (text-to-speech),
   // both performed by the browser. Pro feature, like the rest of Voice.
-  const tts = useSpeechSynthesis();
+  // Settings -> Voice: voiceInput shows/hides the buttons, assistantVoice
+  // picks the voice, autoRead reads every new reply aloud.
+  const settings = useSettings();
+  const tts = useSpeechSynthesis(undefined, typeof settings.assistantVoice === "string" ? settings.assistantVoice : undefined);
+  const autoReadRef = useRef(false);
+  useEffect(() => { autoReadRef.current = Boolean(settings.autoRead); }, [settings.autoRead]);
   const voiceConversationRef = useRef(false);
   const latestInputRef = useRef("");
   const sendMessageRef = useRef<(content: string) => void>(() => {});
@@ -145,11 +150,14 @@ export default function HomePage() {
     tts.toggle(msgId, content);
   }, [isFree, openUpgradeModal, tts]);
 
+  // Runs once per newly finished reply, so opening an old chat reads nothing.
   const handleAssistantDone = useCallback((msgId: string, content: string) => {
-    if (voiceConversationRef.current && content) tts.speak(msgId, content);
-  }, [tts]);
+    const autoRead = autoReadRef.current && !isFree;
+    if ((voiceConversationRef.current || autoRead) && content) tts.speak(msgId, content);
+  }, [tts, isFree]);
 
   const voiceProps: ComposerVoiceProps = {
+    enabled: settings.voiceInput !== false,
     supported: stt.supported,
     listening: stt.listening,
     interim: stt.interim,

@@ -8,6 +8,12 @@ async function installFakeSpeech(page: Page, opts: { recognition?: boolean } = {
   await page.addInitScript(({ recognition }) => {
     const w = window as unknown as Record<string, unknown>;
     const spoken: string[] = [];
+    const spokenVoices: (string | null)[] = [];
+    // Female listed first on purpose: a male label must still get the male voice.
+    const voices = [
+      { name: "Google UK English Female", lang: "en-GB" },
+      { name: "Google UK English Male", lang: "en-GB" },
+    ];
     let active: { onstart?: () => void; onresult?: (e: unknown) => void; onerror?: (e: unknown) => void; onend?: () => void } | null = null;
     class FakeRecognition {
       lang = ""; continuous = false; interimResults = false; maxAlternatives = 1;
@@ -25,12 +31,19 @@ async function installFakeSpeech(page: Page, opts: { recognition?: boolean } = {
     define("SpeechRecognition", recognition ? FakeRecognition : undefined);
     define("webkitSpeechRecognition", recognition ? FakeRecognition : undefined);
     define("speechSynthesis", {
-      speak(u: { text: string; onend?: () => void }) { spoken.push(u.text); setTimeout(() => u.onend?.(), 50); },
+      speak(u: { text: string; voice?: { name: string } | null; onend?: () => void }) {
+        spoken.push(u.text);
+        spokenVoices.push(u.voice?.name ?? null);
+        setTimeout(() => u.onend?.(), 50);
+      },
       cancel() {},
+      getVoices: () => voices,
+      onvoiceschanged: null,
     });
-    define("SpeechSynthesisUtterance", class { text: string; lang = ""; onend: (() => void) | null = null; onerror: (() => void) | null = null; constructor(t: string) { this.text = t; } });
+    define("SpeechSynthesisUtterance", class { text: string; lang = ""; voice: unknown = null; onend: (() => void) | null = null; onerror: (() => void) | null = null; constructor(t: string) { this.text = t; } });
     w.__voice = {
       spoken,
+      spokenVoices,
       say(text: string) {
         active?.onresult?.({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: text } }] });
         active?.onend?.();
@@ -60,7 +73,15 @@ const voice = (page: Page) => ({
   interim: (t: string) => page.evaluate((x) => (window as never as { __voice: { interim(s: string): void } }).__voice.interim(x), t),
   fail: (c: string) => page.evaluate((x) => (window as never as { __voice: { fail(s: string): void } }).__voice.fail(x), c),
   spoken: () => page.evaluate(() => (window as never as { __voice: { spoken: string[] } }).__voice.spoken),
+  spokenVoices: () => page.evaluate(() => (window as never as { __voice: { spokenVoices: (string | null)[] } }).__voice.spokenVoices),
 });
+
+/** Settings -> Voice, opened the way a user does (Ctrl/Cmd+,). */
+async function openVoiceSettings(page: Page) {
+  await page.getByRole("textbox", { name: "Message" }).click();
+  await page.keyboard.press("ControlOrMeta+Comma");
+  await page.getByRole("button", { name: "Voice", exact: true }).click();
+}
 
 test.describe("voice mode", () => {
   test("dictation fills the composer with a live transcript", async ({ page }) => {
@@ -113,6 +134,43 @@ test.describe("voice mode", () => {
     await mockBackend(page, { tier: "pro" });
     await page.goto("/home");
     await expect(page.getByRole("button", { name: "Voice input isn't supported in this browser" })).toBeDisabled();
+  });
+
+  test("turning voice input off in Settings hides the voice buttons", async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "opened with the keyboard shortcut");
+    await installFakeSpeech(page);
+    await mockBackend(page, { tier: "pro" });
+    await page.goto("/home");
+    await expect(page.getByRole("button", { name: "Dictate with your voice" })).toBeVisible();
+
+    await openVoiceSettings(page);
+    const toggle = page.getByRole("switch", { name: "Voice input" });
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await page.getByRole("button", { name: "Close settings" }).click();
+
+    await expect(page.getByRole("button", { name: "Dictate with your voice" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Voice conversation/ })).toHaveCount(0);
+  });
+
+  test("auto read speaks each new reply in the chosen voice", async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "opened with the keyboard shortcut");
+    await installFakeSpeech(page);
+    await mockBackend(page, { tier: "pro" });
+    await page.goto("/home");
+
+    await openVoiceSettings(page);
+    await page.getByLabel("Assistant voice").selectOption("Brian");
+    await page.getByRole("switch", { name: "Auto read replies" }).click();
+    await page.getByRole("button", { name: "Close settings" }).click();
+
+    const box = page.getByRole("textbox", { name: "Message" });
+    await box.fill("hi");
+    await box.press("Enter");
+    await expect(page.getByText("Hello from Vatsa.")).toBeVisible();
+    await expect.poll(() => voice(page).spoken()).toEqual(["Hello from Vatsa."]);
+    expect(await voice(page).spokenVoices()).toEqual(["Google UK English Male"]);
   });
 
   test("free plan is offered Pro", async ({ page }) => {

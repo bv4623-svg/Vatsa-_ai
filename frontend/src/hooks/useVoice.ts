@@ -3,6 +3,7 @@ import {
   chunkForSpeech, getSpeechRecognitionCtor, isSpeechSynthesisSupported, readTranscript,
   speechErrorMessage, toSpeakableText, type SpeechRecognitionLike,
 } from "@/lib/voice";
+import { resolveVoice } from "@/lib/voice/tts";
 
 interface UseSpeechRecognitionOptions {
   lang?: string;
@@ -84,8 +85,10 @@ export function useSpeechRecognition({ lang, onFinal, onEnd }: UseSpeechRecognit
   return { supported, listening, interim, error, clearError: () => setError(null), start, stop, toggle };
 }
 
-/** Read-aloud through speechSynthesis, one message at a time. */
-export function useSpeechSynthesis(lang?: string) {
+/** Read-aloud through speechSynthesis, one message at a time. `voiceLabel`
+ * is the Settings -> Voice choice ("Emma", "Brian", ...), mapped to a real
+ * browser voice by resolveVoice. */
+export function useSpeechSynthesis(lang?: string, voiceLabel?: string) {
   const [supported, setSupported] = useState(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const runRef = useRef(0);
@@ -115,8 +118,10 @@ export function useSpeechSynthesis(lang?: string) {
       return;
     }
     setSpeakingId(id);
+    const voice = resolveVoice(voiceLabel);
     chunks.forEach((text, i) => {
       const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice;
       if (lang) u.lang = lang;
       if (i === chunks.length - 1) {
         u.onend = () => { if (runRef.current === run) setSpeakingId(null); };
@@ -124,7 +129,7 @@ export function useSpeechSynthesis(lang?: string) {
       u.onerror = () => { if (runRef.current === run) setSpeakingId(null); };
       window.speechSynthesis.speak(u);
     });
-  }, [lang]);
+  }, [lang, voiceLabel]);
 
   const toggle = useCallback(
     (id: string, markdown: string) => (speakingId === id ? stop() : speak(id, markdown)),

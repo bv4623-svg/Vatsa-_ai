@@ -160,3 +160,42 @@ def test_backup_code_cannot_be_used_twice_concurrently(client, make_user, db):
     assert sorted(results) == [False, True], results
     remaining = _fresh(db, user.id).backup_codes
     assert len(remaining) == 1, "only the used code is removed; the other survives"
+
+
+# ── Google/GitHub sign-in ────────────────────────────────────────────
+
+def _oauth_callback(user):
+    """Where the Google/GitHub callback sends the browser, as query params."""
+    from urllib.parse import parse_qs, urlparse
+    from app.routers.auth.oauth.shared import redirect_with_token
+    location = redirect_with_token(user).headers["location"]
+    return {k: v[0] for k, v in parse_qs(urlparse(location).query).items()}
+
+
+def test_google_or_github_signin_still_asks_for_the_2fa_code(client, make_user, db, monkeypatch):
+    """The provider proves the email, not the second factor: an account with
+    2FA on (an admin here) gets no session until the code is entered."""
+    user, headers = make_user()
+    secret, _ = _enable(client, headers)
+    monkeypatch.setenv("ADMIN_EMAILS", user.email)
+
+    params = _oauth_callback(_fresh(db, user.id))
+    assert params.get("requires_2fa") == "true"
+    assert "access_token" not in params
+    pending = {"Authorization": f"Bearer {params['pending_token']}"}
+    assert client.get("/auth/me", headers=pending).status_code == 401
+    assert client.get("/api/feedback", headers=pending).status_code == 401
+
+    bad = client.post("/auth/2fa/verify-login", json={"pending_token": params["pending_token"], "code": "000000"})
+    assert bad.status_code == 400
+    ok = client.post("/auth/2fa/verify-login", json={"pending_token": params["pending_token"], "code": pyotp.TOTP(secret).now()})
+    assert ok.status_code == 200, ok.text
+    session = {"Authorization": f"Bearer {ok.json()['access_token']}"}
+    assert client.get("/api/feedback", headers=session).status_code == 200
+
+
+def test_google_or_github_signin_without_2fa_is_a_session_straight_away(client, make_user, db):
+    user, _ = make_user()
+    params = _oauth_callback(_fresh(db, user.id))
+    assert "requires_2fa" not in params and "pending_token" not in params
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {params['access_token']}"}).status_code == 200

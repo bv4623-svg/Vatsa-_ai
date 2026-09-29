@@ -1,5 +1,6 @@
 import os
 import secrets
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from fastapi.responses import RedirectResponse
@@ -63,6 +64,12 @@ def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) 
 
 
 def redirect_with_token(user: User) -> RedirectResponse:
+    if user.two_factor_enabled:
+        # The provider proved the email, not the second factor. Same as
+        # password login: only a pending token (scope="2fa_pending", refused
+        # as a session) that POST /auth/2fa/verify-login exchanges for one.
+        pending_token = create_access_token({"sub": str(user.id), "scope": "2fa_pending"}, expires_delta=timedelta(minutes=10))
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?{urlencode({'requires_2fa': 'true', 'pending_token': pending_token})}")
     jwt_token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
     qs = urlencode({
         "access_token": jwt_token,

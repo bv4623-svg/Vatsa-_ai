@@ -64,6 +64,46 @@ test.describe("sign-in keeps its destination across Google/GitHub", () => {
     await expect(page).toHaveURL(`${APP_ORIGIN}/checkout?plan=business`);
   });
 
+  test("with 2FA on, the code is asked for before there is any session", async ({ page }) => {
+    await mockBackend(page);
+    await page.route(`${API}/api/auth/google/login`, (route: Route) =>
+      route.fulfill({ status: 302, headers: { location: `${APP_ORIGIN}/auth/callback?requires_2fa=true&pending_token=e2e-pending` } }),
+    );
+    const attempts: unknown[] = [];
+    await page.route(`${API}/auth/2fa/verify-login`, (route: Route) => {
+      if (route.request().method() === "OPTIONS") return route.fallback();
+      const body = route.request().postDataJSON();
+      attempts.push(body);
+      return body.code === "246810"
+        ? fulfillJson(route, { access_token: "e2e-token", token_type: "bearer", user: { id: 7, email: "admin@example.com", tier: "pro" } })
+        : fulfillJson(route, { detail: "Invalid code" }, 400);
+    });
+    let meCalls = 0;
+    await page.route(`${APP_ORIGIN}/api/auth/me`, (route: Route) => {
+      meCalls++;
+      return fulfillJson(route, { id: 7, email: "admin@example.com", tier: "pro", profile_completed: true });
+    });
+
+    await gotoSignedOut(page, `/login?redirect=${encodeURIComponent("/checkout?plan=pro")}`);
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+
+    const codeBox = page.getByLabel("Authentication code");
+    await expect(codeBox).toBeVisible();
+    expect(meCalls).toBe(0);
+    await codeBox.fill("111111");
+    await page.getByRole("button", { name: "Verify", exact: true }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Invalid code" })).toBeVisible();
+    await expect(page).toHaveURL(/\/auth\/callback/);
+
+    await codeBox.fill("246810");
+    await page.getByRole("button", { name: "Verify", exact: true }).click();
+    await expect(page).toHaveURL(`${APP_ORIGIN}/checkout?plan=pro`);
+    expect(attempts).toEqual([
+      { pending_token: "e2e-pending", code: "111111" },
+      { pending_token: "e2e-pending", code: "246810" },
+    ]);
+  });
+
   test("an off-site redirect is ignored", async ({ page }) => {
     await mockBackend(page);
     await providerApproves(page, "google");

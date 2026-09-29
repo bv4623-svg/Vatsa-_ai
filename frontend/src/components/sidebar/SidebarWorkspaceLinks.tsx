@@ -1,13 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Clock, FolderKanban, FolderOpen } from "lucide-react";
+import { Clock, FolderKanban, FolderOpen, MessageSquareQuote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarNavLink } from "./SidebarNavLink";
 
 /** Cross-cutting sections (not chat- or code-specific) shown identically
  * in both the chat and code sidebars, between the recent-items list and
- * the account footer, in this fixed order: Scheduled, Library, Projects. */
+ * the account footer, in this fixed order: Scheduled, Library, Projects, Reviews. */
 export function SidebarWorkspaceLinks({ collapsed }: { collapsed: boolean }) {
   const t = useTranslations("nav");
   const iconSize = collapsed ? "h-4 w-4" : "h-4 w-4";
@@ -19,6 +19,7 @@ export function SidebarWorkspaceLinks({ collapsed }: { collapsed: boolean }) {
       <SidebarNavLink href="/scheduled" label={t("scheduled")} icon={<Clock className={iconSize} aria-hidden="true" />} collapsed={collapsed} />
       <SidebarNavLink href="/library" label={t("library")} icon={<FolderOpen className={iconSize} aria-hidden="true" />} collapsed={collapsed} />
       <SidebarNavLink href="/projects" label={t("projects")} icon={<FolderKanban className={iconSize} aria-hidden="true" />} collapsed={collapsed} />
+      <SidebarNavLink href="/wall" label={t("reviews")} icon={<MessageSquareQuote className={iconSize} aria-hidden="true" />} collapsed={collapsed} />
     </nav>
   );
 }

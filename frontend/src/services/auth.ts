@@ -51,15 +51,6 @@ export async function verifyLogin2FA(pendingToken: string, code: string): Promis
   return parseJsonOrThrow(res);
 }
 
-export async function register(email: string, password: string, full_name: string | undefined): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, full_name }),
-  });
-  return parseJsonOrThrow(res);
-}
-
 // Emailed codes exist only for password reset.
 export async function sendOtp(email: string, purpose: "reset"): Promise<{ success: boolean; message: string }> {
   const res = await fetch(`${API_BASE}/auth/otp/send`, {
@@ -111,8 +102,4 @@ export async function completeOnboarding(
     body: JSON.stringify({ birth_month, birth_year }),
   });
   return parseJsonOrThrow(res);
-}
-
-export function oauthRedirectUrl(provider: "google" | "github"): string {
-  return `${API_BASE}/auth/${provider}/login`;
 }

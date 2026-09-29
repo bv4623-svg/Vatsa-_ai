@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { LoginVisual } from "@/components/auth/LoginVisual";
 import { OAuthButton } from "@/components/auth/OAuthButton";
-import { API_BASE } from "@/config/api";
+import { startOAuth, type OAuthProvider } from "@/lib/oauth";
 import { safeRedirect } from "@/lib/redirect";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -29,16 +29,16 @@ function LoginContent() {
   const params = useSearchParams();
   const router = useRouter();
   const redirectTo = safeRedirect(params.get("redirect") || params.get("callbackUrl"), "/home");
-  const [pendingProvider, setPendingProvider] = useState<"google" | "github" | null>(null);
+  const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(null);
   const error = errorMessageFor(params.get("error"));
 
   useEffect(() => {
     router.prefetch(redirectTo);
   }, [router, redirectTo]);
 
-  const startOAuth = (provider: "google" | "github") => {
+  const start = (provider: OAuthProvider) => {
     setPendingProvider(provider);
-    window.location.assign(`${API_BASE}/api/auth/${provider}/login`);
+    startOAuth(provider, redirectTo);
   };
 
   return (
@@ -78,8 +78,8 @@ function LoginContent() {
           )}
 
           <div className="space-y-3">
-            <OAuthButton provider="google" onClick={() => startOAuth("google")} loading={pendingProvider === "google"} />
-            <OAuthButton provider="github" onClick={() => startOAuth("github")} loading={pendingProvider === "github"} />
+            <OAuthButton provider="google" onClick={() => start("google")} loading={pendingProvider === "google"} />
+            <OAuthButton provider="github" onClick={() => start("github")} loading={pendingProvider === "github"} />
           </div>
 
           <p className="mt-8 text-center text-xs leading-relaxed text-gray-500">

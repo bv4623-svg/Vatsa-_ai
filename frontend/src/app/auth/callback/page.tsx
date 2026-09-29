@@ -3,11 +3,19 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { establishSession } from "@/lib/session";
+import { afterSignIn, forgetAfterSignIn } from "@/lib/oauth";
 import { useLocalYear } from "@/hooks/useLocalTime";
 
 function CallbackInner() {
   const router = useRouter();
   const params = useSearchParams();
+  // Where sign-in was started for (e.g. checkout). Read once, so React's
+  // double-run effects in development can't lose it.
+  const [next] = useState(afterSignIn);
+  const goNext = () => {
+    forgetAfterSignIn();
+    router.replace(next);
+  };
 
   const [loading, setLoading] = useState(true);
   const thisYear = useLocalYear();
@@ -79,7 +87,7 @@ function CallbackInner() {
         const isOnboardingDone = profileCompleted || birthMonthExists !== null;
 
         if (isOnboardingDone) {
-          router.replace("/home");
+          goNext();
         } else {
           setShowOnboarding(true);
         }
@@ -87,7 +95,7 @@ function CallbackInner() {
         console.error(err);
         // Fallback: use URL param if API fails but profile_completed=true
         if (profileCompletedParam === "true") {
-          router.replace("/home");
+          goNext();
           return;
         }
         router.replace("/login?error=AuthFailed");
@@ -152,7 +160,7 @@ function CallbackInner() {
         throw new Error(errorDetail);
       }
 
-      router.replace("/home");
+      goNext();
     } catch (err: any) {
       setOnboardingError(
         err.message || "Something went wrong. Please try again."

@@ -60,3 +60,47 @@ Also in this commit:
 - **Feedback button:** the floating button sits above the docked chat box whatever its height (it publishes `--chat-dock-h`), and stays at its old 112 px when there's no docked box.
 
 Files: `src/lib/home/constants.ts` (`COMPOSER_MAX_HEIGHT_PX`), `src/app/home/page.tsx`, `src/components/home/ChatEmptyState.tsx`, `src/components/home/ChatMessagesView.tsx`, `src/components/home/ComposerExtras.tsx`, `src/components/feedback/FeedbackButton.tsx`.
+
+## Phase 3, page 1: `/home`
+
+**Measured:** contrast is taken from the screenshots themselves (text pixels against background pixels, WCAG formula), because CSS alone can't account for what shows through translucent layers. Light and dark, desktop and phone. WCAG AA needs 4.5:1 for text and 3:1 for icons.
+
+| Measure | Light: before → after | Dark: before → after |
+|---|---|---|
+| AI reply text | **3.22** → 17.85 | 14.56 → 17.06 |
+| "Vatsa AI · time" label | **1.04** → 4.76 | **3.38** → 6.96 |
+| Action icons (read aloud, copy, regenerate, 👍/👎, share) | **1.04** → 4.76 | 3.35 → 6.96 |
+| "What would you like to build today?" / suggestion chips | **1.09 / 2.56** → 4.76 | 7.40 → 6.96 |
+| Disclaimer (empty state) | **1.05** → 4.76 | **3.38** → 6.96 |
+| Chat/Code toggle | **1.49** → 16.3 | 7.54 → 13.98 |
+| Plan badge | (not measured before) → 7.07 | → 10.03 |
+| Particle animation running | yes → **no** | yes → **no** |
+| Markdown lists | no bullets, 0 px indent → disc/decimal, 20 px | same |
+| Code block | no box, **copy button over the code** → box, 36 px top room (52 px on touch), no overlap | same |
+| First action icon vs text edge | 4 px desktop / 14 px phone → 0 | same |
+
+**Changes:**
+- **Plain background:** `<Background />` is gone from `/home` (the landing page keeps it). The header, chat area and chat box are solid `bg-background` / `bg-card`, not 40–80% translucent with blur.
+- **`.chat-markdown`** (`globals.css`, replacing the dead `prose` classes on replies):
+  - lists with bullets and numbers, paragraph spacing, heading sizes, a quote bar;
+  - inline code on a subtle background;
+  - code blocks in a rounded box. Long lines scroll inside it, and the copy button is pinned to the box's corner.
+- **Readable muted text:** `text-muted-foreground/60` → `text-muted-foreground` for the reply label, action icons, user timestamp, typing cursor and both disclaimers. The user bubble uses the `bg-muted` token instead of hard-coded `bg-zinc-100` / `dark:bg-[#1B1B1B]`.
+- **Alignment:** the action row is shifted by its button padding (`-ml-1`, `-ml-3.5` on touch), so the first icon lines up with the text.
+- **Header:**
+  - the Chat/Code toggle uses theme colours (it had a dark-only `bg-black/20` / `text-white` look);
+  - "Chat" is marked active on `/home` (it checked `/`, so on this page neither tab ever looked active) and links there directly instead of through `/`;
+  - plan badges use `-700` (light) and `-300` (dark) text;
+  - the "Upgrade to Pro" gradient is `-600` so its white text passes.
+- **Copy button** (`CodeCopyButton`): theme colours (it had white-on-black, made for dark code boxes only).
+
+**Found once the background was plain.** The animated canvas had hidden these from axe, which marked contrast over it as "can't tell". Axe then flagged:
+- the six tool labels in the empty-state box (`text-muted-foreground` on the `accent/5` tint, about 4.45:1) → `text-foreground/75`. Their active state (`text-accent` on `accent/20`) → `text-purple-700` / `dark:text-purple-300`;
+- the "sources" toggle and source domains (`SourcesList`), reasoning text (`ThinkingBox`) and the image-loading note (`ImageLoadingGrid`) were faded to 70% → full `text-muted-foreground`;
+- citation links `[1]` in replies: purple on white was about 3.9:1 (and failed in dark too) → `text-purple-700` / `dark:text-purple-300`, **underlined**, because axe's `link-in-text-block` rule requires links to differ by more than colour.
+After these, axe passes on every screen in both themes (22/22).
+
+**Found for later:**
+- `/code` and `/workspace` also render the landing's animated background.
+- 9 more files use the dead `prose` classes: `CodeChatPanel`, `workspace`, and the about and legal pages.
+- `components/home/HomeBackground.tsx` is an unused stub (Phase 5).

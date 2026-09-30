@@ -46,7 +46,7 @@ export function VoiceButton({ voice, compact }: { voice: ComposerVoiceProps; com
         className={cn(
           pill,
           compact ? "p-2" : "p-2 sm:px-3 sm:py-1.5",
-          voice.listening ? "bg-red-500/20 text-red-400" : "bg-accent/5 text-muted-foreground",
+          voice.listening ? "bg-red-500/20 text-red-400" : "bg-accent/5 text-foreground/75",
           "disabled:cursor-not-allowed disabled:opacity-40"
         )}
       >
@@ -80,7 +80,7 @@ export function VoiceConversationButton({ voice, compact }: { voice: ComposerVoi
         className={cn(
           pill,
           compact ? "p-2" : "p-2 sm:px-3 sm:py-1.5",
-          voice.conversationMode ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"
+          voice.conversationMode ? "bg-accent/20 text-purple-700 dark:text-purple-300" : "bg-accent/5 text-foreground/75"
         )}
       >
         <Headphones className="h-4 w-4" aria-hidden />
@@ -106,7 +106,7 @@ export function ResearchToggle({ research, compact }: { research: ComposerResear
         className={cn(
           pill,
           compact ? "p-2" : "p-2 sm:px-3 sm:py-1.5",
-          research.enabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"
+          research.enabled ? "bg-accent/20 text-purple-700 dark:text-purple-300" : "bg-accent/5 text-foreground/75"
         )}
       >
         <Telescope className="h-4 w-4" aria-hidden />

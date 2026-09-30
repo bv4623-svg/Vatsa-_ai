@@ -30,7 +30,7 @@ export function ThinkingBox({ thinking, isStreaming }: { thinking?: string; isSt
         <ChevronDown className={cn("w-3 h-3 ml-auto transition-transform", expanded && "rotate-180")} />
       </button>
       {expanded && (
-        <div className="px-3 pb-3 text-xs text-muted-foreground/70 whitespace-pre-wrap leading-relaxed border-t border-border/30 pt-2">
+        <div className="px-3 pb-3 text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed border-t border-border/30 pt-2">
           {thinking}
         </div>
       )}

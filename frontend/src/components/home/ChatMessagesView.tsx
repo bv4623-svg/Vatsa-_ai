@@ -112,9 +112,9 @@ export function ChatMessagesView({
                 <div key={msg.id} className="group relative flex justify-end">
                   <RelativeTime
                     date={msg.createdAt}
-                    className="pointer-events-none absolute -bottom-5 right-2 text-[11px] text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100"
+                    className="pointer-events-none absolute -bottom-5 right-2 text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
                   />
-                  <div className="max-w-[450px] rounded-[18px] bg-zinc-100 dark:bg-[#1B1B1B] px-3 py-2 text-[15px] leading-6 text-foreground" style={{ wordBreak: "break-word" }}>
+                  <div className="max-w-[450px] rounded-[18px] bg-muted px-3 py-2 text-[15px] leading-6 text-foreground" style={{ wordBreak: "break-word" }}>
                     {msgAttachments.length > 0 && (
                       <div className="mb-1 flex flex-wrap gap-1">
                         {msgAttachments.map((a, i) => (
@@ -133,7 +133,7 @@ export function ChatMessagesView({
             const isLast = msgIdx === messages.length - 1;
             return (
               <div key={msg.id} className="flex flex-col items-start gap-1 group">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/60">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   Vatsa AI
                   <RelativeTime date={msg.createdAt} className="font-normal before:mr-1.5 before:content-['·']" />
                 </span>
@@ -157,14 +157,14 @@ export function ChatMessagesView({
                 )}
 
                 {msg.content && (
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-[15px] leading-7 text-foreground/90">
+                  <div className="chat-markdown text-[15px] leading-7 text-foreground">
                     <ReactMarkdown
                       components={{
                         code({ className, children, ...props }) {
                           const match = /language-(\w+)/.exec(className || '');
                           const isBlock = Boolean(match || String(children).includes('\n'));
                           return isBlock ? (
-                            <div className="relative">
+                            <div>
                               <div className="absolute top-2 right-2 flex gap-1">
                                 <CodeCopyButton text={String(children).replace(/\n$/, '')} />
                               </div>
@@ -176,7 +176,7 @@ export function ChatMessagesView({
                         },
                         a({ href, children }) {
                           return (
-                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-purple-700 underline underline-offset-2 hover:decoration-2 dark:text-purple-300">
                               {children}
                             </a>
                           );
@@ -204,7 +204,7 @@ export function ChatMessagesView({
                 )}
 
                 {/* Always visible on touch screens (no hover there). */}
-                <div className="mt-1 flex items-center gap-1 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                <div className="-ml-1 mt-1 flex items-center gap-1 transition-opacity [@media(pointer:coarse)]:-ml-3.5 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                   {onReadAloud && msg.content && !msg.isStreaming && (
                     <Tooltip text={speakingMsgId === msg.id ? "Stop reading" : "Read aloud"}>
                       <button
@@ -214,7 +214,7 @@ export function ChatMessagesView({
                         aria-pressed={speakingMsgId === msg.id}
                         className={cn(
                           "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
-                          speakingMsgId === msg.id ? "text-accent" : "text-muted-foreground/60 hover:text-foreground"
+                          speakingMsgId === msg.id ? "text-accent" : "text-muted-foreground hover:text-foreground"
                         )}
                       >
                         {speakingMsgId === msg.id ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -227,7 +227,7 @@ export function ChatMessagesView({
                       aria-label={isCopied ? "Copied" : "Copy"}
                       className={cn(
                         "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
-                        isCopied ? "text-green-500" : "text-muted-foreground/60 hover:text-foreground"
+                        isCopied ? "text-green-500" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
                       {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -238,7 +238,7 @@ export function ChatMessagesView({
                       onClick={() => onRegenerate(msg.id)}
                       aria-label="Regenerate"
                       disabled={isLoading}
-                      className="tap-target p-1 rounded hover:bg-accent/10 text-muted-foreground/60 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="tap-target p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <RefreshCw className={cn("w-4 h-4", isLoading && isLast && "animate-spin")} />
                     </button>
@@ -250,7 +250,7 @@ export function ChatMessagesView({
                       aria-pressed={fb === "up"}
                       className={cn(
                         "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
-                        fb === "up" ? "text-green-500" : "text-muted-foreground/60 hover:text-foreground"
+                        fb === "up" ? "text-green-500" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
                       <ThumbsUp className={cn("w-4 h-4", fb === "up" && "fill-current")} />
@@ -263,7 +263,7 @@ export function ChatMessagesView({
                       aria-pressed={fb === "down"}
                       className={cn(
                         "tap-target p-1 rounded hover:bg-accent/10 transition-colors",
-                        fb === "down" ? "text-red-500" : "text-muted-foreground/60 hover:text-foreground"
+                        fb === "down" ? "text-red-500" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
                       <ThumbsDown className={cn("w-4 h-4", fb === "down" && "fill-current")} />
@@ -273,7 +273,7 @@ export function ChatMessagesView({
                     <button
                       onClick={() => onShare(msg.content)}
                       aria-label="Share"
-                      className="tap-target p-1 rounded hover:bg-accent/10 text-muted-foreground/60 hover:text-foreground"
+                      className="tap-target p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground"
                     >
                       <Share2 className="w-4 h-4" />
                     </button>
@@ -309,7 +309,7 @@ export function ChatMessagesView({
 
           {isLoading && (
             <div className="flex flex-col items-start gap-2" role="status" aria-label="Vatsa AI is responding">
-              <span className="text-xs font-medium text-muted-foreground/60">Vatsa AI</span>
+              <span className="text-xs font-medium text-muted-foreground">Vatsa AI</span>
               {isImageGenLoading ? (
                 <ImageLoadingGrid />
               ) : (
@@ -317,7 +317,7 @@ export function ChatMessagesView({
                   <span className="w-2 h-2 bg-accent/50 rounded-full animate-bounce" />
                   <span className="w-2 h-2 bg-accent/50 rounded-full animate-bounce [animation-delay:0.2s]" />
                   <span className="w-2 h-2 bg-accent/50 rounded-full animate-bounce [animation-delay:0.4s]" />
-                  <span className="ml-1 text-muted-foreground/60 text-sm">▊</span>
+                  <span className="ml-1 text-muted-foreground text-sm">▊</span>
                 </div>
               )}
             </div>
@@ -327,7 +327,7 @@ export function ChatMessagesView({
       </div>
 
       {/* Bottom padding clears the iPhone home indicator (safe area). */}
-      <div ref={dockRef} className="border-t border-border/40 bg-background/60 px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
+      <div ref={dockRef} className="border-t border-border/40 bg-background px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {banner}
         <div className="mx-auto max-w-[760px]">
           {attachments.length > 0 && (
@@ -344,7 +344,7 @@ export function ChatMessagesView({
           <VoiceStatus voice={voice} />
           {/* Phones: the text field gets its own full-width first row and the
               buttons sit on a second row; sm and up: one row. */}
-          <div className="relative flex flex-wrap items-end gap-2 rounded-2xl border border-border/50 bg-card/80 p-2 shadow-sm focus-within:border-accent/50 sm:flex-nowrap">
+          <div className="relative flex flex-wrap items-end gap-2 rounded-2xl border border-border/50 bg-card p-2 shadow-sm focus-within:border-accent/50 sm:flex-nowrap">
             <MessageCounter length={inputValue.length} />
             <div className="relative order-2 sm:order-none">
               <Tooltip text="Attach File">
@@ -429,7 +429,7 @@ export function ChatMessagesView({
             </Magnetic>
             </div>
           </div>
-          <div className="mt-1 text-center text-xs leading-4 text-muted-foreground/60">
+          <div className="mt-1 text-center text-xs leading-4 text-muted-foreground">
             Vatsa AI can make mistakes. Check important info.
           </div>
         </div>

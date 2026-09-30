@@ -33,7 +33,6 @@ const CommandPalette = dynamic(
   { ssr: false }
 );
 
-import Background from "@/components/landing/Background";
 
 export default function HomePage() {
   const router = useRouter();
@@ -326,7 +325,6 @@ export default function HomePage() {
 
   return (
     <>
-      <Background />
       <main
         suppressHydrationWarning
         className={cn("relative z-10 min-h-screen overflow-hidden transition-colors duration-300", theme === "dark" ? "dark" : "light")}
@@ -342,28 +340,28 @@ export default function HomePage() {
         {/* h-dvh: the visible viewport, not 100vh (which is taller than the
             screen while mobile browser toolbars are showing). */}
         <div className="relative z-10 flex h-dvh flex-col" data-chat-shell>
-          <header className="flex h-9 shrink-0 items-center justify-between px-4 backdrop-blur-sm bg-background/40 border-b border-border/40">
+          <header className="flex h-9 shrink-0 items-center justify-between px-4 bg-background border-b border-border/40">
             <div className="w-8" />
             <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-md border border-border/60 bg-black/20 p-0.5">
-                <button onClick={() => router.push("/")} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Chat</button>
-                <button onClick={() => router.push("/code")} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/code" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-foreground")}>Code</button>
+              <div className="flex items-center rounded-md border border-border/60 p-0.5">
+                <button onClick={() => router.push("/home")} aria-current={pathname === "/home" ? "page" : undefined} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/home" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}>Chat</button>
+                <button onClick={() => router.push("/code")} aria-current={pathname === "/code" ? "page" : undefined} className={cn("tap-target px-3 py-1 text-xs font-medium rounded transition-all duration-150", pathname === "/code" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}>Code</button>
               </div>
               {privateMode && (<div className="flex items-center gap-1 text-xs text-accent font-medium"><Lock className="w-3 h-3" /> Private</div>)}
             </div>
             <div className="flex items-center gap-1">
               {tier === "business" ? (
-                <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 px-2.5 py-1 text-[11px] font-medium text-cyan-400">
+                <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 px-2.5 py-1 text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
                   <Building2 className="h-3 w-3" /> {getPlan("business")?.name ?? "Business"}
                 </div>
               ) : tier === "pro" ? (
-                <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-2.5 py-1 text-[11px] font-medium text-purple-400">
+                <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-2.5 py-1 text-[11px] font-medium text-purple-700 dark:text-purple-300">
                   <Star className="h-3 w-3" /> Pro
                 </div>
               ) : (
                 <button
                   onClick={() => openUpgrade({ source: "chat_header", reason: "Unlock higher daily limits and every Pro feature." })}
-                  className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-[11px] font-medium text-white hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 text-[11px] font-medium text-white hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <Sparkles className="h-3 w-3" /> Upgrade to Pro
                 </button>
@@ -399,7 +397,7 @@ export default function HomePage() {
               isFree={isFree}
             />
 
-            <div className="flex-1 overflow-y-auto bg-background/40 backdrop-blur-sm">
+            <div className="flex-1 overflow-y-auto bg-background">
               {isEmpty ? (
                 <ChatEmptyState
                   inputRef={inputRef}

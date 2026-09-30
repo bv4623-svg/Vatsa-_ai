@@ -98,7 +98,7 @@ export function ChatEmptyState({
           className="relative mt-6"
         >
           <MessageCounter length={inputValue.length} />
-          <div className="rounded-2xl border border-border/50 bg-card/80 shadow-sm p-3 transition-all hover:border-border">
+          <div className="rounded-2xl border border-border/50 bg-card shadow-sm p-3 transition-all hover:border-border">
             {attachments.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
                 {attachments.map((a) => (
@@ -133,7 +133,7 @@ export function ChatEmptyState({
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/30 pt-2">
               <div className="flex flex-wrap items-center gap-1.5">
                 <Tooltip text="Attach File">
-                  <button onClick={() => setShowAttachmentMenu((p) => !p)} className="flex items-center gap-1 rounded-full bg-accent/5 p-2 text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5">
+                  <button onClick={() => setShowAttachmentMenu((p) => !p)} className="flex items-center gap-1 rounded-full bg-accent/5 p-2 text-sm text-foreground/75 transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5">
                     <Paperclip className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Attach</span>
                   </button>
                 </Tooltip>
@@ -144,7 +144,7 @@ export function ChatEmptyState({
                       aria-label={webSearchEnabled ? "Web search on" : "Web search off"}
                       aria-haspopup="menu"
                       aria-expanded={showWebSearchPopover}
-                      className={`flex items-center gap-1 rounded-full p-2 text-sm transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5 ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                      className={`flex items-center gap-1 rounded-full p-2 text-sm transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5 ${webSearchEnabled ? "bg-accent/20 text-purple-700 dark:text-purple-300" : "bg-accent/5 text-foreground/75"}`}
                     >
                       <Globe className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Search</span>
                     </button>
@@ -158,7 +158,7 @@ export function ChatEmptyState({
                 <Tooltip text={isFree ? "Reasoning is a Pro feature" : reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
                   <button
                     onClick={onToggleReasoning}
-                    className={`relative flex items-center gap-1 rounded-full p-2 text-sm transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5 ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                    className={`relative flex items-center gap-1 rounded-full p-2 text-sm transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5 ${reasoningEnabled ? "bg-accent/20 text-purple-700 dark:text-purple-300" : "bg-accent/5 text-foreground/75"}`}
                   >
                     <Brain className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Think</span>
                     {isFree && <Lock className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" />}
@@ -196,7 +196,7 @@ export function ChatEmptyState({
           <input type="file" ref={folderInputRef} onChange={onFileUpload} className="hidden" multiple />
         </motion.div>
 
-        <div className="mt-4 text-center text-xs text-muted-foreground/60">
+        <div className="mt-4 text-center text-xs text-muted-foreground">
           Vatsa AI can make mistakes. Check important info.
         </div>
       </div>

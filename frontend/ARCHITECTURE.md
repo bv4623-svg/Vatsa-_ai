@@ -15,7 +15,6 @@ Largest files at baseline:
 | `src/app/auth/login/page.tsx` | 1235 | Login form, validation, auth requests, visual presentation |
 | `src/app/pricing/page.tsx` | 1030 | Pricing content, plan selection, checkout presentation |
 | `src/stores/app-store.ts` | 974 | Auth, settings, conversations, messages, UI state, persistence |
-| `src/components/settings/settings-modal.tsx` | 651 | Settings navigation, controls, memory, account, legal sections |
 
 ## Current Architecture Findings
 
@@ -98,7 +97,6 @@ The remaining largest files are intentionally queued for later phases:
 | `src/app/auth/login/page.tsx` | 1235 | Visual login page still contains form and auth flow | Extract auth form hook/service and presentation sections |
 | `src/app/pricing/page.tsx` | 1030 | Pricing presentation and checkout selection remain route-owned | Extract plan data, plan cards, and checkout action hook |
 | `src/stores/app-store.ts` | 974 | Compatibility store still combines global concerns | Migrate chat/settings/workspace consumers into feature stores, then remove slices |
-| `src/components/settings/settings-modal.tsx` | 651 | Many settings sections remain in one modal | Extract section components and settings field definitions |
 
 ## Validation
 

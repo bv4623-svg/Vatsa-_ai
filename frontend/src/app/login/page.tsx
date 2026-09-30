@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -8,8 +8,7 @@ import { AlertCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { LoginVisual } from "@/components/auth/LoginVisual";
-import { OAuthButton } from "@/components/auth/OAuthButton";
-import { startOAuth, type OAuthProvider } from "@/lib/oauth";
+import { OAuthSignIn } from "@/components/auth/OAuthSignIn";
 import { safeRedirect } from "@/lib/redirect";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -18,6 +17,10 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   NoToken: "Sign-in didn't complete. Please try again.",
   SessionExpired: "Your session expired. Please sign in again.",
   AuthFailed: "We couldn't sign you in. Please try again.",
+  // The CAPTCHA on starting a Google/GitHub sign-in (Backend/app/routers/auth/oauth/shared.py).
+  captcha_required: "The security check didn't run. Turn off ad blockers for this site, refresh, and try again.",
+  captcha_failed: "The security check didn't pass. Please try again.",
+  too_many_attempts: "Too many sign-in attempts. Wait a minute and try again.",
 };
 
 function errorMessageFor(code: string | null): string | null {
@@ -29,17 +32,11 @@ function LoginContent() {
   const params = useSearchParams();
   const router = useRouter();
   const redirectTo = safeRedirect(params.get("redirect") || params.get("callbackUrl"), "/home");
-  const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(null);
   const error = errorMessageFor(params.get("error"));
 
   useEffect(() => {
     router.prefetch(redirectTo);
   }, [router, redirectTo]);
-
-  const start = (provider: OAuthProvider) => {
-    setPendingProvider(provider);
-    startOAuth(provider, redirectTo);
-  };
 
   return (
     <main className="flex min-h-screen bg-[#05050A]">
@@ -77,10 +74,7 @@ function LoginContent() {
             </div>
           )}
 
-          <div className="space-y-3">
-            <OAuthButton provider="google" onClick={() => start("google")} loading={pendingProvider === "google"} />
-            <OAuthButton provider="github" onClick={() => start("github")} loading={pendingProvider === "github"} />
-          </div>
+          <OAuthSignIn redirectTo={redirectTo} />
 
           <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
             By continuing, you agree to our{" "}

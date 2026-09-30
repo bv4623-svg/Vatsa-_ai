@@ -6,8 +6,10 @@ import { defineConfig, devices } from "@playwright/test";
  * e2e/mock-api.ts via page.route(), so no test touches a real API, model
  * or search provider.
  *
- * Build first with the mock origin inlined:
- *   NEXT_PUBLIC_API_URL=http://api.test npx next build && npx playwright test
+ * Build first with the mock origin and Cloudflare's public test site key
+ * (so /login and /signup render the CAPTCHA, answered by a fake in
+ * e2e/fixtures.ts) inlined:
+ *   NEXT_PUBLIC_API_URL=http://api.test NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA npx next build && npx playwright test
  * (npm run test:e2e does both.)
  */
 const PORT = Number(process.env.E2E_PORT || 3100);

@@ -83,8 +83,9 @@ Judging by the schema at that commit, the databases may hold user emails and nam
 | 12 | `BRAVE_API_KEY` | Web search | https://api-dashboard.search.brave.com | new key | same |
 | 13 | `GOOGLE_CSE_API_KEY` | Web search | https://console.cloud.google.com/apis/credentials → the API key → *Regenerate* | new key | same |
 | 14 | `DATABASE_URL` password (backend if not SQLite; frontend `frontend/.env.local` for drizzle/pg), `NEXTAUTH_SECRET` or any other value in `frontend/.env.local` | Database access; auth secret | your database provider's dashboard; for `NEXTAUTH_SECRET`, `openssl rand -base64 32` in Netlify | new password / secret | App starts and connects; the old password is refused |
+| 15 | `TURNSTILE_SECRET_KEY` (only if the sign-in CAPTCHA is on) | Verifies Turnstile tokens (DEPLOY.md §6) | https://dash.cloudflare.com → Turnstile → the widget → *Rotate secret key* | new secret | Sign-in works; `/api/auth/google/login` without a token → `error=captcha_required` |
 
-Not secrets (no rotation needed): `ALLOWED_ORIGINS`, `*_REDIRECT_URI`, `FRONTEND_REDIRECT_URL`, `BACKEND_PUBLIC_URL`, `REASONING_MODEL`, `VISION_MODEL`, `EMAIL_SMTP_HOST/PORT`, `MAIL_FROM`, `NEXT_PUBLIC_*`. `ADMIN_EMAILS` isn't secret, but it reveals admin identities: make sure those accounts have strong, unique passwords and 2FA.
+Not secrets (no rotation needed): `ALLOWED_ORIGINS`, `*_REDIRECT_URI`, `FRONTEND_REDIRECT_URL`, `BACKEND_PUBLIC_URL`, `REASONING_MODEL`, `VISION_MODEL`, `EMAIL_SMTP_HOST/PORT`, `MAIL_FROM`, `TURNSTILE_ENABLED`, `NEXT_PUBLIC_*` (including `NEXT_PUBLIC_TURNSTILE_SITE_KEY`). `ADMIN_EMAILS` isn't secret, but it reveals admin identities: make sure those accounts have strong, unique passwords and 2FA.
 
 ## 5. History purge: done 2026-09-27
 
@@ -133,3 +134,12 @@ git reflog expire --expire=now --all && git gc --prune=now --aggressive
 - **CI "Secret scan" job:** 30 guard tests, a check of every tracked file, and a full-history scan of all branches with gitleaks. With the baseline now empty, **any** secret-bearing file anywhere in history fails the build.
 - **`.gitignore`:** `.env*`, `*.env`, `*.db`, `*.sqlite*`, `*.zip`, `*.tar*`, `*.tgz`, `*.rar`, `*.7z`, `Backend/uploads/`, `Backend/generated_images/`, `frontend/.next/`, virtualenvs.
 - **At rest:** 2FA secrets encrypted, backup codes HMAC-hashed (`Backend/app/services/crypto.py`).
+
+## 8. Sign-in CAPTCHA (Cloudflare Turnstile)
+
+- **Where:** only when a Google/GitHub sign-in starts (`POST /api/auth/{google,github}/login`, `Backend/app/routers/auth/oauth/shared.py` `refuse_without_captcha`). `/login` and `/signup` share it. Password login (no page uses it), 2FA, password reset, reviews, feedback, chat: never (`Backend/tests/test_login_captcha.py` checks each).
+- **Flow:** the widget on the page (`frontend/src/components/auth/TurnstileWidget.tsx`) gives a token; the button submits it as a **POST form field**, never in a URL, because access logs keep query strings. The backend verifies it **once** with Cloudflare (tokens are single-use) and only then redirects to Google/GitHub. With the CAPTCHA on, a start without a token, including the plain GET link, is refused.
+- **Fail-open, on purpose:** if Cloudflare can't be reached, times out (5 s) or reports its own `internal-error`, the sign-in goes ahead. Signing in is the critical path, and Google/GitHub still run their own bot checks. A **missing** or **rejected** token is never let through. The server can't tell "the widget was blocked" from "a bot sent nothing", so an ad blocker that blocks Cloudflare gets a message asking to allow it.
+- **Logged:** outcome (`passed` / `failed <codes>` / `missing` / `unavailable`), IP and user agent. **Never the token.**
+- **Limits:** at most 10 Cloudflare checks per minute per IP (then `too_many_attempts`).
+- **Config:** `TURNSTILE_ENABLED`, `TURNSTILE_SECRET_KEY` (backend), `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (frontend build). Setup and order: DEPLOY.md §6.

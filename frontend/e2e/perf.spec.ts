@@ -25,8 +25,8 @@ test("performance report", async ({ page }, info) => {
 
   const rows = [];
   for (const path of PAGES) {
-    // "/" signed out: signed-in visitors are redirected to /home by the server.
-    if (path === "/") await gotoSignedOut(page, path);
+    // "/" and /login signed out: signed-in visitors are redirected by the server.
+    if (path === "/" || path === "/login") await gotoSignedOut(page, path);
     else {
       await page.goto(path.replace(" (signed in)", ""));
       await page.waitForLoadState("networkidle");

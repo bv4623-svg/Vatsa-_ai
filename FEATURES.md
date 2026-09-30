@@ -81,6 +81,7 @@ Built on branch `feat/reviews-wall`.
 | Language selection | Exists | next-intl (`providers/LocaleProvider.tsx`) |
 | Usage / token / cost tracking | Partial | `UsageDaily`, `UsageLog.cost_usd` stored; no user dashboard |
 | Rate limiting | Exists | `utils/rate_limit.py` (Redis or in-process; X-Forwarded-For trusted only per `TRUSTED_PROXY_COUNT`) |
+| CAPTCHA on sign-in | Exists, off until keys are set | Cloudflare Turnstile when a Google/GitHub sign-in starts (`/login` and `/signup`), nowhere else: `services/captcha.py`, `routers/auth/oauth/shared.py` `refuse_without_captcha`, `components/auth/TurnstileWidget.tsx`; fail-open on Cloudflare outage; setup DEPLOY.md §6 |
 | Audit log, kill switch, human-in-the-loop | Missing | — |
 | Integrations (Slack, Discord, WhatsApp, …) | Missing | — |
 | Payments | Exists | Razorpay (`routers/payment.py`) |

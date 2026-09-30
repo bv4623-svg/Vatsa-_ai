@@ -29,6 +29,7 @@ SECRET_VARS = (
     "OPENROUTER_API_KEY",
     "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET",
     "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_SECRET", "MICROSOFT_CLIENT_SECRET",
+    "TURNSTILE_SECRET_KEY",
     "EMAIL_PASSWORD",
     "SERPER_API_KEY", "TAVILY_API_KEY", "BRAVE_API_KEY", "GOOGLE_CSE_API_KEY", "SEARXNG_API_KEY",
     "DATABASE_URL",
@@ -97,6 +98,12 @@ def check_secrets(env: Optional[Mapping[str, str]] = None, leaked: Optional[Dict
         except Exception:
             problems.append("DATA_ENCRYPTION_KEY is not a valid Fernet key: generate one with "
                             "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"")
+
+    # In every environment: with the CAPTCHA on and no key, every
+    # Google/GitHub sign-in would be refused (app/services/captcha.py).
+    turnstile_on = (env.get("TURNSTILE_ENABLED") or "").strip().lower() in ("1", "true", "yes", "on")
+    if turnstile_on and not (env.get("TURNSTILE_SECRET_KEY") or "").strip():
+        problems.append("TURNSTILE_ENABLED is on but TURNSTILE_SECRET_KEY is not set: set the key or turn the CAPTCHA off")
 
     if is_production(env):
         for name in REQUIRED_IN_PRODUCTION:

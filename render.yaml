@@ -58,6 +58,13 @@ services:
       # Settings -> Connect Google. Must also be an authorized redirect URI.
       - key: GOOGLE_LINK_REDIRECT_URI
         sync: false
+      # CAPTCHA on starting a Google/GitHub sign-in (DEPLOY.md §6). Set in the
+      # dashboard, not here, so turning it on/off survives a Blueprint sync.
+      # Unset = off.
+      - key: TURNSTILE_ENABLED
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
       - key: ALLOWED_ORIGINS
         value: https://vatsaai.com,https://www.vatsaai.com
       - key: BACKEND_PUBLIC_URL

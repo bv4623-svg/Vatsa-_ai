@@ -28,7 +28,8 @@ for (const theme of ["light", "dark"] as const) {
     for (const path of SCREENS) {
       test(path, async ({ page }) => {
         await mockBackend(page);
-        if (path === "/") await gotoSignedOut(page, path);
+        // Signed-in visitors are sent on from "/" and /login, so scan those signed out.
+        if (path === "/" || path === "/login") await gotoSignedOut(page, path);
         else {
           await page.goto(path);
           await page.waitForLoadState("networkidle");

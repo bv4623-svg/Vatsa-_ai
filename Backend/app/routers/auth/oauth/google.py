@@ -7,7 +7,9 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.routers.auth.oauth.shared import get_or_create_oauth_user, redirect_with_token, redirect_with_error
+from app.routers.auth.oauth.shared import (
+    get_or_create_oauth_user, redirect_status, redirect_with_error, redirect_with_token, refuse_without_captcha,
+)
 from app.routers.auth.oauth.state import generate_oauth_state, set_oauth_state_cookie, verify_oauth_state, oauth_state_cookie_name
 
 router = APIRouter(tags=["authentication"])
@@ -19,9 +21,16 @@ GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
 
 @router.get("/auth/google/login")
 @router.get("/api/auth/google/login")
-def google_login(request: Request):
+@router.post("/auth/google/login")
+@router.post("/api/auth/google/login")
+async def google_login(request: Request):
+    # POST is what the sign-in buttons send (with the CAPTCHA token in the
+    # body, never the URL); GET still works while the CAPTCHA is off.
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        return redirect_with_error("google_not_configured")
+        return redirect_with_error("google_not_configured", redirect_status(request))
+    refused = await refuse_without_captcha(request)
+    if refused:
+        return refused
 
     state = generate_oauth_state()
     params = {
@@ -33,7 +42,7 @@ def google_login(request: Request):
         "prompt": "consent",
         "state": state,
     }
-    response = RedirectResponse("https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params))
+    response = RedirectResponse("https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params), status_code=redirect_status(request))
     set_oauth_state_cookie(request, response, "google", state)
     return response
 

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { establishSession } from "@/lib/session";
 import { afterSignIn, forgetAfterSignIn } from "@/lib/oauth";
 import { verifyLogin2FA } from "@/services/auth";
+import { useHydrated } from "@/hooks/useHydrated";
 import { useLocalYear } from "@/hooks/useLocalTime";
 
 function CallbackInner() {
@@ -33,6 +34,11 @@ function CallbackInner() {
   // An account with 2FA on comes back with only a pending token: no session
   // exists until its code is entered below (POST /auth/2fa/verify-login).
   const pendingToken = params.get("requires_2fa") === "true" ? params.get("pending_token") : null;
+  // This route is server-rendered, so the code form would be in the HTML
+  // before React is attached; a code typed then is dropped (state stays
+  // empty, Verify says "enter the code" and clears it). Show it once
+  // interactive; the spinner covers the gap.
+  const hydrated = useHydrated();
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -209,7 +215,7 @@ function CallbackInner() {
   };
 
   // ─── 2FA Screen ──────────────────────────────────────────────────
-  if (pendingToken && !codeAccepted) {
+  if (pendingToken && !codeAccepted && hydrated) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-gray-900 p-8 rounded-xl shadow-2xl">

@@ -165,7 +165,9 @@ export function useHomeConversations({ router, setUser, setDraftMessage, setErro
     const token = localStorage.getItem("access_token");
     if (!token) return;
     try {
-      await fetch(`${API_BASE}/api/conversations`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      // Chats only: code projects live in the same table and must survive this.
+      const res = await fetch(`${API_BASE}/api/conversations?workspace=chat`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error("Failed to clear chats");
       setConversations([]);
       setActiveConversationId(null);
     } catch (error: any) {

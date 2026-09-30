@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { SettingsModal } from "@/components/settings/settings-modal";
 import { AuthProvider } from "@/context/AuthContext";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UpgradeProvider } from "@/components/billing/UpgradeProvider";
@@ -33,7 +32,6 @@ export function RootShell({ children }: { children: ReactNode }) {
             {children}
           </motion.div>
         </AnimatePresence>
-        <SettingsModal open={false} onClose={() => {}} />
         <FeedbackButton />
         <ToastContainer />
         </UpgradeProvider>

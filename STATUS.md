@@ -10,7 +10,8 @@ Last verified: 2026-09-30. Feature-by-feature PRD mapping: see FEATURES.md. Merg
 | PR #4 `feat/feedback-and-cleanup` → `main` | **Open, not merged**, CI green | GitHub API `pulls/4` (2026-09-30): open, head `0c32543` |
 | PR #5 `feat/reviews-wall` → `feat/feedback-and-cleanup` | **Open, not merged**, CI green (run 36591274233) | GitHub API `pulls/5`: open, head `d3e8fa5` |
 | `integration/main-plus-live` | Live merged into PR #5's head (`774bbd5`) + 13 follow-ups; contains `origin/main` (`6a9b902`) | `git merge-base --is-ancestor origin/main HEAD` |
-| PR to `main` from `integration/main-plus-live` | see the PR link in the session report | — |
+| PR #6 `integration/main-plus-live` → `main` | **Open, not merged**, CI green (all 4 jobs), mergeable | GitHub API `pulls/6` (2026-09-30), head `da5352f` |
+| `feat/login-captcha` (from `da5352f`) | Sign-in CAPTCHA, 5 commits, local only (not pushed) | `git log da5352f..feat/login-captcha` |
 | Production backend `api.vatsaai.com` (Render) | Still runs live `bd3163c` | nothing deployed from this work |
 | Backup of live | `backup/live-before-merge` → `bd3163c` (local + GitHub) | `git ls-remote origin refs/heads/backup/live-before-merge` |
 
@@ -50,6 +51,27 @@ Smoke-tested by hand against the real local backend + frontend (2026-09-30):
 - Chat goes through the router; with no `OPENROUTER_API_KEY` locally it shows the clean "temporarily unavailable" + Retry.
 - `/pricing`: live $1 = ₹95.98 → ₹2,300 / ₹9,500.
 
+## Done: sign-in CAPTCHA (branch `feat/login-captcha`, 2026-09-30)
+
+Owner decisions:
+- **Scope:** Cloudflare Turnstile is enforced when a Google/GitHub sign-in starts, so both `/login` and `/signup` get it (they share that start). Nowhere else.
+- **Keys:** built with Cloudflare's public test keys; **off** (`TURNSTILE_ENABLED=false`) until real keys are set (DEPLOY.md §6).
+
+| Commit | What | Proof |
+|---|---|---|
+| `cee43fd` | Backend: `services/captcha.py`; POST start with the token in the body; one check, 5 s, fail-open on outage; 10 checks/min/IP; startup refuses "on without a key" | `tests/test_login_captcha.py` (15; 10 fail with the gate disabled) |
+| `4f7ea11` | Frontend: `TurnstileWidget` (lazy, only on the sign-in buttons), `OAuthSignIn` shared by `/login` and `/signup`, buttons wait for a token; signed-in visitors skip sign-in | `lib/captcha.test.ts` (4), `lib/oauth.test.ts` (+1) |
+| `0f116b7` | Fix (from `5dea0fa`): the 2FA code form waited for hydration; a code typed earlier was dropped | 2FA e2e 30/30 repeated (was 26/30) |
+| `ce302d6` | E2E with the CAPTCHA on (fake Turnstile, test site key); the signed-in redirect applies only to real page loads (Next strips its prefetch headers) | `e2e/captcha.spec.ts` (8 × 2) |
+| docs commit | `.env.example` (both), `render.yaml`, DEPLOY.md §6, SECURITY_ACTIONS.md §4 row 15 + §8 | — |
+
+Not built from the prompt: `POST /api/auth/verify-captcha`. Turnstile tokens are single-use, so checking there and again at sign-in would always fail the second check.
+
+Test totals on `feat/login-captcha`:
+- **Backend:** 663 passed / 13 skipped / 0 failed.
+- **Frontend:** unit 159/159; tsc clean; eslint 0 errors.
+- **Playwright on the CAPTCHA build:** 188 passed / 52 skipped / 0 failed (240).
+
 ## Earlier work (still true)
 
 - PR #4: feedback system, logo, UX extras (email sign-up without a code was superseded by Google/GitHub-only).
@@ -58,6 +80,7 @@ Smoke-tested by hand against the real local backend + frontend (2026-09-30):
 ## Open
 
 - **Deploy** (needs Render/Neon/Hostinger access): the PR's deployment checklist, staging first.
+- **CAPTCHA keys:** create a Turnstile widget, then DEPLOY.md §6 (frontend site key first, then `TURNSTILE_ENABLED` + secret on Render).
 - **Phase 0 Fix 2:** the user's email still goes into every system prompt (`ai_service.py:297`).
 - **Phase 0 Fix 3:** chat 👍/👎 are not saved (`hooks/home/useHomeChat.ts:384`).
 - **Phases 1–5 of the PRD:** not started (FEATURES.md §1).

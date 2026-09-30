@@ -98,3 +98,19 @@ python -m scripts.force_password_reset --apply --notify
 - An old session token fails: `curl -H "Authorization: Bearer <old token>" https://vatsaai-backend.onrender.com/auth/me` → 401.
 - Razorpay test payment completes (DEPLOYMENT.md §8).
 - CI is green on `main`: https://github.com/bv4623-svg/Vatsa-_ai/actions
+
+## 6. Optional: CAPTCHA on sign-in (Cloudflare Turnstile)
+
+Starting a Google/GitHub sign-in can require a Cloudflare Turnstile check. It is the only CAPTCHA in the app: `/login` and `/signup` share that start, so both show it; chat, reviews, feedback, 2FA and password reset never do, and a signed-in visitor never sees it. **Off until you do the steps below.**
+
+1. **Keys.** https://dash.cloudflare.com → **Turnstile** → **Add widget**: name `Vatsa AI sign-in`, hostnames `vatsaai.com` and `www.vatsaai.com` (plus any staging host), **Widget mode: Managed** (invisible for most people). Copy the **Site key** and the **Secret key**.
+2. **Frontend first.** In the frontend host's build environment set `NEXT_PUBLIC_TURNSTILE_SITE_KEY=<site key>`, rebuild and deploy. The buttons now wait for the check; the backend still ignores the token, so nothing can break yet.
+3. **Then the backend.** On Render → the API service → *Environment*: `TURNSTILE_SECRET_KEY=<secret key>`, `TURNSTILE_ENABLED=true`, deploy. With `TURNSTILE_ENABLED=true` and no secret the server refuses to start, and Render keeps the previous deploy.
+4. **Check.**
+   - `/login`: "Checking your browser…" for a moment, then Google/GitHub sign-in works.
+   - A sign-in started without a token is refused:
+     `curl -s -o /dev/null -w "%{http_code} %{redirect_url}
+" https://<backend>/api/auth/google/login` → `307 https://<frontend>/auth/callback?error=captcha_required`.
+5. **Turn it off:** `TURNSTILE_ENABLED=false` on Render (the frontend can keep the site key). **Rotate the secret:** Cloudflare → Turnstile → the widget → *Rotate secret key*, then update Render.
+
+Doing step 3 before step 2 refuses every sign-in until the frontend has the site key. If Cloudflare is down, sign-in still works (fail-open, SECURITY_ACTIONS.md §8).

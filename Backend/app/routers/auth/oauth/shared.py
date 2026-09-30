@@ -1,14 +1,21 @@
+import logging
 import os
 import secrets
 from datetime import timedelta
+from typing import Optional
 from urllib.parse import urlencode
 
+from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.models.token import TokenAccount, TokenTransaction
 from app.auth.jwt import get_password_hash, create_access_token
+from app.services.captcha import captcha_enabled, token_from_form, verify_turnstile
+from app.utils.rate_limit import client_ip, enforce_rate_limit
+
+captcha_logger = logging.getLogger("Captcha")
 
 # Env FRONTEND_REDIRECT_URL, else the live site (see app/config/urls.py).
 from app.config.urls import FRONTEND_URL  # noqa: E402
@@ -81,5 +88,35 @@ def redirect_with_token(user: User) -> RedirectResponse:
     return RedirectResponse(f"{FRONTEND_URL}/auth/callback?{qs}")
 
 
-def redirect_with_error(error: str) -> RedirectResponse:
-    return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error={error}")
+def redirect_with_error(error: str, status_code: int = 307) -> RedirectResponse:
+    return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error={error}", status_code=status_code)
+
+
+def redirect_status(request: Request) -> int:
+    """303 after the form POST that starts a sign-in, so the browser follows
+    with a GET; a 307 would re-send the POST (to Google/GitHub, or to the
+    frontend's callback page)."""
+    return 303 if request.method == "POST" else 307
+
+
+async def refuse_without_captcha(request: Request) -> Optional[RedirectResponse]:
+    """The CAPTCHA gate for starting a Google/GitHub sign-in -- the only
+    place the app asks for one. None means go ahead. With the CAPTCHA on, a
+    start without a token (including the plain GET) is refused, so neither
+    /signup nor a direct link skips it."""
+    if not captcha_enabled():
+        return None
+    status = redirect_status(request)
+    ip = client_ip(request)
+    token = token_from_form(await request.form()) if request.method == "POST" else None
+    if not token:
+        captcha_logger.info("captcha missing: ip=%s", ip)
+        return redirect_with_error("captcha_required", status)
+    try:
+        # Caps the calls to Cloudflare, not sign-ins: a person needs one.
+        enforce_rate_limit(f"captcha:ip:{ip}", limit=10, window_seconds=60)
+    except HTTPException:
+        return redirect_with_error("too_many_attempts", status)
+    if not await verify_turnstile(token, ip, request.headers.get("user-agent", "")):
+        return redirect_with_error("captcha_failed", status)
+    return None

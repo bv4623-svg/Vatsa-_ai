@@ -2,6 +2,7 @@ export { GeneralTab } from "./GeneralTab";
 export { AppearanceTab } from "./AppearanceTab";
 export { LanguageTab } from "./LanguageTab";
 export { PreferencesTab } from "./PreferencesTab";
+export { VoiceTab } from "./VoiceTab";
 export { SecurityTab } from "./SecurityTab";
 export { ApiKeysTab } from "./ApiKeysTab";
 export { ConnectedAccountsTab } from "./ConnectedAccountsTab";

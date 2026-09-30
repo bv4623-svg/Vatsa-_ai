@@ -14,6 +14,8 @@ __pycache__/
 !frontend/.env.production
 *.sqlite
 *.sqlite3
+.env.production
+.env.production.local
 *.log
 *.db
 *.db.bak
@@ -25,6 +27,13 @@ tsconfig.tsbuildinfo
 Backend/generated_images/
 # Runtime data written by the API (user uploads); lives under DATA_DIR in production
 Backend/uploads/
+venv/
+.venv/
+*.env
+.env.*.local
+.pytest_cache/
+dist/
+build/
 
 # Built static site for Netlify Drop (generated, not source)
 netlify-drop/
@@ -43,6 +52,9 @@ frontend/eslint-*.json
 frontend/lint-*.json
 frontend/lint-*.txt
 frontend/typecheck-errors.txt
+# Stray command output once committed at the root (a 33k-line file listing)
+/backend_files.txt
+/Please add
 # Test output
 frontend/test-results/
 frontend/playwright-report/
@@ -52,3 +64,8 @@ frontend/public/pyodide/
 # Virtualenvs (the README quick start creates Backend/.venv)
 .venv/
 venv/
+# Hostinger deployment archive (generated, not source)
+frontend/frontend-deploy.zip
+
+# Full-resolution logo backup (source asset, not used at runtime -- see scripts/resize-logo.js)
+frontend/public/logo-source.png

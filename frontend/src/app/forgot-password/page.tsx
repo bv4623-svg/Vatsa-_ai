@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { AuthShell, Field, FormAlert, SubmitButton, TextInput } from "@/components/auth/AuthShell";
 import { sendOtp, verifyOtp } from "@/services/auth";
+import { useResendCooldown } from "@/hooks/useResendCooldown";
 import { validateEmail, validateOtp, isClean, type FieldError } from "@/lib/validation";
 
 type Step = "email" | "code";
@@ -19,10 +20,12 @@ export default function ForgotPasswordPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { remaining, isCoolingDown, start: startCooldown } = useResendCooldown();
 
   const requestCode = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
+      if (isCoolingDown) return;
       setFormError(null);
       setNotice(null);
 
@@ -35,13 +38,14 @@ export default function ForgotPasswordPage() {
         await sendOtp(email.trim(), "reset");
         setStep("code");
         setNotice(`We sent a 6-digit code to ${email.trim()}. It expires in 5 minutes.`);
+        startCooldown();
       } catch (err: any) {
         setFormError(String(err?.message || "Could not send the reset code. Try again."));
       } finally {
         setLoading(false);
       }
     },
-    [email]
+    [email, isCoolingDown, startCooldown]
   );
 
   const submitCode = useCallback(
@@ -134,10 +138,10 @@ export default function ForgotPasswordPage() {
             <button
               type="button"
               onClick={() => requestCode()}
-              disabled={loading}
+              disabled={loading || isCoolingDown}
               className="text-emerald-400 hover:underline disabled:opacity-50"
             >
-              Resend code
+              {isCoolingDown ? `Resend code (${remaining}s)` : "Resend code"}
             </button>
           </div>
         </form>

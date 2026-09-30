@@ -19,7 +19,14 @@ export const LANGUAGES = [
   { value: "zh", label: "Chinese" },
 ];
 
-export const MODELS: Array<{ id: string; name: string; desc: string; badge: string }> = [];
+// Ids match the AI Router's route names (Backend/app/ai_router/config.py) --
+// never a specific underlying provider/model (see sanitize.py).
+export const MODELS: Array<{ id: string; name: string; desc: string; badge: string }> = [
+  { id: "auto", name: "Vatsa AI", desc: "Balanced for everyday chat and coding", badge: "Recommended" },
+  { id: "vatsa-pro", name: "Vatsa AI Pro", desc: "Strongest reasoning for complex work", badge: "Pro" },
+  { id: "vatsa-advanced", name: "Vatsa AI Advanced", desc: "Deep, nuanced responses", badge: "Advanced" },
+  { id: "vatsa-fast", name: "Vatsa AI Fast", desc: "Fastest responses for quick tasks", badge: "Fast" },
+];
 
 export const VOICES = ["Amy", "Brian", "Emma", "James", "Sofia"];
 

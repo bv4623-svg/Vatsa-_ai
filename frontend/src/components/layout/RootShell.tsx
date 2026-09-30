@@ -8,6 +8,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UpgradeProvider } from "@/components/billing/UpgradeProvider";
 import { useSyncProfileLocale } from "@/hooks/i18n/useSyncProfileLocale";
+import { ToastContainer } from "@/components/ui/toast";
+import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 
 export function RootShell({ children }: { children: ReactNode }) {
   // usePathname instead of window.location: reading window during render
@@ -32,6 +34,8 @@ export function RootShell({ children }: { children: ReactNode }) {
           </motion.div>
         </AnimatePresence>
         <SettingsModal open={false} onClose={() => {}} />
+        <FeedbackButton />
+        <ToastContainer />
         </UpgradeProvider>
       </SessionProvider>
     </AuthProvider>

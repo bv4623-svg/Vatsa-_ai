@@ -17,4 +17,12 @@ export interface Attachment {
   error?: string;
   /** Attached, but with a caveat, e.g. the document was truncated. */
   warning?: string;
+  /** Upload progress, 0-100, while status is "processing". */
+  progress?: number;
+  /** Set once POST /api/upload completes -- the file is persisted (Library
+   * row, counts toward storage quota, survives a refresh) at this point,
+   * not just held in browser memory. */
+  fileId?: string;
+  url?: string;
+  thumbnailUrl?: string;
 }

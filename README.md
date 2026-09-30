@@ -23,7 +23,7 @@ One workspace to chat, search the web, run deep research, generate images, write
 ## Repository layout
 
 ```
-Backend/            FastAPI app (app/), tests (tests/), scripts/ (profiler, 2FA re-encrypt), Render blueprint
+Backend/            FastAPI app (app/), tests (tests/), scripts/ (profiler, 2FA re-encrypt), Dockerfile + start.sh (Render)
   app/routers/      HTTP endpoints (chat, research, upload, vision, files, library, …)
   app/services/     ai_service, search_service, research_service, image_service, feature_access, …
 frontend/           Next.js app
@@ -77,11 +77,12 @@ All secrets come from environment variables. Never commit `.env` files: every `.
 | `SEARXNG_URL`, `SERPER_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `GOOGLE_CSE_*` | backend | no | Extra search providers (DuckDuckGo always runs) |
 | `SEARCH_CACHE_TTL_SECONDS` | backend | no | Search cache lifetime (default 600) |
 | `IMAGE_PROVIDER_URL` | backend | no | Override the image provider endpoint |
-| `DATA_DIR` | backend | prod | Persistent directory for the database, uploads and images |
-| `DATABASE_URL` | backend | no | Defaults to SQLite in `DATA_DIR` |
+| `DATABASE_URL` | backend | prod | Postgres connection string (Neon in production). Unset: SQLite in `DATA_DIR`, for local development only |
+| `REDIS_URL` | backend | no | Redis URL (Upstash in production) for shared rate limits, cache and scheduled-task jobs; unset falls back to in-process memory |
+| `DATA_DIR` | backend | no | Local directory for the SQLite database, uploads and images (default `Backend/`). Unset on Render |
 | `ALLOWED_ORIGINS`, `FRONTEND_REDIRECT_URL`, `BACKEND_PUBLIC_URL` | backend | prod | CORS and absolute URLs |
 | `EMAIL_*`, `MAIL_FROM` | backend | for OTP email | SMTP |
-| `GOOGLE_*`, `GITHUB_*`, `MICROSOFT_*` | backend | for OAuth | OAuth apps |
+| `GOOGLE_*`, `GITHUB_*` | backend | at least one (the only way to sign up) | OAuth apps |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | backend | for payments | Checkout and webhooks |
 | `ADMIN_EMAILS` | backend | no | Admin allow-list |
 | `NEXT_PUBLIC_API_URL` | frontend (build time) | yes | Public API origin |
@@ -123,7 +124,7 @@ Error shapes:
 
 ## Deployment
 
-Frontend on Netlify, API on Render with a persistent disk: see [DEPLOYMENT.md](DEPLOYMENT.md). Set every production secret in the host's environment settings, never in the repository.
+Frontend on Netlify. API on Render as a Docker service on the free plan (`render.yaml`, `Backend/Dockerfile`, `Backend/start.sh`), with Neon Postgres (`DATABASE_URL`) and Upstash Redis (`REDIS_URL`); there is no persistent disk. Steps: [DEPLOY.md](DEPLOY.md); background: [DEPLOYMENT.md](DEPLOYMENT.md). Set every production secret in the host's environment settings, never in the repository.
 
 ## Security
 

@@ -2,8 +2,8 @@ from typing import Optional
 from app.utils.email.core import _send
 
 
-def send_otp_email(to_email: str, otp: str, purpose: str = "signup") -> bool:
-    title = "Verify your email" if purpose == "signup" else "Reset your password"
+def send_otp_email(to_email: str, otp: str, purpose: str = "reset") -> bool:
+    title = "Reset your password"
     subject = f"Vatsa AI — {title}"
 
     html = f"""

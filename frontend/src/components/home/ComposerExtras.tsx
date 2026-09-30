@@ -6,6 +6,8 @@ import { Tooltip } from "@/components/home/Tooltip";
 
 /** Everything the composer needs to render voice + research controls. */
 export interface ComposerVoiceProps {
+  /** Settings -> Voice -> voice input; off hides the voice buttons. */
+  enabled: boolean;
   supported: boolean;
   listening: boolean;
   interim: string;
@@ -25,6 +27,7 @@ export interface ComposerResearchProps {
 const pill = "tap-target relative flex items-center gap-1 rounded-full text-sm transition-colors hover:bg-accent/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent";
 
 export function VoiceButton({ voice, compact }: { voice: ComposerVoiceProps; compact?: boolean }) {
+  if (!voice.enabled) return null;
   const label = voice.locked
     ? "Voice is a Pro feature"
     : !voice.supported
@@ -66,7 +69,7 @@ export function VoiceConversationButton({ voice, compact }: { voice: ComposerVoi
   const label = voice.conversationMode
     ? "Voice conversation on: replies are read aloud and dictation sends automatically"
     : "Voice conversation: speak, auto-send, hear the reply";
-  if (!voice.supported && !voice.locked) return null;
+  if (!voice.enabled || (!voice.supported && !voice.locked)) return null;
   return (
     <Tooltip text={voice.locked ? "Voice is a Pro feature" : label}>
       <button

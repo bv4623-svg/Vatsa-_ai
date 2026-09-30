@@ -76,8 +76,8 @@ Judging by the schema at that commit, the databases may hold user emails and nam
 | 5 | `RAZORPAY_WEBHOOK_SECRET` | Verifies payment webhooks | https://dashboard.razorpay.com → Account & Settings → Webhooks → edit | any long random string (`openssl rand -hex 32`) | A test webhook shows 200 in Razorpay's delivery log |
 | 6 | `GOOGLE_CLIENT_SECRET` | "Continue with Google" | https://console.cloud.google.com/apis/credentials → the OAuth client → *Reset secret* | new secret | Google sign-in completes |
 | 7 | `GITHUB_CLIENT_SECRET` | "Continue with GitHub" | https://github.com/settings/developers → OAuth Apps → the app → *Generate a new client secret*, then delete the old one | new secret | GitHub sign-in completes |
-| 8 | `MICROSOFT_CLIENT_SECRET` | "Continue with Microsoft" | https://portal.azure.com → App registrations → the app → Certificates & secrets → New client secret; delete the old one | new secret | Microsoft sign-in completes |
-| 9 | `EMAIL_PASSWORD` (+ `EMAIL_USERNAME`) | Sends OTP and notification email | Gmail: https://myaccount.google.com/apppasswords (revoke the old one, create a new one). If it was the mailbox's real password, change it and turn on 2FA for that mailbox | new app password | A signup OTP email arrives |
+| 8 | `MICROSOFT_CLIENT_SECRET` | Nothing now: Microsoft sign-in was removed | https://portal.azure.com → App registrations → the app → Certificates & secrets → delete the secret (and the app registration if nothing else uses it); remove the variable from Render | nothing | `/auth/microsoft/login` returns 404 |
+| 9 | `EMAIL_PASSWORD` (+ `EMAIL_USERNAME`) | Sends OTP and notification email | Gmail: https://myaccount.google.com/apppasswords (revoke the old one, create a new one). If it was the mailbox's real password, change it and turn on 2FA for that mailbox | new app password | A password-reset code email arrives |
 | 10 | `SERPER_API_KEY` | Web search | https://serper.dev/api-key | new key | Web search returns sources |
 | 11 | `TAVILY_API_KEY` | Web search | https://app.tavily.com | new key | same |
 | 12 | `BRAVE_API_KEY` | Web search | https://api-dashboard.search.brave.com | new key | same |

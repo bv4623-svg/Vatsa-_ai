@@ -180,7 +180,7 @@ Each feature lists its user stories, then acceptance criteria. Each criterion is
 
 | Feature | Summary | Coverage |
 |---|---|---|
-| Auth | Email + password with OTP verification, Google/GitHub/Microsoft OAuth, TOTP 2FA with backup codes, password reset, rate-limited login | existing + SMOKE-AUTH-* |
+| Auth | Google/GitHub OAuth (the only way to sign up), password reset by emailed code for older password accounts, TOTP 2FA with backup codes, rate-limited login | existing + SMOKE-AUTH-* |
 | Conversations | CRUD, pin, favourite, archive, duplicate, workspace filter | SMOKE-CONV-* |
 | Memory | Automatic fact extraction after each reply + manual CRUD | SMOKE-MEM-01 |
 | Library | Every upload, generated image and conversation as a file; folders, rename, download, storage quota, public share links | SMOKE-LIB-* |

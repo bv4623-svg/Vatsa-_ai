@@ -11,7 +11,7 @@ leaked database copy (created before 2026-09-16; see SECURITY_ACTIONS.md §3).
   - replaces the password hash with the hash of a random 32-byte secret
     nobody knows, so the leaked hash (and the old password) stop working
     and the only way back in is /forgot-password (email code -> new password).
-    Google/GitHub/Microsoft sign-in keeps working for linked accounts.
+    Google/GitHub sign-in keeps working for linked accounts.
 --notify sends each affected user an email with the reset link.
 
 Prints emails and counts only; never a password or hash.

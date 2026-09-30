@@ -5,11 +5,11 @@ import { motion } from "framer-motion";
 import { useUpgrade } from "@/components/billing/UpgradeProvider";
 import {
   Settings, Palette, Languages, Info, X, Sparkles,
-  SlidersHorizontal, ShieldCheck, KeyRound, Link2, CreditCard, UserCog,
+  SlidersHorizontal, ShieldCheck, KeyRound, Link2, CreditCard, UserCog, Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  GeneralTab, AppearanceTab, LanguageTab, PreferencesTab, SecurityTab,
+  GeneralTab, AppearanceTab, LanguageTab, PreferencesTab, VoiceTab, SecurityTab,
   ApiKeysTab, ConnectedAccountsTab, BillingTab, AccountTab, LegalTab,
 } from "@/components/settings/tabs";
 
@@ -17,6 +17,7 @@ const TABS = [
   { id: "general", label: "General", icon: Settings },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
+  { id: "voice", label: "Voice", icon: Mic },
   { id: "language", label: "Language", icon: Languages },
   { id: "security", label: "Security", icon: ShieldCheck },
   { id: "apiKeys", label: "API Keys", icon: KeyRound },
@@ -77,6 +78,7 @@ export const SettingsModal = memo(({ open, onClose, settings, updateSettings, on
             {activeTab === "general" && <GeneralTab settings={settings} updateSettings={updateSettings} onClearAllChats={onClearAllChats} onExportChats={onExportChats} />}
             {activeTab === "appearance" && <AppearanceTab settings={settings} updateSettings={updateSettings} />}
             {activeTab === "preferences" && <PreferencesTab />}
+            {activeTab === "voice" && <VoiceTab />}
             {activeTab === "language" && <LanguageTab />}
             {activeTab === "security" && <SecurityTab />}
             {activeTab === "apiKeys" && <ApiKeysTab isFree={isFree} />}

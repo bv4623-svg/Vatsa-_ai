@@ -477,7 +477,15 @@ class SearchService:
         except Exception:
             pass  # best-effort only
 
-    # Hard floor: _rank_score alone lets an off-topic page win on authority/length/recency.
+    # A result sharing zero tokens with the query can still rack up points
+    # from domain authority, snippet length and recency alone (a long,
+    # well-written .gov page about something else entirely) -- that's a
+    # relevance-ranking gap, not a relevance filter, and it's exactly how
+    # a completely unrelated result (a scraper hiccup, a provider serving
+    # a cached/trending page instead of real results for the query) can
+    # still end up in the top N and get handed to the model as "context".
+    # relevant() below is the hard floor _rank_score's weighting alone
+    # doesn't provide.
     MIN_RELEVANT_OVERLAP = 1
 
     @staticmethod

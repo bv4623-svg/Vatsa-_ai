@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import PaymentClient from './PaymentClient';
 
 export const metadata: Metadata = {
-  title: 'Payments & Billing | Vatsa AI',
+  title: 'Payments & Billing',
   description: 'Payment methods, subscription billing, taxes, chargebacks, and fraud protection for Vatsa AI.',
 };
 

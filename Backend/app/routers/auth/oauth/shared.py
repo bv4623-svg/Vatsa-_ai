@@ -1,5 +1,6 @@
 import os
 import secrets
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from fastapi.responses import RedirectResponse
@@ -17,6 +18,21 @@ def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) 
     email = email.lower().strip()
     user = db.query(User).filter(User.email == email).first()
     if user:
+        if not user.is_verified:
+            # Email sign-up doesn't prove the inbox, so whoever set this password
+            # may not own the address: the provider-verified owner takes the
+            # account over, the unproven password stops working, its sessions end.
+            user.hashed_password = get_password_hash(secrets.token_hex(24))
+            user.token_version = (user.token_version or 0) + 1
+            user.is_verified = True
+        # A provider-verified email match is proof this person controls
+        # this account too -- marks a legacy password-only account as
+        # migrated off the "still needs to link a provider" safety-net
+        # population without requiring the separate, explicit Settings ->
+        # Connected accounts flow.
+        if not user.oauth_linked:
+            user.oauth_linked = True
+            db.commit()
         return user
 
     base_username = email.split("@")[0] + "_" + provider
@@ -32,6 +48,7 @@ def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) 
         hashed_password=get_password_hash(secrets.token_hex(24)),
         is_active=True, is_verified=True,
         profile_completed=False, tier="free",
+        oauth_linked=True,
     )
     db.add(user)
     db.flush()  # assigns user.id within the same transaction, without committing yet
@@ -47,6 +64,12 @@ def get_or_create_oauth_user(db: Session, email: str, name: str, provider: str) 
 
 
 def redirect_with_token(user: User) -> RedirectResponse:
+    if user.two_factor_enabled:
+        # The provider proved the email, not the second factor. Same as
+        # password login: only a pending token (scope="2fa_pending", refused
+        # as a session) that POST /auth/2fa/verify-login exchanges for one.
+        pending_token = create_access_token({"sub": str(user.id), "scope": "2fa_pending"}, expires_delta=timedelta(minutes=10))
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?{urlencode({'requires_2fa': 'true', 'pending_token': pending_token})}")
     jwt_token = create_access_token({"sub": str(user.id), "email": user.email, "name": user.full_name, "tv": user.token_version})
     qs = urlencode({
         "access_token": jwt_token,

@@ -8,6 +8,7 @@ import { Tooltip } from "@/components/home/Tooltip";
 import { AttachmentChip } from "@/components/home/AttachmentChip";
 import { AttachmentMenu } from "@/components/home/AttachmentMenu";
 import { ToolbarPopover } from "@/components/home/ToolbarPopover";
+import { MessageCounter } from "@/components/home/MessageCounter";
 import {
   ResearchToggle, VoiceButton, VoiceConversationButton, VoiceStatus,
   type ComposerResearchProps, type ComposerVoiceProps,
@@ -95,6 +96,7 @@ export function ChatEmptyState({
           initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: 0.15 }}
           className="relative mt-6"
         >
+          <MessageCounter length={inputValue.length} />
           <div className="rounded-2xl border border-border/50 bg-card/80 shadow-sm p-4 transition-all hover:border-border">
             {attachments.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">

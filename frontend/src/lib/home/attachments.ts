@@ -68,22 +68,6 @@ export interface ExtractResult {
   pages_parsed?: number;
 }
 
-async function extractViaServer(file: File): Promise<ExtractResult> {
-  const token = localStorage.getItem("access_token");
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch(`${API_BASE}/api/upload`, {
-    method: "POST",
-    headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-    body: form,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(errorMessageFromBody(body, res.status));
-  }
-  return res.json();
-}
-
 export function documentWarning(r: ExtractResult): string | undefined {
   if (r.warning) return r.warning;
   if (r.truncated) {
@@ -92,6 +76,58 @@ export function documentWarning(r: ExtractResult): string | undefined {
       : "Long document: only the beginning was read";
   }
   return undefined;
+}
+
+/** POST /api/upload's response: extracted text plus where the stored copy lives. */
+interface UploadResponse extends ExtractResult {
+  id?: number | string;
+  url?: string | null;
+  thumbnail_url?: string | null;
+  mime_type?: string;
+}
+
+interface UploadHandle {
+  promise: Promise<UploadResponse>;
+  abort: () => void;
+}
+
+/** XHR rather than fetch: the chip shows real progress (xhr.upload.onprogress)
+ * and removing the chip really cancels the request. Every attachment goes
+ * through here, so it's persisted (Library row, counts toward storage quota,
+ * survives a refresh) whatever its type. */
+export function uploadFile(file: File, onProgress?: (percent: number) => void): UploadHandle {
+  const xhr = new XMLHttpRequest();
+  const promise = new Promise<UploadResponse>((resolve, reject) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    const form = new FormData();
+    form.append("file", file);
+
+    xhr.open("POST", `${API_BASE}/api/upload`);
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let body: unknown = null;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        body = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (body && typeof body === "object") resolve(body as UploadResponse);
+        else reject(new Error("Invalid response from server"));
+        return;
+      }
+      reject(new Error(errorMessageFromBody(body, xhr.status)));
+    };
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.onabort = () => reject(new Error("Upload cancelled"));
+    xhr.send(form);
+  });
+
+  return { promise, abort: () => xhr.abort() };
 }
 
 /** Scales an image down to IMAGE_MAX_DIMENSION on its long edge and
@@ -135,21 +171,21 @@ function readAsDataURL(file: File): Promise<string> {
   });
 }
 
-function readAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read file"));
-    reader.readAsText(file);
-  });
-}
-
 export function dataUrlBytes(dataUrl: string): number {
   const comma = dataUrl.indexOf(",");
   return Math.floor(((comma >= 0 ? dataUrl.length - comma - 1 : dataUrl.length) * 3) / 4);
 }
 
-export async function readFileAsAttachment(file: File, id?: string): Promise<Attachment> {
+export interface AttachmentCallbacks {
+  onProgress?: (id: string, percent: number) => void;
+  registerAbort?: (id: string, abort: () => void) => void;
+}
+
+/** Validates, uploads (persisting the file) and turns it into a chat
+ * attachment: extracted text for documents and text files, a downscaled
+ * data URL for images (the vision model's input). Never throws: problems
+ * come back as status "error" with a readable `error`. */
+export async function readFileAsAttachment(file: File, id?: string, callbacks: AttachmentCallbacks = {}): Promise<Attachment> {
   const base: Omit<Attachment, "content" | "isBase64" | "status"> = {
     id: id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: file.name,
@@ -162,30 +198,28 @@ export async function readFileAsAttachment(file: File, id?: string): Promise<Att
   const invalid = validateFile(file);
   if (invalid) return failed(invalid, kind === "image");
 
+  const { promise, abort } = uploadFile(file, (pct) => callbacks.onProgress?.(base.id, pct));
+  callbacks.registerAbort?.(base.id, abort);
+
   try {
-    if (kind === "document") {
-      // PDF/DOCX/XLSX: extracted server-side (pdfplumber/python-docx/openpyxl)
-      // so the assistant sees the document's text, not an inert blob.
-      const result = await extractViaServer(file);
-      if (!result.text) return failed(result.warning || "No readable text found");
-      return { ...base, content: result.text, isBase64: false, status: "ready", warning: documentWarning(result) };
+    // The image's data URL is prepared while the original uploads.
+    const [uploaded, dataUrl] = await Promise.all([promise, kind === "image" ? prepareImage(file) : Promise.resolve("")]);
+    const persisted = {
+      fileId: uploaded.id != null ? String(uploaded.id) : undefined,
+      url: uploaded.url ?? undefined,
+      thumbnailUrl: uploaded.thumbnail_url ?? undefined,
+    };
+    if (kind === "image") {
+      if (dataUrlBytes(dataUrl) > MAX_IMAGE_SEND_BYTES) return failed("Image too large after compression (max 8 MB)", true);
+      return { ...base, ...persisted, content: dataUrl, isBase64: true, status: "ready", preview: dataUrl };
     }
-    if (kind === "text") {
-      const text = await readAsText(file);
-      const truncated = text.length > MAX_INLINE_TEXT_CHARS;
-      return {
-        ...base,
-        content: truncated ? text.slice(0, MAX_INLINE_TEXT_CHARS) : text,
-        isBase64: false,
-        status: "ready",
-        warning: truncated ? "Long file: only the beginning was attached" : undefined,
-      };
-    }
-    // Images go to the model as vision input.
-    const dataUrl = await prepareImage(file);
-    if (dataUrlBytes(dataUrl) > MAX_IMAGE_SEND_BYTES) return failed("Image too large after compression (max 8 MB)", true);
-    return { ...base, content: dataUrl, isBase64: true, status: "ready", preview: dataUrl };
+    // PDF/DOCX/XLSX and text files: the server extracts the text
+    // (pdfplumber/python-docx/openpyxl), so the assistant sees the content.
+    if (!uploaded.text) return failed(uploaded.warning || "No readable text found");
+    const warning = kind === "text" && uploaded.truncated ? "Long file: only the beginning was attached" : documentWarning(uploaded);
+    return { ...base, ...persisted, content: uploaded.text, isBase64: false, status: "ready", warning };
   } catch (e) {
+    abort();
     return failed(e instanceof Error ? e.message : "Could not read file", kind === "image");
   }
 }

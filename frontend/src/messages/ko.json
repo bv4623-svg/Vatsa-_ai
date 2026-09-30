@@ -17,7 +17,8 @@
     "signOut": "로그아웃",
     "newChat": "새 채팅",
     "searchChats": "채팅 검색...",
-    "backToChat": "채팅으로 돌아가기"
+    "backToChat": "채팅으로 돌아가기",
+    "reviews": "리뷰"
   },
   "settings": {
     "language": {

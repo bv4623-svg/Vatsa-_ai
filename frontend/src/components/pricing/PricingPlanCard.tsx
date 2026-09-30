@@ -12,9 +12,18 @@ interface PricingPlanCardProps {
   ctaLabel: string;
   isCurrent: boolean;
   onSelect: (plan: Plan) => void;
+  liveInr?: number;
+  isLoadingLiveInr?: boolean;
 }
 
-export function PricingPlanCard({ plan, ctaLabel, isCurrent, onSelect }: PricingPlanCardProps) {
+export function PricingPlanCard({
+  plan,
+  ctaLabel,
+  isCurrent,
+  onSelect,
+  liveInr,
+  isLoadingLiveInr,
+}: PricingPlanCardProps) {
   return (
     <div
       className={cn(
@@ -27,6 +36,11 @@ export function PricingPlanCard({ plan, ctaLabel, isCurrent, onSelect }: Pricing
           Most Popular
         </span>
       )}
+      {plan.id === "business" && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-400 to-purple-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+          ⚡ 5x more power than Pro
+        </span>
+      )}
 
       <div className="mb-5">
         <div className="flex items-center gap-2">
@@ -34,7 +48,7 @@ export function PricingPlanCard({ plan, ctaLabel, isCurrent, onSelect }: Pricing
           {plan.popular && <Star className="h-4 w-4 fill-blue-500 text-blue-500" aria-hidden="true" />}
         </div>
 
-        <PlanPrice plan={plan} />
+        <PlanPrice plan={plan} liveInr={liveInr} isLoadingLiveInr={isLoadingLiveInr} />
 
         <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{plan.description}</p>
       </div>

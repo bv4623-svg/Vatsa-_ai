@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader, Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Building2 } from "lucide-react";
+import { Lock, Shield, CheckCircle2, AlertCircle, X, Sparkles, Star, Building2 } from "lucide-react";
 import { getPlan } from "@/data/plans";
 
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/stores/app-store";
+import { useAppStore, useSettings } from "@/stores/app-store";
 import { MOD_KEY } from "@/lib/home/constants";
 import { useHomeTheme } from "@/hooks/home/useHomeTheme";
 import { useHomeConversations } from "@/hooks/home/useHomeConversations";
@@ -15,6 +15,7 @@ import { useHomeChat } from "@/hooks/home/useHomeChat";
 import { useAttachments } from "@/hooks/home/useAttachments";
 import { useVisionAnalysis } from "@/hooks/home/useVisionAnalysis";
 import { Sidebar } from "@/components/home/Sidebar";
+import { HomeSkeleton } from "@/components/home/HomeSkeleton";
 import { SettingsModal } from "@/components/home/SettingsModal";
 import { ChatEmptyState } from "@/components/home/ChatEmptyState";
 import { ChatMessagesView } from "@/components/home/ChatMessagesView";
@@ -29,10 +30,6 @@ import type { UpgradeGateInfo } from "@/hooks/home/useHomeChat";
 
 const CommandPalette = dynamic(
   () => import("@/components/layout/command-palette").then(mod => mod.CommandPalette),
-  { ssr: false }
-);
-const ToastContainer = dynamic(
-  () => import("@/components/ui/toast").then(mod => mod.ToastContainer),
   { ssr: false }
 );
 
@@ -95,7 +92,12 @@ export default function HomePage() {
 
   // ── Voice: dictation (speech-to-text) and read-aloud (text-to-speech),
   // both performed by the browser. Pro feature, like the rest of Voice.
-  const tts = useSpeechSynthesis();
+  // Settings -> Voice: voiceInput shows/hides the buttons, assistantVoice
+  // picks the voice, autoRead reads every new reply aloud.
+  const settings = useSettings();
+  const tts = useSpeechSynthesis(undefined, typeof settings.assistantVoice === "string" ? settings.assistantVoice : undefined);
+  const autoReadRef = useRef(false);
+  useEffect(() => { autoReadRef.current = Boolean(settings.autoRead); }, [settings.autoRead]);
   const voiceConversationRef = useRef(false);
   const latestInputRef = useRef("");
   const sendMessageRef = useRef<(content: string) => void>(() => {});
@@ -148,11 +150,14 @@ export default function HomePage() {
     tts.toggle(msgId, content);
   }, [isFree, openUpgradeModal, tts]);
 
+  // Runs once per newly finished reply, so opening an old chat reads nothing.
   const handleAssistantDone = useCallback((msgId: string, content: string) => {
-    if (voiceConversationRef.current && content) tts.speak(msgId, content);
-  }, [tts]);
+    const autoRead = autoReadRef.current && !isFree;
+    if ((voiceConversationRef.current || autoRead) && content) tts.speak(msgId, content);
+  }, [tts, isFree]);
 
   const voiceProps: ComposerVoiceProps = {
+    enabled: settings.voiceInput !== false,
     supported: stt.supported,
     listening: stt.listening,
     interim: stt.interim,
@@ -314,16 +319,7 @@ export default function HomePage() {
     return () => container?.removeEventListener("scroll", handleScroll);
   }, [setScrollPosition]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader className="w-8 h-8 animate-spin text-purple-500" />
-          <p className="text-sm text-muted-foreground">Loading your workspace...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <HomeSkeleton />;
 
   const isEmpty = !activeConv || (activeConv.messages?.length ?? 0) === 0;
   const hasReadyAttachments = attachments.some(a => a.status === "ready");
@@ -481,7 +477,6 @@ export default function HomePage() {
           </div>
 
           <Suspense fallback={null}><CommandPalette /></Suspense>
-          <Suspense fallback={null}><ToastContainer /></Suspense>
 
           {isNotificationCenterOpen && (
             <div className="fixed top-12 right-4 z-50 w-80 rounded-2xl border border-border bg-background/90 p-4 backdrop-blur-xl shadow-2xl">

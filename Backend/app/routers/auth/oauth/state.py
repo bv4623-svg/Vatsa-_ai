@@ -1,4 +1,4 @@
-"""Anti-CSRF state for the OAuth *login* flows (google/github/microsoft).
+"""Anti-CSRF state for the OAuth *login* flows (google/github).
 
 There is no pre-auth session to tie a server-side state store to, so this
 uses the standard double-submit pattern instead: a random nonce goes both

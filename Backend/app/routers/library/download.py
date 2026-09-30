@@ -18,6 +18,22 @@ def download_item(item: LibraryItem = Depends(get_owned_item), db: Session = Dep
     if item.is_folder:
         raise HTTPException(status_code=400, detail="Folders cannot be downloaded directly")
 
+    if item.type == "upload" and item.storage_path:
+        # Goes through the same StorageBackend upload.py wrote with (local
+        # disk or S3/R2), unlike resolve_path()'s raw filesystem read below
+        # which only ever looks on local disk -- would 404 every upload
+        # once STORAGE_BACKEND=s3 is set.
+        from app.routers.upload import upload_storage
+        try:
+            data = upload_storage.get(item.storage_path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="File not found in storage")
+        return Response(
+            content=data,
+            media_type=item.mime or "application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{item.name}"'},
+        )
+
     if item.storage_path:
         abs_path = resolve_path(item.type, item.storage_path)
         if not os.path.isfile(abs_path):
@@ -36,3 +52,16 @@ def download_item(item: LibraryItem = Depends(get_owned_item), db: Session = Dep
         )
 
     raise HTTPException(status_code=404, detail="Nothing to download for this item")
+
+
+@router.get("/api/library/items/{item_id}/thumbnail")
+def download_thumbnail(item: LibraryItem = Depends(get_owned_item), db: Session = Depends(get_db)):
+    if item.type != "upload" or not item.storage_path or not (item.mime or "").startswith("image/"):
+        raise HTTPException(status_code=404, detail="No thumbnail for this item")
+
+    from app.routers.upload import upload_storage, thumbnail_key_for
+    try:
+        data = upload_storage.get(thumbnail_key_for(item.storage_path))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+    return Response(content=data, media_type="image/jpeg")

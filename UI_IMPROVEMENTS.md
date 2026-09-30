@@ -104,3 +104,67 @@ After these, axe passes on every screen in both themes (22/22).
 - `/code` and `/workspace` also render the landing's animated background.
 - 9 more files use the dead `prose` classes: `CodeChatPanel`, `workspace`, and the about and legal pages.
 - `components/home/HomeBackground.tsx` is an unused stub (Phase 5).
+
+## Phase 3, page 2: `/pricing`
+
+**Measured:** same method as `/home`. Contrast comes from screenshots, light and dark, desktop and phone. Where the old animated background made "most common colour" unreliable, the text's CSS colour is compared with the median background colour behind it. The "5x" badge has a gradient behind it, so each pixel column's background is read from the badge's padding rows, and the lowest value is reported.
+
+**Cause:** the page drew an always-dark animated background (`components/pricing/Background.tsx`: particle canvas, three 130–150 px blurred blobs) under a header, text and cards that follow the theme. In light mode that put near-black text on a near-black page.
+
+**Owner decision applied:** plain background, the same choice as `/home`.
+
+| Measure | Light: before → after | Dark: before → after |
+|---|---|---|
+| Heading "Choose the plan that fits" | **1.08** → 17.75 | 17.43 → 16.22 |
+| Subtitle | **2.57** → 7.56 | 7.49 → 6.86 |
+| "Last Updated" date | 7.49 → 4.84 | **4.03** → 6.86 |
+| Header nav "Home" / "App" (were blue) | **2.37** → 7.56 | 5.41 → 6.86 |
+| Breadcrumb "Home" (was blue) | 5.19 → 7.56 | 5.21 → 6.86 |
+| "⚡ 5x more power than Pro" badge (lowest point of its gradient) | **1.88** → 5.02 | **1.88** → 5.02 |
+| ✓ / ✗ feature icons (need 3:1) | **2.22 / 2.89** → 3.22 / 3.81 | 9.08 / 6.97 (same) |
+| Gradient word "you" / "Questions" (large text, needs 3:1; computed from the colours) | 5.17–5.70 (same) | 3.13–3.74 → 6.56–7.02 |
+| "Most Popular" badge | 5.17 (same) | 5.17 (same) |
+| Buttons: Free / Pro / Business | 10.31 / 5.17 / 10.31 (same) | 13.66 / 5.17 / 13.66 (same) |
+
+| Measure | Before | After |
+|---|---|---|
+| Headers on the page | 1 (light header over a dark page) | 1 (matches the page in both themes) |
+| "5x" badge | 2 lines on desktop | 1 line (desktop and phone) |
+| Font sizes on the page | desktop 10 (10, 12, 14, 16, 17, 18, 20, 30, 36, 48), phone 9 | 4 (12, 14, 20, 36), plus the 17 px "vatsa.ai" logo wordmark |
+| Heading size, desktop | 48 px | 36 px (same as phone) |
+| Header nav link height | 20 px | 28 px |
+| Phone menu links | blue, 20 px tall, no current page | theme grey, current page marked (`aria-current`), 40 px tall |
+| Touch targets under 24 px | desktop 13, phone 1 | desktop 10 (footer links and breadcrumb, at least 24 px apart), phone 0 |
+| Animations running | 5, plus the particle canvas | 2 (the gradient-word shimmer), no canvas |
+| Rupee prices | ₹2,300 / ₹9,500 from the live rate (1 call) | same |
+| Sideways overflow / console errors | 0 / 0 | 0 / 0 |
+
+**Changes:**
+- **Background:** `<Background />` is gone from `/pricing`, and the page uses `bg-background`.
+- **Header** (`PageHeader`, shared with the legal pages):
+  - nav links set their own grey. The global `a { color: primary-500 }` rule had turned every inactive link blue;
+  - links are 28 px tall;
+  - the phone menu uses the same colours, marks the current page, and has 40 px rows;
+  - the header background is `bg-background/80`, so it matches the page in dark mode;
+  - the plan pill is 12 px, not 11.
+- **Font sizes:** four sizes are used — 12 (badges, notes, logo names), 14 (body, nav, FAQ), 20 (the subtitle and every h2) and 36 (the heading and prices).
+  - Heading 48 → 36 px.
+  - Subtitle 18 → 20 px.
+  - FAQ title 30 → 20 px.
+  - FAQ questions and "/ month" 16 → 14 px.
+  - Logo names 10 → 12 px.
+- **Badges:** both badges stay on one line (`whitespace-nowrap`). The "5x" gradient is amber-700 → purple-600, not amber-400 → purple-500.
+- **Muted text:**
+  - "Last Updated" uses gray-500 (light) / gray-400 (dark), not gray-400 / gray-500;
+  - the breadcrumb link is grey, not the global blue, and is 44 px on touch screens;
+  - ✓ icons are green-600 (light), ✗ icons red-500 (light), and the trust shields green-600.
+- **Dark mode gradient text:** lighter stops (blue-400 → violet-400) in dark mode.
+- **Model logos:** five logos are white artwork (OpenAI, Grok, Midjourney, Ollama, Anthropic) and vanished on the light page. They are inverted in light mode only. The footer's OpenAI and Grok logos get the same fix.
+
+**Found for later:**
+- **Legal and info pages** (`/privacy`, `/terms`, `/refund`, `/return`, `/disclaimer`, `/about`, `/contact`, `/security`) draw the same always-dark background under theme-following text, so they likely have the same light-mode problem (same code pattern; not measured yet). Until they change, the footer's OpenAI and Grok logos are dark on their dark background in light mode.
+- `components/pricing/Background.tsx` and `Particles.tsx` are now unused (Phase 5).
+- **Plan buttons:** they are only as wide as their label, because the `Magnetic` wrapper is `inline-block`. They also don't line up across cards: Pro and Business have a note under the button and Free doesn't.
+- **Free card:** shows "Free" twice (plan name and price).
+- **Poe and Perplexity logos:** faint in light mode (light artwork after the grayscale filter).
+- **e2e test:** "with 2FA on, the code is asked for…" (`e2e/signup.spec.ts`) failed twice under memory pressure, because the code was typed and then cleared (the input was wiped before the page finished loading). It passes 6/6 on its own.

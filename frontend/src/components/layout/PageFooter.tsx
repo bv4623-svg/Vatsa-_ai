@@ -23,14 +23,15 @@ const LEGAL_LINKS = [
   { label: "Disclaimer", href: "/disclaimer" },
 ];
 
+/** `white`: the artwork is white, so light mode inverts it. */
 const MODEL_LOGOS = [
-  { name: "OpenAI", src: "/openai.png" },
+  { name: "OpenAI", src: "/openai.png", white: true },
   { name: "Claude", src: "/claude-color.png" },
   { name: "Gemini", src: "/gemini-color.png" },
   { name: "DeepSeek", src: "/deepseek-color.png" },
   { name: "Mistral", src: "/mistral-color.png" },
   { name: "Perplexity", src: "/perplexity-color.png" },
-  { name: "Grok", src: "/grok.png" },
+  { name: "Grok", src: "/grok.png", white: true },
   { name: "Qwen", src: "/qwen-color.png" },
 ];
 
@@ -76,7 +77,7 @@ export function PageFooter() {
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-8 gap-y-4">
             {MODEL_LOGOS.map((logo) => (
-              <div key={logo.name} className="relative h-6 w-12 grayscale opacity-60 transition-all duration-300 hover:opacity-100 hover:grayscale-0">
+              <div key={logo.name} className={`relative h-6 w-12 grayscale opacity-60 transition-all duration-300 hover:opacity-100 hover:grayscale-0 ${logo.white ? "invert dark:invert-0" : ""}`}>
                 <Image src={logo.src} alt={logo.name} fill className="object-contain" sizes="48px" />
               </div>
             ))}

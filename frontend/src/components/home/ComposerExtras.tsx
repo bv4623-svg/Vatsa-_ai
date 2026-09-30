@@ -45,7 +45,7 @@ export function VoiceButton({ voice, compact }: { voice: ComposerVoiceProps; com
         disabled={!voice.locked && !voice.supported}
         className={cn(
           pill,
-          compact ? "p-2" : "px-3 py-1.5",
+          compact ? "p-2" : "p-2 sm:px-3 sm:py-1.5",
           voice.listening ? "bg-red-500/20 text-red-400" : "bg-accent/5 text-muted-foreground",
           "disabled:cursor-not-allowed disabled:opacity-40"
         )}
@@ -58,7 +58,7 @@ export function VoiceButton({ voice, compact }: { voice: ComposerVoiceProps; com
         ) : (
           <Mic className="h-4 w-4" aria-hidden />
         )}
-        {!compact && (voice.listening ? "Listening" : "Voice")}
+        {!compact && <span className="hidden sm:inline">{voice.listening ? "Listening" : "Voice"}</span>}
         {voice.locked && <Lock className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" aria-hidden />}
       </button>
     </Tooltip>
@@ -79,12 +79,12 @@ export function VoiceConversationButton({ voice, compact }: { voice: ComposerVoi
         aria-pressed={voice.conversationMode}
         className={cn(
           pill,
-          compact ? "p-2" : "px-3 py-1.5",
+          compact ? "p-2" : "p-2 sm:px-3 sm:py-1.5",
           voice.conversationMode ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"
         )}
       >
         <Headphones className="h-4 w-4" aria-hidden />
-        {!compact && "Talk"}
+        {!compact && <span className="hidden sm:inline">Talk</span>}
       </button>
     </Tooltip>
   );
@@ -105,12 +105,12 @@ export function ResearchToggle({ research, compact }: { research: ComposerResear
         aria-pressed={research.enabled}
         className={cn(
           pill,
-          compact ? "p-2" : "px-3 py-1.5",
+          compact ? "p-2" : "p-2 sm:px-3 sm:py-1.5",
           research.enabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"
         )}
       >
         <Telescope className="h-4 w-4" aria-hidden />
-        {!compact && "Research"}
+        {!compact && <span className="hidden sm:inline">Research</span>}
         {research.locked && <Lock className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" aria-hidden />}
       </button>
     </Tooltip>

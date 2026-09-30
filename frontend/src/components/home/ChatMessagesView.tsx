@@ -1,10 +1,11 @@
 "use client";
 
-import { type RefObject } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Paperclip, Globe, Send, Square, Copy, RefreshCw, ThumbsUp, ThumbsDown, Share2, Check, Brain, Lock, Volume2, RotateCcw, Info, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COMPOSER_MAX_HEIGHT_PX } from "@/lib/home/constants";
 import { VOTE_REASONS, type VoteReason } from "@/services/chatFeedback";
 import Magnetic from "@/components/landing/Magnetic";
 import { Tooltip } from "@/components/home/Tooltip";
@@ -84,10 +85,25 @@ export function ChatMessagesView({
   fileInputRef, folderInputRef, onFileUpload,
   modKey,
 }: ChatMessagesViewProps) {
+  // Publishes the docked chat box's height, so the floating feedback button
+  // (components/feedback/FeedbackButton) sits above it at any line count.
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = dockRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => root.style.setProperty("--chat-dock-h", `${el.offsetHeight}px`));
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--chat-dock-h");
+    };
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="mx-auto max-w-[760px] space-y-6">
+        <div className="mx-auto max-w-[760px] space-y-4">
           {messages.map((msg, msgIdx) => {
             const isUser = msg.role === "user";
             if (isUser) {
@@ -98,7 +114,7 @@ export function ChatMessagesView({
                     date={msg.createdAt}
                     className="pointer-events-none absolute -bottom-5 right-2 text-[11px] text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100"
                   />
-                  <div className="max-w-[450px] rounded-[18px] bg-zinc-100 dark:bg-[#1B1B1B] px-4 py-2.5 text-sm text-foreground" style={{ wordBreak: "break-word" }}>
+                  <div className="max-w-[450px] rounded-[18px] bg-zinc-100 dark:bg-[#1B1B1B] px-3 py-2 text-[15px] leading-6 text-foreground" style={{ wordBreak: "break-word" }}>
                     {msgAttachments.length > 0 && (
                       <div className="mb-1 flex flex-wrap gap-1">
                         {msgAttachments.map((a, i) => (
@@ -141,7 +157,7 @@ export function ChatMessagesView({
                 )}
 
                 {msg.content && (
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed">
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-[15px] leading-7 text-foreground/90">
                     <ReactMarkdown
                       components={{
                         code({ className, children, ...props }) {
@@ -311,7 +327,7 @@ export function ChatMessagesView({
       </div>
 
       {/* Bottom padding clears the iPhone home indicator (safe area). */}
-      <div className="border-t border-border/40 bg-background/60 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
+      <div ref={dockRef} className="border-t border-border/40 bg-background/60 px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
         {banner}
         <div className="mx-auto max-w-[760px]">
           {attachments.length > 0 && (
@@ -326,9 +342,11 @@ export function ChatMessagesView({
           )}
 
           <VoiceStatus voice={voice} />
-          <div className="relative flex items-end gap-2 rounded-2xl border border-border/50 bg-card/80 p-2 shadow-sm focus-within:border-accent/50">
+          {/* Phones: the text field gets its own full-width first row and the
+              buttons sit on a second row; sm and up: one row. */}
+          <div className="relative flex flex-wrap items-end gap-2 rounded-2xl border border-border/50 bg-card/80 p-2 shadow-sm focus-within:border-accent/50 sm:flex-nowrap">
             <MessageCounter length={inputValue.length} />
-            <div className="relative">
+            <div className="relative order-2 sm:order-none">
               <Tooltip text="Attach File">
                 <button onClick={() => setShowAttachmentMenu((p) => !p)} aria-label="Attach files" aria-haspopup="menu" aria-expanded={showAttachmentMenu} className="tap-target p-2 hover:bg-accent/10 rounded-full transition-colors">
                   <Paperclip className="h-5 w-5 text-muted-foreground" />
@@ -358,11 +376,11 @@ export function ChatMessagesView({
               placeholder={research.enabled ? "Ask a research question…" : `Message Vatsa AI... (${modKey}+Enter)`}
               aria-label="Message"
               rows={1}
-              className="flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/50"
-              style={{ minHeight: "40px", maxHeight: "200px", overflow: "auto" }}
+              className="order-1 min-w-0 basis-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/50 sm:order-none sm:flex-1 sm:basis-auto"
+              style={{ minHeight: "40px", maxHeight: `${COMPOSER_MAX_HEIGHT_PX}px`, overflow: "auto" }}
             />
 
-            <div className="flex items-center gap-1">
+            <div className="order-3 flex items-center gap-1 sm:order-none">
               <Tooltip text={webSearchEnabled ? "Web search on" : "Search Web"}>
                 <button
                   onClick={onToggleWebSearch}
@@ -389,6 +407,7 @@ export function ChatMessagesView({
               <VoiceConversationButton voice={voice} compact />
             </div>
 
+            <div className="order-4 ml-auto sm:order-none sm:ml-0">
             <Magnetic strength={0.25}>
               <Tooltip text={isLoading ? "Stop Generation" : "Send Message"}>
                 <motion.button
@@ -408,8 +427,9 @@ export function ChatMessagesView({
                 </motion.button>
               </Tooltip>
             </Magnetic>
+            </div>
           </div>
-          <div className="mt-2 text-center text-xs text-muted-foreground/60">
+          <div className="mt-1 text-center text-xs leading-4 text-muted-foreground/60">
             Vatsa AI can make mistakes. Check important info.
           </div>
         </div>

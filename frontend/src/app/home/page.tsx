@@ -8,7 +8,7 @@ import { getPlan } from "@/data/plans";
 
 import { cn } from "@/lib/utils";
 import { useAppStore, useSettings } from "@/stores/app-store";
-import { MOD_KEY } from "@/lib/home/constants";
+import { COMPOSER_MAX_HEIGHT_PX, MOD_KEY } from "@/lib/home/constants";
 import { useHomeTheme } from "@/hooks/home/useHomeTheme";
 import { useHomeConversations } from "@/hooks/home/useHomeConversations";
 import { useHomeChat } from "@/hooks/home/useHomeChat";
@@ -258,7 +258,7 @@ export default function HomePage() {
     setDraftMessage(value);
     const target = e.target;
     target.style.height = "auto";
-    target.style.height = Math.min(target.scrollHeight, 300) + "px";
+    target.style.height = Math.min(target.scrollHeight, COMPOSER_MAX_HEIGHT_PX) + "px";
   }, [setDraftMessage]);
 
   const onStopGeneration = useCallback(() => {

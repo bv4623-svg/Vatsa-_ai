@@ -62,7 +62,6 @@ Smoke-tested by hand against the real local backend + frontend (2026-09-30):
 - **Phase 0 Fix 3:** chat 👍/👎 are not saved (`hooks/home/useHomeChat.ts:384`).
 - **Phases 1–5 of the PRD:** not started (FEATURES.md §1).
 - **Small, flagged:**
-  - Unused `frontend/src/db`.
   - An unreachable second settings dialog.
   - DEPLOY.md/DEPLOYMENT.md still describe main's pip deploy.
   - If the rate request fails, the frontend shows its ₹83 fallback while the backend's fallback charge rate is ₹88.

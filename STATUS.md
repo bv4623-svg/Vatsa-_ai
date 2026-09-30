@@ -58,7 +58,7 @@ Smoke-tested by hand against the real local backend + frontend (2026-09-30):
 ## Open
 
 - **Deploy** (needs Render/Neon/Hostinger access): the PR's deployment checklist, staging first.
-- **Phase 0 Fix 2:** the user's email still goes into every system prompt (`ai_service.py:297`).
+- **Phase 0 Fix 2: done on `feat/phase-0-fixes`.** No email (or email-derived name) in any model prompt; `tests/test_prompt_privacy.py` (5).
 - **Phase 0 Fix 3:** chat 👍/👎 are not saved (`hooks/home/useHomeChat.ts:384`).
 - **Phases 1–5 of the PRD:** not started (FEATURES.md §1).
 - **Small, flagged:**

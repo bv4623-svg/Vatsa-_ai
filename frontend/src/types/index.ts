@@ -74,6 +74,10 @@ export interface Message {
   researchStatus?: string;
   /** The request failed; the UI offers a retry. */
   isError?: boolean;
+  /** For a reply received in this session: the id the server saved it
+   * under (msg_…), which 👍/👎 are stored against. Loaded messages already
+   * carry it as `id`. Absent if the reply wasn't saved. */
+  serverId?: string;
   attachments?: { name: string; type?: string; size?: number; is_base64?: boolean; content?: string }[];
 }
 

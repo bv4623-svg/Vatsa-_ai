@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.auth.dependencies import get_current_user
 from app.services.library import delete_conversation_item
+from app.services.chat_feedback import forget_votes
 from app.services.feature_access import check_code_app_limit
 
 router = APIRouter(prefix="/api", tags=["conversations"])
@@ -129,6 +130,7 @@ def delete_conversation(
     db.delete(conv)
     db.commit()
     delete_conversation_item(db, current_user.id, conv_id)
+    forget_votes(db, current_user.id, [conv_id])
     return {"success": True, "id": conv_id}
 
 @router.delete("/conversations")
@@ -145,6 +147,7 @@ def delete_all_conversations(
     db.commit()
     for conv_id in conv_ids:
         delete_conversation_item(db, current_user.id, conv_id)
+    forget_votes(db, current_user.id, conv_ids)
     return {"success": True, "deleted": count}
 
 @router.post("/conversations/{conv_id}/pin")

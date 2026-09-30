@@ -58,8 +58,9 @@ Smoke-tested by hand against the real local backend + frontend (2026-09-30):
 ## Open
 
 - **Deploy** (needs Render/Neon/Hostinger access): the PR's deployment checklist, staging first.
-- **Phase 0 Fix 2:** the user's email still goes into every system prompt (`ai_service.py:297`).
-- **Phase 0 Fix 3:** chat 👍/👎 are not saved (`hooks/home/useHomeChat.ts:384`).
+- **Phase 0 fixes (branch `feat/phase-0-fixes`, off `integration/main-plus-live` `da5352f`):**
+  - Fix 2 (`bd9d40e`): no email, or name built from it, in any model prompt; `tests/test_prompt_privacy.py` (5).
+  - Fix 3: 👍/👎 saved per reply (`chat_feedback` table, `POST/DELETE/GET /api/chat/feedback`), back after a reload, 👎 reason chips, admin `/admin/chat-feedback` (stats at `/api/admin/chat-feedback/stats`). Tests: `tests/test_chat_feedback.py` (11), `services/chatFeedback.test.ts` (7), `e2e/chat-feedback.spec.ts` (6 × 2).
 - **Phases 1–5 of the PRD:** not started (FEATURES.md §1).
 - **Small, flagged:**
   - Unused `frontend/src/db`.

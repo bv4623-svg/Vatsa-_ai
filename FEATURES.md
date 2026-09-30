@@ -24,10 +24,10 @@ Legend: **Exists** · **Partial** (some of it, gap stated) · **Missing** · **B
 |---|---|---|---|
 | F1.1 | Structured system prompt | Partial | `ai_service.py:274` `_build_messages` builds sections (identity, search, memory, project, style, code, identity seal). Not the 5-section role/rules/tone/format/examples layout; **not versioned in DB**, not A/B testable. |
 | F1.2 | CoT / ReAct / self-critique | Partial | Reasoning mode uses the router's `reasoning` route (`ai_router/config.py`, no fallback). No ReAct loop, no self-critique pass. |
-| F1.3 | JSON mode, guardrails | Partial | Identity seal against prompt-extraction (`ai_service.py:41` `IDENTITY_SEAL`). No JSON mode, no citation check. **Gap: the user's email is put in every system prompt (`ai_service.py:297`)**, against "PII masked before LLM". |
+| F1.3 | JSON mode, guardrails | Partial | Identity seal against prompt-extraction (`ai_service.py:41` `IDENTITY_SEAL`). No JSON mode, no citation check. The user's email is **not** sent to the model (Phase 0 Fix 2: `ai_service.py:290-313`, guarded by `tests/test_prompt_privacy.py`). |
 | F1.4 | Few-shot library in DB | Missing | — |
 | F2.1 | Conversation memory | Exists | Last 10 turns (`ai_service.py:347`). |
-| F2.2 | User profile memory | Partial | Name, email, tier injected (`ai_service.py:290-297`); response style setting (`routers/chat.py:84`). No language/tone profile. |
+| F2.2 | User profile memory | Partial | Name (only if the person set one) and tier injected, never the email (`ai_service.py:290-313`); response style setting (`routers/chat.py:84`). No language/tone profile. |
 | F2.3 | Fact memory | Partial | Regex fact extraction (`services/memory_extractor.py:74`) upserted per category (`services/memory_service.py`), CRUD API (`routers/memory.py`). Not embedded, no relevance search: latest 20 injected (`memory_service.py:146`). |
 | F2.4–F2.5 | Episodic / procedural memory | Missing | — |
 | F2.6 | Summarize old turns | Missing | Older turns are dropped, not summarized. |
@@ -41,7 +41,7 @@ Legend: **Exists** · **Partial** (some of it, gap stated) · **Missing** · **B
 | 5.4 | Tools: calculator, db_query, api_call, file_io | Missing | No function-calling / tool framework at all. |
 | 5.4 | Voice STT/TTS | Exists | Browser Web Speech (`hooks/useVoice.ts`) on `/home`; Settings → Voice: on/off, voice choice, auto-read (`components/settings/tabs/VoiceTab.tsx`). |
 | 5.5 | Multi-agent (planner/executor/critic) | Missing | — |
-| 5.6 | 👍/👎 feedback per response | Partial | Buttons exist (`ChatMessagesView.tsx:226,239`) but **are never saved**: `hooks/home/useHomeChat.ts:384` `handleFeedback` only sets React state. |
+| 5.6 | 👍/👎 feedback per response | Exists (collected, not yet used to tune answers) | Saved per reply in `chat_feedback` (`routers/chat_feedback.py`, `services/chat_feedback.py`), back after a reload; optional 👎 reason from fixed codes; admin stats `/api/admin/chat-feedback/stats` and page `/admin/chat-feedback` (daily chart + reasons). |
 | 5.6 | Golden dataset, A/B prompts | Missing | `tests/test_live_providers.py` checks providers answer, not quality. |
 | 5.7 | Model router by complexity | Partial | Named routes (`ai_router/config.py` `builtin_registry`: auto, vatsa-fast/pro/advanced, reasoning, vision), picked by feature and plan, not by the prompt's complexity. |
 | 5.7 | Fallback chain | Exists | `ai_router/fallback.py`, `retry.py`, `circuit_breaker.py`; same order as before the router. |

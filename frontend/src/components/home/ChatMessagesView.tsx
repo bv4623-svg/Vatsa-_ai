@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Paperclip, Globe, Send, Square, Copy, RefreshCw, ThumbsUp, ThumbsDown, Share2, Check, Brain, Lock, Volume2, RotateCcw, Info, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VOTE_REASONS, type VoteReason } from "@/services/chatFeedback";
 import Magnetic from "@/components/landing/Magnetic";
 import { Tooltip } from "@/components/home/Tooltip";
 import { AttachmentChip } from "@/components/home/AttachmentChip";
@@ -30,9 +31,14 @@ interface ChatMessagesViewProps {
   isImageGenLoading: boolean;
   copiedMsgId: string | null;
   feedback: Record<string, "up" | "down" | null>;
+  /** Reason picked after a thumbs-down, per message. */
+  feedbackReasons: Record<string, VoteReason | undefined>;
+  /** A vote that couldn't be saved, per message. */
+  feedbackErrors: Record<string, string | undefined>;
   onCopy: (msgId: string, content: string) => void;
   onRegenerate: (msgId: string) => void;
   onFeedback: (msgId: string, dir: "up" | "down") => void;
+  onFeedbackReason: (msgId: string, reason: VoteReason) => void;
   onShare: (content: string) => void;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   chatContainerRef: RefObject<HTMLDivElement | null>;
@@ -67,8 +73,8 @@ interface ChatMessagesViewProps {
 }
 
 export function ChatMessagesView({
-  messages, isLoading, isImageGenLoading, copiedMsgId, feedback,
-  onCopy, onRegenerate, onFeedback, onShare,
+  messages, isLoading, isImageGenLoading, copiedMsgId, feedback, feedbackReasons, feedbackErrors,
+  onCopy, onRegenerate, onFeedback, onFeedbackReason, onShare,
   messagesEndRef, chatContainerRef,
   attachments, removeAttachment, onAnalyzeImage, analyzingImageId,
   inputRef, inputValue, onInputChange, onSend, onStop, hasReadyAttachments,
@@ -257,6 +263,30 @@ export function ChatMessagesView({
                     </button>
                   </Tooltip>
                 </div>
+                {fb === "down" && (
+                  <div role="group" aria-label="What went wrong?" className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">What went wrong?</span>
+                    {VOTE_REASONS.map((r) => (
+                      <button
+                        key={r.code}
+                        type="button"
+                        onClick={() => onFeedbackReason(msg.id, r.code)}
+                        aria-pressed={feedbackReasons[msg.id] === r.code}
+                        className={cn(
+                          "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                          feedbackReasons[msg.id] === r.code
+                            ? "border-red-500/60 bg-red-500/10 text-foreground"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {feedbackErrors[msg.id] && (
+                  <p role="alert" className="mt-1 text-xs text-red-500">{feedbackErrors[msg.id]}</p>
+                )}
               </div>
             );
           })}

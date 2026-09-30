@@ -287,16 +287,30 @@ class AIService:
         buffered and streaming generation paths, so the identity seal and
         memory injection can never drift between the two.
         """
-        user_name = user.full_name or user.email.split("@")[0]
+        # Privacy: the model gets the name the person gave, and nothing that
+        # identifies them otherwise -- never the email, nor anything built from
+        # it (Google/GitHub usernames are, see oauth/shared.py).
+        # tests/test_prompt_privacy.py guards this.
+        user_name = (user.full_name or "").strip()
         user_memories = MemoryService.get_context_summary(db, user.id)
 
+        if user_name:
+            identity = [
+                f"- Name: {user_name}",
+                f"Always acknowledge the user's real name ({user_name}) when they ask 'Who am I?' or ask about themselves.",
+            ]
+        else:
+            identity = [
+                "- Name: not set",
+                "If the user asks who they are, say you don't know their name yet and that they can add it in Settings.",
+            ]
         system_parts = [
-            f"You are Vatsa AI, a high-performance AI assistant and expert programmer.",
-            f"Current authenticated user identity:",
-            f"- Name: {user_name}",
-            f"- Email: {user.email}",
+            "You are Vatsa AI, a high-performance AI assistant and expert programmer.",
+            "Current authenticated user identity:",
+            identity[0],
             f"- Account Tier: {user.tier or 'free'}",
-            f"Always acknowledge the user's real name ({user_name}) when they ask 'Who am I?' or ask about themselves."
+            identity[1],
+            "You are not given the user's email address or other contact details; if asked, point them to their account settings.",
         ]
 
         if search_context:

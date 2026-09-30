@@ -5,6 +5,7 @@ import { API_BASE } from "@/lib/home/constants";
 import { isImageGenQuery } from "@/lib/home/imageQuery";
 import { UpgradeRequiredError, parseUpgradeGate, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
 import { createSseParser, describeHttpError, describeNetworkError, researchStageLabel } from "@/lib/home/sse";
+import { clearReplyRating, myRatings, nextVote, rateReply, savedReplyId, type Vote, type VoteReason } from "@/services/chatFeedback";
 
 export { UpgradeRequiredError, type UpgradeGateInfo };
 
@@ -49,13 +50,34 @@ export function useHomeChat(params: UseHomeChatParams) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isImageGenLoading, setIsImageGenLoading] = useState(false);
-  const [feedback, setFeedback] = useState<Record<string, "up" | "down" | null>>({});
+  const [feedback, setFeedback] = useState<Record<string, Vote | null>>({});
+  const [feedbackReasons, setFeedbackReasons] = useState<Record<string, VoteReason | undefined>>({});
+  const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string | undefined>>({});
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     return () => { if (abortControllerRef.current) abortControllerRef.current.abort(); };
   }, []);
+
+  // Votes are saved per reply (keyed by the id it was saved under, which is
+  // what loaded messages carry), so bring them back when a chat opens.
+  useEffect(() => {
+    if (!activeConversationId || privateMode) return;
+    let cancelled = false;
+    myRatings(activeConversationId)
+      .then((saved) => {
+        if (cancelled || saved.length === 0) return;
+        setFeedback((prev) => ({ ...prev, ...Object.fromEntries(saved.map((v) => [v.message_id, v.rating])) }));
+        setFeedbackReasons((prev) => ({ ...prev, ...Object.fromEntries(saved.map((v) => [v.message_id, v.reason ?? undefined])) }));
+      })
+      .catch(() => {
+        // Votes just don't show as pressed; the chat itself is unaffected.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConversationId, privateMode]);
 
   const sendMessage = useCallback(async (content: string) => {
     const hasAttachments = attachments.some(a => a.status === "ready");
@@ -174,6 +196,7 @@ export function useHomeChat(params: UseHomeChatParams) {
         let sources: Message["sources"];
         let notice: string | undefined;
         let researchStatus: string | undefined;
+        let serverId: string | undefined;
         const researchLog: string[] = [];
 
         const assistantId = (Date.now() + 1).toString();
@@ -218,6 +241,7 @@ export function useHomeChat(params: UseHomeChatParams) {
             researchStatus = undefined;
           }
           if (evt.done && Array.isArray(evt.sources)) sources = evt.sources as Message["sources"];
+          if (evt.done && typeof evt.message_id === "string") serverId = evt.message_id;
           flush();
         });
 
@@ -266,6 +290,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           notice,
           thinking: thinkingText || undefined,
           imageUrl,
+          serverId,
         });
         onAssistantDone?.(assistantId, finalContent);
       } else {
@@ -297,6 +322,7 @@ export function useHomeChat(params: UseHomeChatParams) {
           thinking: data.reasoning || undefined,
           notice: data.notice,
           imageUrl,
+          serverId: typeof data.message_id === "string" ? data.message_id : undefined,
         };
         addMessageToConversation(convId, assistantMsg);
         onAssistantDone?.(assistantMsg.id, assistantMsg.content);
@@ -381,9 +407,43 @@ export function useHomeChat(params: UseHomeChatParams) {
     } catch (e) { console.error("Copy failed:", e); }
   }, []);
 
-  const handleFeedback = useCallback((msgId: string, dir: "up" | "down") => {
-    setFeedback((prev) => ({ ...prev, [msgId]: prev[msgId] === dir ? null : dir }));
-  }, []);
+  /** Saves the vote (optimistically; undone with a note if saving fails).
+   * A reply that wasn't saved keeps a browser-only vote, as before. */
+  const handleFeedback = useCallback(async (msgId: string, dir: Vote) => {
+    const before = feedback[msgId] ?? null;
+    const reasonBefore = feedbackReasons[msgId];
+    const next = nextVote(before, dir);
+    setFeedback((prev) => ({ ...prev, [msgId]: next }));
+    setFeedbackReasons((prev) => ({ ...prev, [msgId]: undefined }));
+    setFeedbackErrors((prev) => ({ ...prev, [msgId]: undefined }));
+    const msg = messages.find((m) => m.id === msgId);
+    const target = msg ? savedReplyId(msg) : null;
+    if (!activeConversationId || !target) return;
+    try {
+      if (next) await rateReply(activeConversationId, target, next);
+      else await clearReplyRating(activeConversationId, target);
+    } catch {
+      setFeedback((prev) => ({ ...prev, [msgId]: before }));
+      setFeedbackReasons((prev) => ({ ...prev, [msgId]: reasonBefore }));
+      setFeedbackErrors((prev) => ({ ...prev, [msgId]: "Couldn't save your rating. Try again." }));
+    }
+  }, [activeConversationId, messages, feedback, feedbackReasons]);
+
+  /** Optional reason after a thumbs-down (saved with the vote). */
+  const handleFeedbackReason = useCallback(async (msgId: string, reason: VoteReason) => {
+    const before = feedbackReasons[msgId];
+    setFeedbackReasons((prev) => ({ ...prev, [msgId]: reason }));
+    setFeedbackErrors((prev) => ({ ...prev, [msgId]: undefined }));
+    const msg = messages.find((m) => m.id === msgId);
+    const target = msg ? savedReplyId(msg) : null;
+    if (!activeConversationId || !target) return;
+    try {
+      await rateReply(activeConversationId, target, "down", reason);
+    } catch {
+      setFeedbackReasons((prev) => ({ ...prev, [msgId]: before }));
+      setFeedbackErrors((prev) => ({ ...prev, [msgId]: "Couldn't save your reason. Try again." }));
+    }
+  }, [activeConversationId, messages, feedbackReasons]);
 
   const handleShare = useCallback(async (content: string) => {
     try {
@@ -398,8 +458,8 @@ export function useHomeChat(params: UseHomeChatParams) {
   return {
     isLoading, setIsLoading,
     isImageGenLoading, setIsImageGenLoading,
-    feedback, copiedMsgId,
+    feedback, feedbackReasons, feedbackErrors, copiedMsgId,
     abortControllerRef,
-    sendMessage, handleRetry, handleRegenerate, handleCopy, handleFeedback, handleShare,
+    sendMessage, handleRetry, handleRegenerate, handleCopy, handleFeedback, handleFeedbackReason, handleShare,
   };
 }

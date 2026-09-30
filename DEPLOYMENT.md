@@ -27,31 +27,42 @@ To change a price or the rate, edit **both** files and nothing else. `npm run ch
 
 ## 2. Deploy the backend
 
-Working directory: `Backend/`.
+The backend ships as a Docker image built from `Backend/Dockerfile` (build context `Backend/`, Python 3.14 slim, runs as a non-root user). The image contains `app/`, `alembic/`, `alembic.ini`, `intents_data.py` and `start.sh`; it does **not** contain `scripts/` or `tests/`. The container's entrypoint is `Backend/start.sh`, which runs, in order:
 
-```
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
-```
+| Step | Command | What it does |
+|---|---|---|
+| 1 | `python -c "from app.database import init_db; init_db()"` | creates any missing tables from the models; never touches existing data |
+| 2 | `alembic stamp head` | only if the database has no `alembic_version` table yet: marks the schema `init_db()` just built as current |
+| 3 | `alembic upgrade head` | applies migrations added since |
+| 4 | `uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" --workers 1 --timeout-graceful-shutdown 30` | serves the API (one worker: each extra worker is a full copy of the process on a 512 MB instance) |
 
-`--proxy-headers` matters: OAuth state cookies are marked `secure` from the request scheme, and behind a TLS-terminating proxy that is only correct with it.
+Any failing step stops the container. When uvicorn starts, `enforce_secrets()` (`Backend/app/main.py`, lifespan) refuses to serve if a secret is missing, malformed or leaked (`Backend/app/core/secrets_check.py`). This runs after steps 1–3, so the database is touched before the secrets are checked.
 
-Required environment variables (names in `Backend/.env.example`):
+Required environment variables (names in `Backend/.env.example`). In production (`APP_ENV=production`, or `RENDER=true`, which Render sets) the app refuses to start without the ones marked **startup check**:
 
 | Variable | Value |
 |---|---|
-| `JWT_SECRET_KEY` | new random 64+ chars (`python -c "import secrets; print(secrets.token_urlsafe(64))"`) |
-| `ALLOWED_ORIGINS` | your Netlify origin(s), e.g. `https://vatsaai.com,https://www.vatsaai.com` |
-| `BACKEND_PUBLIC_URL` | the backend's own https URL |
-| `FRONTEND_REDIRECT_URL` | your Netlify origin |
+| `DATABASE_URL` | Neon Postgres connection string (`postgresql://…`). Not in the startup check: if it is unset the app silently falls back to SQLite inside the container, which is wiped on every redeploy |
+| `REDIS_URL` | Upstash Redis connection URL. Optional: rate limits, the read cache and the scheduled-task job store use it; unset or unreachable, each falls back to in-process memory |
+| `JWT_SECRET_KEY` | **startup check**, 32+ chars; new random 64+ chars (`python -c "import secrets; print(secrets.token_urlsafe(64))"`) |
+| `DATA_ENCRYPTION_KEY` | **startup check**; Fernet key for 2FA secrets (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`) |
+| `ALLOWED_ORIGINS` | **startup check**; your Netlify origin(s), e.g. `https://vatsaai.com,https://www.vatsaai.com` |
+| `BACKEND_PUBLIC_URL` | **startup check**; the backend's own https URL |
+| `FRONTEND_REDIRECT_URL` | **startup check**; your Netlify origin |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | test keys now, live keys at go-live |
 | `RAZORPAY_WEBHOOK_SECRET` | any strong string; paste the same one into the dashboard (§4) |
 | `ADMIN_EMAILS` | comma-separated emails allowed to look payments up at `/api/admin/payments?email=`; leave empty to disable. Each admin also needs 2FA on and a normal login session |
-| `OPENROUTER_API_KEY` | AI provider |
+| `OPENROUTER_API_KEY` | **startup check**; AI provider |
 | `EMAIL_*`, `MAIL_FROM` | SMTP for OTP/notification mail |
 | `GOOGLE_*`, `GITHUB_*` | at least one of the two: Google/GitHub are the only way to sign up. The `*_REDIRECT_URI` values must use the backend's https URL and be registered with each provider |
 
-**Storage.** SQLite is the database, and uploads and generated images are written to disk too. Set `DATA_DIR` to a directory on a **persistent disk** (e.g. `/data`) and all three go there; leave it unset locally. On an ephemeral filesystem every redeploy wipes users, payments and files. `render.yaml` at the repo root is a Render Blueprint that does this (paid instance + 5 GB disk + `DATA_DIR=/data`, `rootDir: Backend`). It pins Python 3.11.9, the version CI tests, and runs the pre-deploy gate before the server. It has not been applied on Render from here. Copy-paste steps: [DEPLOY.md](DEPLOY.md).
+**Storage.** Users, payments and every other table live in **Neon Postgres** (`DATABASE_URL`); shared rate limits, the read cache and scheduled-task jobs use **Upstash Redis** (`REDIS_URL`). Both are external, so a redeploy loses nothing in them. Uploads and generated images are different: with `STORAGE_BACKEND=local` (what `render.yaml` sets) they are written under `DATA_DIR`, which is unset on Render, so they land in `/app/uploads` and `/app/generated_images` inside the container. A free instance has no persistent disk, and Render wipes that filesystem on every redeploy, restart and idle spin-down, so those files are lost then. To keep them, set `STORAGE_BACKEND=s3` with the `S3_*` variables (see `Backend/.env.example`). `DATA_DIR` and SQLite remain the local-development defaults only.
+
+**Render.** `render.yaml` at the repo root is the Blueprint that runs all of the above: service `vatsaai-backend`, `runtime: docker`, `dockerfilePath: ./Backend/Dockerfile`, `dockerContext: ./Backend`, `plan: free`, region Singapore, health check `/health`, auto-deploy on push. It has no start command; the container runs `start.sh`. A free instance spins down after 15 minutes without traffic, so the first request after that waits for a cold start. If `enforce_secrets()` or any `start.sh` step fails, the new instance never passes its health check and Render keeps the previous deploy live. Copy-paste steps: [DEPLOY.md](DEPLOY.md).
+
+**Proxy headers.** `start.sh` starts uvicorn without `--proxy-headers --forwarded-allow-ips`, which the previous start command passed. OAuth state cookies take `secure` from the request scheme (`Backend/app/routers/auth/oauth/state.py`), and uvicorn only trusts `X-Forwarded-Proto` from `127.0.0.1` unless told otherwise, so behind Render's proxy those cookies are set without `Secure`.
+
+**Pre-deploy check.** `Backend/scripts/predeploy_check.py` (secrets, database reachable, data directory writable) is **no longer run automatically on Render**: the old `startCommand` that ran it is gone, and the startup secrets check above replaces its secrets part. CI still runs it (pushes to `main` and every pull request) with throwaway values. It can't run in the Render Shell: the image has no `scripts/`, and free instances have no Shell. To run it against production values yourself, see [DEPLOY.md §1.4](DEPLOY.md#1-backend-on-render).
 
 Check: `GET https://<backend>/health` returns `{"status":"ok",…}` and `GET https://<backend>/payment/config` returns `"configured": true`.
 

@@ -25,7 +25,7 @@ export function PricingFAQ({ items }: { items: FaqEntry[] }) {
                 onClick={() => setOpenIndex(isOpen ? null : i)}
                 className="flex w-full items-center justify-between gap-4 py-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
-                <span className="text-base font-medium text-gray-900 dark:text-white">{item.question}</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{item.question}</span>
                 <ChevronDown
                   aria-hidden="true"
                   className={cn(

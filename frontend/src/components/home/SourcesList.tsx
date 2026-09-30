@@ -21,7 +21,7 @@ export function SourcesList({ sources }: { sources?: Source[] }) {
     <div className="mt-2 w-full max-w-[620px] border-t border-border/40 pt-3">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/70 hover:text-foreground transition-colors"
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
         <Globe className="w-3.5 h-3.5" />
         {sources.length} source{sources.length !== 1 ? "s" : ""}
@@ -44,7 +44,7 @@ export function SourcesList({ sources }: { sources?: Source[] }) {
               <p className="text-xs font-medium text-foreground/90 line-clamp-2 group-hover:text-accent">
                 {src.title}
               </p>
-              <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1 mt-0.5 truncate">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
                 {src.quality && (
                   <span className={cn("inline-block w-1.5 h-1.5 rounded-full flex-shrink-0", QUALITY_DOT[src.quality])} />
                 )}

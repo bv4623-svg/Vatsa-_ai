@@ -4,6 +4,7 @@ import { type RefObject } from "react";
 import { motion } from "framer-motion";
 import { Paperclip, Globe, Send, Code, Terminal, Image as ImageIcon, Bug, BookOpen, Search, Brain, Lock } from "lucide-react";
 import Magnetic from "@/components/landing/Magnetic";
+import { COMPOSER_MAX_HEIGHT_PX } from "@/lib/home/constants";
 import { Tooltip } from "@/components/home/Tooltip";
 import { AttachmentChip } from "@/components/home/AttachmentChip";
 import { AttachmentMenu } from "@/components/home/AttachmentMenu";
@@ -97,7 +98,7 @@ export function ChatEmptyState({
           className="relative mt-6"
         >
           <MessageCounter length={inputValue.length} />
-          <div className="rounded-2xl border border-border/50 bg-card/80 shadow-sm p-4 transition-all hover:border-border">
+          <div className="rounded-2xl border border-border/50 bg-card shadow-sm p-3 transition-all hover:border-border">
             {attachments.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
                 {attachments.map((a) => (
@@ -124,16 +125,16 @@ export function ChatEmptyState({
                 placeholder={research.enabled ? "Ask a research question…" : "Ask Vatsa AI anything..."}
                 aria-label="Message"
                 rows={1}
-                className="w-full resize-none bg-transparent text-lg text-foreground outline-none placeholder:text-muted-foreground/50 md:text-xl"
-                style={{ minHeight: "120px", maxHeight: "300px", overflow: "auto" }}
+                className="w-full resize-none bg-transparent px-1 py-2 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/50"
+                style={{ minHeight: "40px", maxHeight: `${COMPOSER_MAX_HEIGHT_PX}px`, overflow: "auto" }}
               />
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/30 pt-3">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/30 pt-2">
               <div className="flex flex-wrap items-center gap-1.5">
                 <Tooltip text="Attach File">
-                  <button onClick={() => setShowAttachmentMenu((p) => !p)} className="flex items-center gap-1 rounded-full bg-accent/5 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground">
-                    <Paperclip className="h-4 w-4" /> Attach
+                  <button onClick={() => setShowAttachmentMenu((p) => !p)} className="flex items-center gap-1 rounded-full bg-accent/5 p-2 text-sm text-foreground/75 transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5">
+                    <Paperclip className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Attach</span>
                   </button>
                 </Tooltip>
                 <div className="relative">
@@ -143,9 +144,9 @@ export function ChatEmptyState({
                       aria-label={webSearchEnabled ? "Web search on" : "Web search off"}
                       aria-haspopup="menu"
                       aria-expanded={showWebSearchPopover}
-                      className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-accent/10 hover:text-foreground ${webSearchEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                      className={`flex items-center gap-1 rounded-full p-2 text-sm transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5 ${webSearchEnabled ? "bg-accent/20 text-purple-700 dark:text-purple-300" : "bg-accent/5 text-foreground/75"}`}
                     >
-                      <Globe className="h-4 w-4" /> Search
+                      <Globe className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Search</span>
                     </button>
                   </Tooltip>
                   <ToolbarPopover open={showWebSearchPopover} onClose={() => setShowWebSearchPopover(false)} title="Web Search">
@@ -157,9 +158,9 @@ export function ChatEmptyState({
                 <Tooltip text={isFree ? "Reasoning is a Pro feature" : reasoningEnabled ? "Reasoning on" : "Show step-by-step reasoning"}>
                   <button
                     onClick={onToggleReasoning}
-                    className={`relative flex items-center gap-1 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-accent/10 hover:text-foreground ${reasoningEnabled ? "bg-accent/20 text-accent" : "bg-accent/5 text-muted-foreground"}`}
+                    className={`relative flex items-center gap-1 rounded-full p-2 text-sm transition-colors hover:bg-accent/10 hover:text-foreground sm:px-3 sm:py-1.5 ${reasoningEnabled ? "bg-accent/20 text-purple-700 dark:text-purple-300" : "bg-accent/5 text-foreground/75"}`}
                   >
-                    <Brain className="h-4 w-4" /> Think
+                    <Brain className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Think</span>
                     {isFree && <Lock className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-background text-muted-foreground" />}
                   </button>
                 </Tooltip>
@@ -175,9 +176,9 @@ export function ChatEmptyState({
                       onClick={onSend}
                       disabled={!inputValue.trim() && !hasReadyAttachments}
                       aria-label="Send message"
-                      className="h-11 w-11 rounded-full bg-accent-solid text-accent-foreground shadow-sm transition-all hover:shadow-accent/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="h-9 w-9 rounded-full bg-accent-solid text-accent-foreground shadow-sm transition-all hover:shadow-accent/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                      <Send className="h-5 w-5" />
+                      <Send className="h-4 w-4" />
                     </motion.button>
                   </Tooltip>
                 </Magnetic>
@@ -195,7 +196,7 @@ export function ChatEmptyState({
           <input type="file" ref={folderInputRef} onChange={onFileUpload} className="hidden" multiple />
         </motion.div>
 
-        <div className="mt-4 text-center text-xs text-muted-foreground/60">
+        <div className="mt-4 text-center text-xs text-muted-foreground">
           Vatsa AI can make mistakes. Check important info.
         </div>
       </div>

@@ -17,6 +17,9 @@ export const STYLES = `
             -webkit-text-fill-color: transparent;
             animation: shimmer 4s ease-in-out infinite alternate;
           }
+          .dark .gradient-text {
+            background-image: linear-gradient(135deg, #60a5fa, #a78bfa, #60a5fa);
+          }
           @keyframes shimmer {
             0% { background-position: 0% 50%; }
             100% { background-position: 100% 50%; }

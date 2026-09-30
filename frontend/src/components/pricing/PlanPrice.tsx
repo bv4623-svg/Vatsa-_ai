@@ -30,7 +30,7 @@ export function PlanPrice({ plan, liveInr, isLoadingLiveInr = false }: PlanPrice
     <>
       <div className="mt-3 flex items-baseline gap-1">
         <span className="text-4xl font-bold">{formatPrice(plan.priceUSD, "USD")}</span>
-        <span className="text-gray-500 dark:text-gray-400">/ month</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">/ month</span>
       </div>
       {isLoadingLiveInr ? (
         <div className="mt-1.5 h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" aria-hidden="true" />

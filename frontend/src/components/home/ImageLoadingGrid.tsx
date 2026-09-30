@@ -55,7 +55,7 @@ export const ImageLoadingGrid = memo(() => {
         key={idx}
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-xs text-muted-foreground/70 flex items-center gap-2"
+        className="text-xs text-muted-foreground flex items-center gap-2"
       >
         <Loader className="w-3 h-3 animate-spin" />
         {phrases[idx]}

@@ -10,13 +10,13 @@ export function PricingHero() {
           <Sparkles className="h-4 w-4 text-blue-400" aria-hidden="true" />
           Simple, transparent pricing
         </div>
-        <h1 className="text-4xl font-bold md:text-5xl">
+        <h1 className="text-4xl font-bold">
           Choose the plan that fits <span className="gradient-text">you</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600 dark:text-gray-400">
+        <p className="mx-auto mt-4 max-w-2xl text-xl text-gray-600 dark:text-gray-400">
           Start free, upgrade anytime. No credit card required.
         </p>
-        <p className="mt-3 border-b border-gray-200 pb-4 text-sm text-gray-400 dark:border-gray-800 dark:text-gray-500">
+        <p className="mt-3 border-b border-gray-200 pb-4 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
           <span className="font-semibold text-gray-600 dark:text-gray-300">Last Updated:</span> September 25, 2026
         </p>
       </div>

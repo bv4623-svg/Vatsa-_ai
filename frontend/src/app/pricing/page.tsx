@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useAppStore } from "@/stores/app-store";
-import { Background } from "@/components/pricing/Background";
 import { STYLES } from "@/components/pricing/pricing.styles";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageFooter } from "@/components/layout/PageFooter";
@@ -33,9 +32,7 @@ export default function PricingPage() {
   }, []);
 
   return (
-    <main className="relative min-h-screen bg-transparent text-gray-900 dark:text-gray-100">
-      <Background />
-
+    <main className="relative min-h-screen bg-background text-gray-900 dark:text-gray-100">
       <div className="relative z-10">
         <style>{STYLES}</style>
 
@@ -52,7 +49,7 @@ export default function PricingPage() {
         <ModelLogos />
 
         <section className="scroll-reveal mx-auto max-w-7xl px-5 py-16 lg:px-8">
-          <h2 className="mb-10 text-center text-3xl font-bold">
+          <h2 className="mb-10 text-center text-xl font-bold">
             Frequently Asked <span className="gradient-text">Questions</span>
           </h2>
           <PricingFAQ items={PRICING_FAQS} />

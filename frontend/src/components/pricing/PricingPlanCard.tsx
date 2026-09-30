@@ -32,12 +32,12 @@ export function PricingPlanCard({
       )}
     >
       {plan.popular && (
-        <span className="badge-popular absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold">
+        <span className="badge-popular absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold">
           Most Popular
         </span>
       )}
       {plan.id === "business" && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-400 to-purple-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-amber-700 to-purple-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
           ⚡ 5x more power than Pro
         </span>
       )}

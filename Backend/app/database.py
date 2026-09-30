@@ -165,6 +165,7 @@ def init_db():
     import app.models.feedback
     import app.models.review
     import app.models.contact
+    import app.models.chat_feedback
     Base.metadata.create_all(bind=engine)
     _ensure_column("conversations", "project_id", "VARCHAR(36)")
     _ensure_column("library_items", "project_id", "VARCHAR(36)")

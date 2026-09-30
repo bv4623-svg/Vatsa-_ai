@@ -41,7 +41,7 @@ Legend: **Exists** · **Partial** (some of it, gap stated) · **Missing** · **B
 | 5.4 | Tools: calculator, db_query, api_call, file_io | Missing | No function-calling / tool framework at all. |
 | 5.4 | Voice STT/TTS | Exists | Browser Web Speech (`hooks/useVoice.ts`) on `/home`; Settings → Voice: on/off, voice choice, auto-read (`components/settings/tabs/VoiceTab.tsx`). |
 | 5.5 | Multi-agent (planner/executor/critic) | Missing | — |
-| 5.6 | 👍/👎 feedback per response | Partial | Buttons exist (`ChatMessagesView.tsx:226,239`) but **are never saved**: `hooks/home/useHomeChat.ts:384` `handleFeedback` only sets React state. |
+| 5.6 | 👍/👎 feedback per response | Exists (collected, not yet used to tune answers) | Saved per reply in `chat_feedback` (`routers/chat_feedback.py`, `services/chat_feedback.py`), back after a reload; optional 👎 reason from fixed codes; admin stats `/api/admin/chat-feedback/stats` and page `/admin/chat-feedback` (daily chart + reasons). |
 | 5.6 | Golden dataset, A/B prompts | Missing | `tests/test_live_providers.py` checks providers answer, not quality. |
 | 5.7 | Model router by complexity | Partial | Named routes (`ai_router/config.py` `builtin_registry`: auto, vatsa-fast/pro/advanced, reasoning, vision), picked by feature and plan, not by the prompt's complexity. |
 | 5.7 | Fallback chain | Exists | `ai_router/fallback.py`, `retry.py`, `circuit_breaker.py`; same order as before the router. |

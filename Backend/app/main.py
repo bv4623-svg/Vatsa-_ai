@@ -63,6 +63,7 @@ from app.routers import reviews as reviews_router
 from app.routers import ai_router_status
 from app.routers import pricing as pricing_router
 from app.routers import contact as contact_router
+from app.routers import chat_feedback as chat_feedback_router
 from app.core.classifier import IntentClassifier
 from intents_data import INTENTS
 from app.database import init_db
@@ -215,6 +216,7 @@ app.include_router(reviews_router.router)
 app.include_router(ai_router_status.router)
 app.include_router(pricing_router.router)
 app.include_router(contact_router.router)
+app.include_router(chat_feedback_router.router)
 
 
 # Intent classification endpoints

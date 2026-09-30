@@ -230,8 +230,8 @@ export default function HomePage() {
   );
 
   const {
-    isLoading, isImageGenLoading, feedback, copiedMsgId, abortControllerRef,
-    sendMessage, handleRetry, handleRegenerate, handleCopy, handleFeedback, handleShare,
+    isLoading, isImageGenLoading, feedback, feedbackReasons, feedbackErrors, copiedMsgId, abortControllerRef,
+    sendMessage, handleRetry, handleRegenerate, handleCopy, handleFeedback, handleFeedbackReason, handleShare,
   } = useHomeChat({
     activeConversationId, conversations, messages, privateMode, user,
     attachments, setAttachments, webSearchEnabled, reasoningEnabled, researchEnabled,
@@ -434,9 +434,12 @@ export default function HomePage() {
                   isImageGenLoading={isImageGenLoading}
                   copiedMsgId={copiedMsgId}
                   feedback={feedback}
+                  feedbackReasons={feedbackReasons}
+                  feedbackErrors={feedbackErrors}
                   onCopy={handleCopy}
                   onRegenerate={onRegenerate}
                   onFeedback={handleFeedback}
+                  onFeedbackReason={handleFeedbackReason}
                   onShare={handleShare}
                   messagesEndRef={messagesEndRef}
                   chatContainerRef={chatContainerRef}

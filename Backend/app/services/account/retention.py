@@ -5,6 +5,7 @@ from app.database import SessionLocal
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.services.library import delete_conversation_item
+from app.services.chat_feedback import forget_votes
 
 logger = logging.getLogger("HistoryRetention")
 
@@ -32,6 +33,7 @@ def enforce_history_retention() -> int:
                 conv_id = conv.id
                 db.delete(conv)
                 db.commit()
+                forget_votes(db, user.id, [conv_id])
                 try:
                     delete_conversation_item(db, user.id, conv_id)
                 except Exception:

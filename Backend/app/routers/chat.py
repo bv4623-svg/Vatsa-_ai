@@ -238,14 +238,17 @@ def _persist_conversation(
     sources: Optional[List[Dict[str, Any]]] = None,
     reasoning_text: Optional[str] = None,
     user_settings: Optional[Dict[str, Any]] = None,
-) -> None:
+) -> Optional[str]:
+    """Saves the exchange; returns the id the reply was saved under (the
+    browser needs it to 👍/👎 that reply, see routers/chat_feedback.py), or
+    None when nothing was saved."""
     if not conv:
-        return
+        return None
     # Real effect, not a stored-but-ignored flag: with auto-save off, the
     # exchange is returned to the caller (already happened by this point)
     # but never written to the conversation, so a refresh shows it gone.
     if user_settings is not None and user_settings.get("autoSaveChats", True) is False:
-        return
+        return None
     msgs = list(conv.messages or [])
     now = datetime.utcnow().isoformat()
     msgs.append({"id": f"msg_{uuid.uuid4().hex[:8]}", "role": "user", "content": user_message, "createdAt": now})
@@ -266,6 +269,7 @@ def _persist_conversation(
     conv.messages = msgs
     conv.updated_at = datetime.utcnow()
     db.commit()
+    return assistant_msg["id"]
 
     # Every chat/code conversation is a Library item, kept in sync here --
     # the one place a finished exchange gets persisted, regardless of
@@ -337,12 +341,13 @@ async def _stream_chat_response(
         yield f"data: {json.dumps({'error': GENERIC_AI_ERROR, 'code': 'ai_unavailable', 'retryable': True})}\n\n"
         return
 
+    message_id = None
     if full_text:
         increment_usage(db, user, message_feature)
-        _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources, reasoning_text=reasoning_text, user_settings=user.settings)
+        message_id = _persist_conversation(conv, db, req.message, full_text, "Vatsa AI", sources=sources, reasoning_text=reasoning_text, user_settings=user.settings)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
-    done_event: Dict[str, Any] = {"done": True, "usage": usage, "conversation_id": req.conversation_id}
+    done_event: Dict[str, Any] = {"done": True, "usage": usage, "conversation_id": req.conversation_id, "message_id": message_id}
     if sources:
         done_event["sources"] = sources
     if reasoning_text:
@@ -395,11 +400,12 @@ async def chat_endpoint(
         response_text = f"**Vatsa AI Image**\n\n![image]({image_url})"
 
         conv, _ = _load_history(req, user, db)
-        _persist_conversation(conv, db, req.message, response_text, image_url=image_url, user_settings=user.settings)
+        message_id = _persist_conversation(conv, db, req.message, response_text, image_url=image_url, user_settings=user.settings)
         background_tasks.add_task(_extract_and_save_memory, user.id, req.message)
 
         return {
             "status": "success",
+            "message_id": message_id,
             "query": req.message,
             "response": response_text,
             "selected_model": "Vatsa AI",
@@ -471,7 +477,7 @@ async def chat_endpoint(
         result["sources"] = sources
     if search_notice:
         result["notice"] = search_notice
-    _persist_conversation(
+    result["message_id"] = _persist_conversation(
         conv, db, req.message, result["response"], result["selected_model"],
         sources=sources, reasoning_text=result.get("reasoning"), user_settings=user.settings,
     )

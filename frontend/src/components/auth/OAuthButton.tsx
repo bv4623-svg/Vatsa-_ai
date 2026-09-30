@@ -6,6 +6,8 @@ interface OAuthButtonProps {
   provider: "google" | "github";
   onClick: () => void;
   loading?: boolean;
+  /** E.g. while the CAPTCHA hasn't produced a token yet. */
+  disabled?: boolean;
 }
 
 const LABELS = { google: "Continue with Google", github: "Continue with GitHub" } as const;
@@ -34,13 +36,13 @@ function GitHubLogo() {
  * surface), dark with a border for GitHub (their mark is a solid color,
  * reads fine on dark). Both full-width, same height, same hover/focus
  * treatment so the pair reads as one unit. */
-export function OAuthButton({ provider, onClick, loading = false }: OAuthButtonProps) {
+export function OAuthButton({ provider, onClick, loading = false, disabled = false }: OAuthButtonProps) {
   const isGoogle = provider === "google";
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={loading}
+      disabled={loading || disabled}
       aria-label={LABELS[provider]}
       className={`group flex w-full items-center justify-center gap-3 rounded-xl border py-3 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F15] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 ${
         isGoogle

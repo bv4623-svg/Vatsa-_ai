@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { API_BASE } from "@/config/api";
-import { afterSignIn, forgetAfterSignIn, startOAuth } from "@/lib/oauth";
+import { CAPTCHA_FIELD, afterSignIn, forgetAfterSignIn, startOAuth } from "@/lib/oauth";
 
 function memoryStorage() {
   const data = new Map<string, string>();
@@ -12,11 +12,37 @@ function memoryStorage() {
   };
 }
 
-let assign: ReturnType<typeof vi.fn>;
+interface FakeForm {
+  method: string;
+  action: string;
+  fields: { type: string; name: string; value: string }[];
+  appendChild: (field: FakeForm["fields"][number]) => void;
+  submit: () => void;
+}
+
+/** The few document calls startOAuth makes; records each submitted form. */
+function fakeDocument(submitted: FakeForm[]) {
+  return {
+    createElement: (tag: string) => {
+      if (tag === "input") return { type: "", name: "", value: "" };
+      const form: FakeForm = {
+        method: "",
+        action: "",
+        fields: [],
+        appendChild: (field) => void form.fields.push(field),
+        submit: () => void submitted.push(form),
+      };
+      return form;
+    },
+    body: { appendChild: () => undefined },
+  };
+}
+
+let submitted: FakeForm[];
 
 beforeEach(() => {
-  assign = vi.fn();
-  vi.stubGlobal("window", { location: { assign } });
+  submitted = [];
+  vi.stubGlobal("document", fakeDocument(submitted));
   vi.stubGlobal("sessionStorage", memoryStorage());
 });
 
@@ -25,8 +51,17 @@ afterEach(() => vi.unstubAllGlobals());
 describe("OAuth round trip", () => {
   it("goes to the provider and comes back to the page sign-in was started for", () => {
     startOAuth("github", "/checkout?plan=pro");
-    expect(assign).toHaveBeenCalledWith(`${API_BASE}/api/auth/github/login`);
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0]).toMatchObject({ method: "POST", action: `${API_BASE}/api/auth/github/login`, fields: [] });
     expect(afterSignIn()).toBe("/checkout?plan=pro");
+  });
+
+  it("sends the CAPTCHA token in the form body, never the URL", () => {
+    startOAuth("google", "/home", "tok-123");
+    const form = submitted[0];
+    expect(form.fields).toEqual([{ type: "hidden", name: CAPTCHA_FIELD, value: "tok-123" }]);
+    expect(CAPTCHA_FIELD).toBe("cf-turnstile-response");
+    expect(form.action).not.toContain("tok-123");
   });
 
   it("a plain sign-in clears an older destination", () => {
@@ -54,7 +89,7 @@ describe("OAuth round trip", () => {
     };
     vi.stubGlobal("sessionStorage", { getItem: blocked, setItem: blocked, removeItem: blocked });
     startOAuth("google", "/checkout?plan=pro");
-    expect(assign).toHaveBeenCalledOnce();
+    expect(submitted).toHaveLength(1);
     expect(afterSignIn()).toBe("/home");
     expect(() => forgetAfterSignIn()).not.toThrow();
   });

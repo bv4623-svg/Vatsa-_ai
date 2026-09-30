@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { LOCALE_COOKIE, isSupportedLocale } from "@/i18n/locales";
 import { isBackendAuthPath, isFrontendPage, isProtectedPage } from "@/lib/proxy/routes";
 import { forwardToBackend } from "@/lib/proxy/forward";
+import { safeRedirect } from "@/lib/redirect";
 
 export default async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
@@ -30,6 +31,12 @@ export default async function proxy(request: NextRequest) {
       response.cookies.set(LOCALE_COOKIE, langParam, { path: "/", maxAge: 60 * 60 * 24 * 365 });
     }
     return response;
+  }
+
+  // ── Signed-in visitors skip sign-in (and its CAPTCHA) ──────
+  if ((path === "/login" || path === "/signup") && request.cookies.get("vatsa_session")?.value) {
+    const target = safeRedirect(url.searchParams.get("redirect"), "/home");
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   // ── Decide whether to proxy ────────────────────────────────

@@ -13,7 +13,7 @@ Owners: **Owner** = repository owner / product decision · **Backend** / **Front
 | KI-05 | P3 | Portability | Hard account deletion lists tables via `sqlite_master`/`PRAGMA` (SQLite only); on Postgres the cascade would fail | Open | Backend |
 | KI-06 | P3 | Chat | Regenerate replaces the old reply in the UI, but the server conversation keeps both attempts | Open | Backend + Frontend |
 | KI-07 | P3 | Perf | `GET /api/conversations` returns every message of every conversation: 5.40 MB for 200 conversations × 40 messages (1.82 MB gzipped since BUG-055; ~125 ms server time) | Open | Backend + Frontend |
-| KI-08 | P3 | Dead code | `frontend/src/db/` (drizzle/pg template) is imported nowhere but keeps `pg`, `drizzle-orm`, `drizzle-kit` and a frontend `DATABASE_URL` around; `drizzle.config.json` holds a local-dev default `postgres:postgres@127.0.0.1` (not a secret) | Open | Frontend |
+| KI-08 | P3 | Dead code | `frontend/src/db/` (drizzle/pg template) is imported nowhere but keeps `pg`, `drizzle-orm`, `drizzle-kit` and a frontend `DATABASE_URL` around; `drizzle.config.json` holds a local-dev default `postgres:postgres@127.0.0.1` (not a secret) | Fixed 2026-09-30 | Frontend |
 | KI-09 | P3 | CI | GitHub warns that checkout@v4 / setup-node@v4 / setup-python@v5 target Node 20 and are forced onto Node 24 | Open | Ops |
 | KI-10 | P3 | Launch | `npm run check:business` fails until the legal name, postal address and phone are set (Razorpay verification needs them) | Waiting on owner | Owner |
 | KI-11 | P3 | Legal | Privacy policy statements were corrected to match the code (BUG-040); the whole policy needs legal review. The "anonymous usage analytics" paragraph was not verified | Waiting on owner | Owner |
@@ -52,6 +52,8 @@ The home page loads all conversations with their full message arrays in one requ
 
 ### KI-08 · Unused database template in the frontend
 Remove `frontend/src/db/`, `drizzle.config.json` and the `pg`/`drizzle-*` dependencies, regenerate the lockfile, and drop `DATABASE_URL` from the frontend docs.
+
+**Fixed 2026-09-30:** `frontend/src/db/`, `drizzle.config.json`, `drizzle-orm`, `drizzle-kit`, `pg` and `@types/pg` removed; the lockfile was regenerated (73 entries gone, no other version changed). No frontend doc named `DATABASE_URL`, so none needed editing; SECURITY_ACTIONS.md row 14 stays, because a value leaked in an old `frontend/.env.local` still has to be rotated. The database schema is owned by the backend (`Backend/app/models`).
 
 ### KI-09 · Node 20 actions deprecation
 Bump to the current majors of `actions/checkout`, `actions/setup-node` and `actions/setup-python`. The versions weren't verified from inside this session, so they weren't guessed.

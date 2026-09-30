@@ -34,7 +34,13 @@ export default async function proxy(request: NextRequest) {
   }
 
   // ── Signed-in visitors skip sign-in (and its CAPTCHA) ──────
-  if ((path === "/login" || path === "/signup") && request.cookies.get("vatsa_session")?.value) {
+  // Only for real page loads. Next strips its own router headers (rsc,
+  // next-router-prefetch) before this runs, so a link prefetch of /login
+  // (e.g. "Back to sign in" on the 2FA step) would be redirected too, and
+  // that sends the open page to /home mid-typing. In-app navigation is
+  // covered by OAuthSignIn itself.
+  const isPageLoad = request.headers.get("sec-fetch-dest") === "document";
+  if ((path === "/login" || path === "/signup") && isPageLoad && request.cookies.get("vatsa_session")?.value) {
     const target = safeRedirect(url.searchParams.get("redirect"), "/home");
     return NextResponse.redirect(new URL(target, request.url));
   }

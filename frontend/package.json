@@ -11,7 +11,7 @@
     "check:business": "node scripts/check-business-info.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "NEXT_PUBLIC_API_URL=http://api.test npm run build && playwright test",
+    "test:e2e": "NEXT_PUBLIC_API_URL=http://api.test NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA npm run build && playwright test",
     "predev": "node scripts/copy-pyodide.js",
     "prebuild": "node scripts/copy-pyodide.js"
   },

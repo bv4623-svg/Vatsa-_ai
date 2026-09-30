@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -14,6 +15,16 @@ from app.services.chat_feedback import forget_votes
 from app.services.feature_access import check_code_app_limit
 
 router = APIRouter(prefix="/api", tags=["conversations"])
+
+
+def _in_workspace(q, workspace: str):
+    """Narrows a Conversation query to one workspace. Rows saved without a
+    workspace are chats (to_dict already reports them as "chat"), so the
+    "chat" filter has to include them too."""
+    if workspace == "chat":
+        return q.filter(or_(Conversation.workspace == "chat", Conversation.workspace.is_(None), Conversation.workspace == ""))
+    return q.filter(Conversation.workspace == workspace)
+
 
 class CreateConvRequest(BaseModel):
     title: Optional[str] = "New Chat"
@@ -34,7 +45,7 @@ def list_conversations(
 ):
     q = db.query(Conversation).filter(Conversation.user_id == current_user.id)
     if workspace:
-        q = q.filter(Conversation.workspace == workspace)
+        q = _in_workspace(q, workspace)
     convs = q.order_by(Conversation.pinned.desc(), Conversation.updated_at.desc()).all()
     return [c.to_dict() for c in convs]
 
@@ -135,13 +146,13 @@ def delete_conversation(
 
 @router.delete("/conversations")
 def delete_all_conversations(
-    workspace: Optional[str] = Query(None),
+    # One workspace at a time, chats by default: the only caller is /home's
+    # "Clear All Chats", and an unscoped delete also wiped every /code project.
+    workspace: str = Query("chat"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    q = db.query(Conversation).filter(Conversation.user_id == current_user.id)
-    if workspace:
-        q = q.filter(Conversation.workspace == workspace)
+    q = _in_workspace(db.query(Conversation).filter(Conversation.user_id == current_user.id), workspace)
     conv_ids = [c.id for c in q.all()]
     count = q.delete()
     db.commit()

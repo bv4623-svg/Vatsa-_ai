@@ -61,6 +61,12 @@ Smoke-tested by hand against the real local backend + frontend (2026-09-30):
 - **Phase 0 fixes (branch `feat/phase-0-fixes`, off `integration/main-plus-live` `da5352f`):**
   - Fix 2 (`bd9d40e`): no email, or name built from it, in any model prompt; `tests/test_prompt_privacy.py` (5).
   - Fix 3: 👍/👎 saved per reply (`chat_feedback` table, `POST/DELETE/GET /api/chat/feedback`), back after a reload, 👎 reason chips, admin `/admin/chat-feedback` (stats at `/api/admin/chat-feedback/stats`). Tests: `tests/test_chat_feedback.py` (11), `services/chatFeedback.test.ts` (7), `e2e/chat-feedback.spec.ts` (6 × 2).
+- **UI polish (branch `feat/ui-polish`, off `feat/phase-0-fixes`):** chat box, `/home`, `/pricing`; numbers in UI_IMPROVEMENTS.md.
+- **Fixes (branch `fix/workspaces-and-code-files`, off `feat/ui-polish`):**
+  - Phase 0: "Clear All Chats" (Settings → General on `/home`) also deleted every `/code` project, because both live in `conversations` and the delete had no workspace filter.
+    - The delete now takes one workspace, chats by default, so the frontend already in production is safe once the backend ships.
+    - Rows saved without a workspace count as chats.
+    - Tests: `tests/test_conversation_workspaces.py` (5; 3 fail on the old code), `e2e/workspaces.spec.ts`.
 - **Phases 1–5 of the PRD:** not started (FEATURES.md §1).
 - **Small, flagged:**
   - Unused `frontend/src/db`.

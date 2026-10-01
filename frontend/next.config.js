@@ -15,14 +15,22 @@ const backendOrigin = (
 // and analytics endpoints make a strict policy easy to get subtly wrong,
 // and a broken checkout costs more than the policy would protect.
 const securityHeaders = [
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  // One year, no "preload": preloading commits every subdomain to HTTPS
+  // permanently, which is the owner's call once every subdomain is ready.
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Microphone stays allowed for our own pages: voice dictation
+  // (src/lib/voice/stt.ts) needs it. Nothing here uses the camera or location.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
 ];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Don't advertise the framework (X-Powered-By: Next.js).
+  poweredByHeader: false,
+
   async rewrites() {
     return [
       {

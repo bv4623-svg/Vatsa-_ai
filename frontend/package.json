@@ -18,24 +18,21 @@
     "@tailwindcss/postcss": "4.1.17",
     "@types/file-saver": "^2.0.7",
     "@types/node": "22.19.15",
-    "@types/pg": "8.18.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "axios": "^1.19.0",
     "clsx": "^2.1.1",
     "dotenv": "17.3.1",
-    "drizzle-orm": "0.45.2",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.3.5",
+    "eslint-config-next": "16.3.8",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.43.0",
     "jose": "^6.2.7",
     "jszip": "^3.10.1",
     "lucide-react": "^1.37.0",
-    "next": "16.3.5",
+    "next": "16.3.8",
     "next-auth": "^4.24.15",
     "next-intl": "^4.14.5",
-    "pg": "8.20.0",
     "postcss": "8.5.28",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -50,10 +47,7 @@
     "typescript": "5.9.3",
     "zustand": "^5.0.14"
   },
-  "devDependencies": {
-    "drizzle-kit": "0.31.10"
-  },
   "overrides": {
-    "dompurify": "3.4.15"
+    "dompurify": "3.4.16"
   }
 }

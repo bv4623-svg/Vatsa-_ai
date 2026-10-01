@@ -33,7 +33,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        # A route that is meant to be embedded by the frontend (a different
+        # origin: vatsaai.com vs api.vatsaai.com) sets its own value; every
+        # other response stays same-origin.
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
         # HSTS only makes sense once the site is actually served over HTTPS
         # -- sending it over plain HTTP dev traffic does nothing harmful,
         # but gating it keeps plain-http local runs from being

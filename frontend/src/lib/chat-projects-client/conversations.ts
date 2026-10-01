@@ -22,7 +22,8 @@ interface RawConversation {
 }
 
 export async function listAllChats(): Promise<ProjectPickerChat[]> {
-  const res = await fetch(`${API_BASE}/api/conversations`, { headers: authHeaders() });
+  // Projects group chats; /code projects are a different workspace.
+  const res = await fetch(`${API_BASE}/api/conversations?workspace=chat`, { headers: authHeaders() });
   const data = await parseOrThrow<RawConversation[]>(res);
   return data.map((c) => ({
     id: c.id,

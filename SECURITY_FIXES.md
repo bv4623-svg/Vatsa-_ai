@@ -29,7 +29,7 @@ Hostinger's own list (11 items) hasn't been compared yet.
 | Remote code execution in `next/og` ImageResponse ([GHSA-vcvr-r3jv-pc5j](https://github.com/advisories/GHSA-vcvr-r3jv-pc5j)) | Critical | Framework | `next` 16.3.5 | `next` and `eslint-config-next` 16.3.8 | **Fixed** (step 2) |
 | Quadratic-time brace expansion ([GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr)) | High | Dev dependency (eslint) | `brace-expansion` 1.1.18 / 5.0.9 | `npm audit fix` → 1.1.21 / 5.0.12 | **Fixed** (step 2) |
 | DOMPurify IN_PLACE hook ([GHSA-p98j-92pf-mc4p](https://github.com/advisories/GHSA-p98j-92pf-mc4p)), also reported as `monaco-editor` | Low ×2 | Dependency of the code editor | `dompurify` 3.4.15, pinned in `overrides` | pin raised to 3.4.16 | **Fixed** (step 2) |
-| esbuild dev server accepts any site's requests ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)) | Moderate ×4 | Dev-only, unused (`drizzle-kit` chain) | `drizzle-kit` 0.31.10 | remove the unused drizzle template (as in PR #11) | Open: needs a decision; not in the shipped app |
+| esbuild dev server accepts any site's requests ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)) | Moderate ×4 | Dev-only, unused (`drizzle-kit` chain) | `drizzle-kit` 0.31.10 | removed the unused drizzle template and its packages (as in PR #11) | **Fixed** (step 3a) |
 | Minerva timing attack (CVE-2024-23342) | Low here | Backend dependency | `ecdsa` 0.19.2, via `python-jose` | none released; tokens use HS256, which never calls `ecdsa` | Not exploitable; replace `python-jose` with PyJWT later |
 | `X-Powered-By: Next.js` | Low | Information leak | `next.config.js` | `poweredByHeader: false` | Step 3 |
 | No `Permissions-Policy`; CSP only upgrades http to https | Medium | Missing headers | `next.config.js` | add the header; CSP in report-only mode first | Steps 3 and 6 |
@@ -67,3 +67,24 @@ Hostinger's own list (11 items) hasn't been compared yet.
 **Not available on this branch:** a CI workflow, unit tests and e2e tests. The checks above are the full set that exists here.
 
 **Rollback:** revert the step 2 commit and redeploy. No data or schema change.
+
+## Step 3a: the unused drizzle template is gone
+
+`frontend/src/db/` (a drizzle schema and a `pg` pool) and `frontend/drizzle.config.json` came from a starter template.
+- **Nothing imports them.** `git grep` finds no `@/db`, `./db` or `pg` imports, and nothing in the scripts or configs refers to them.
+- **The real database is the backend's** (SQLAlchemy).
+- **Removed:**
+  - the three files;
+  - `drizzle-orm`, `pg` and `@types/pg` (dependencies);
+  - `drizzle-kit` (dev dependency).
+- **The lockfile only loses entries:** 102 package entries removed (including every per-platform esbuild binary), 0 added, 0 versions changed. The large line count in the diff comes from git reordering the JSON.
+
+| Check | After step 2 | After step 3a |
+|---|---|---|
+| `npm audit` | 4 moderate | **0 vulnerabilities** |
+| `tsc --noEmit` | clean | clean |
+| `eslint .` | 10 errors, 15 warnings (existing) | the same |
+| `next build --webpack` | OK | OK |
+| Smoke test | all pages OK | `/`, `/pricing`, `/signup`, `/login`, `/privacy`, `/terms` and the three image routes → 200; `/code` → 307; no console errors on `/`, `/signup` |
+
+**Rollback:** revert the step 3a commit; `npm ci` restores the packages.

@@ -1,0 +1,291 @@
+{
+  "_comment": "Image-generation intent cases shared by Backend/tests/test_image_intent.py (detect_image_gen in Backend/app/services/ai_service.py) and frontend/scripts/check-image-query.mjs (frontend/src/lib/home/imageQuery.ts). prompt is what goes to the image model, or null for a normal text reply. Add a case here and both sides must agree.",
+  "chat": [
+    {
+      "text": "generate an image of a red fox in snow",
+      "prompt": "a red fox in snow"
+    },
+    {
+      "text": "Create a realistic photo of a mountain lake at dawn",
+      "prompt": "a realistic photo of a mountain lake at dawn"
+    },
+    {
+      "text": "make me a picture of a cyberpunk city",
+      "prompt": "a cyberpunk city"
+    },
+    {
+      "text": "please draw a cat wearing a hat",
+      "prompt": "a cat wearing a hat"
+    },
+    {
+      "text": "Can you draw me a dragon?",
+      "prompt": "a dragon"
+    },
+    {
+      "text": "paint a sunset over the ocean",
+      "prompt": "a sunset over the ocean"
+    },
+    {
+      "text": "/imagine a castle on a floating island",
+      "prompt": "a castle on a floating island"
+    },
+    {
+      "text": "imagine a robot reading a book",
+      "prompt": "a robot reading a book"
+    },
+    {
+      "text": "image of an astronaut riding a horse",
+      "prompt": "an astronaut riding a horse"
+    },
+    {
+      "text": "design a logo for a coffee shop called Bean There",
+      "prompt": "a logo for a coffee shop called Bean There"
+    },
+    {
+      "text": "generate a high-quality illustration of a lighthouse",
+      "prompt": "a high-quality illustration of a lighthouse"
+    },
+    {
+      "text": "create an image",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "how do I draw conclusions from this data?",
+      "prompt": null
+    },
+    {
+      "text": "draw a comparison between Python and Go",
+      "prompt": null
+    },
+    {
+      "text": "draw a bar chart of monthly sales in matplotlib",
+      "prompt": null
+    },
+    {
+      "text": "make an image carousel component in React",
+      "prompt": null
+    },
+    {
+      "text": "create a picture gallery website",
+      "prompt": null
+    },
+    {
+      "text": "build an image uploader with drag and drop",
+      "prompt": null
+    },
+    {
+      "text": "write a function to resize an image in python",
+      "prompt": null
+    },
+    {
+      "text": "explain the image of a function in set theory",
+      "prompt": null
+    },
+    {
+      "text": "what paint should I use for a bathroom?",
+      "prompt": null
+    },
+    {
+      "text": "create an image classifier with PyTorch",
+      "prompt": null
+    },
+    {
+      "text": "generate an image processing pipeline",
+      "prompt": null
+    },
+    {
+      "text": "what is in this picture of my receipt",
+      "prompt": null
+    },
+    {
+      "text": "summarise this document",
+      "prompt": null
+    },
+    {
+      "text": "",
+      "prompt": null
+    },
+    {
+      "text": "generate a red apple",
+      "prompt": "a red apple"
+    },
+    {
+      "text": "Generate an image of a red apple",
+      "prompt": "a red apple"
+    },
+    {
+      "text": "create image of a sunset over mountains",
+      "prompt": "a sunset over mountains"
+    },
+    {
+      "text": "create a picture of a cat wearing a hat",
+      "prompt": "a cat wearing a hat"
+    },
+    {
+      "text": "draw a dragon",
+      "prompt": "a dragon"
+    },
+    {
+      "text": "make a picture of the Taj Mahal at night",
+      "prompt": "the Taj Mahal at night"
+    },
+    {
+      "text": "show me an image of a lion",
+      "prompt": "a lion"
+    },
+    {
+      "text": "make an image of a robot reading a book",
+      "prompt": "a robot reading a book"
+    },
+    {
+      "text": "Can you generate an image of a car?",
+      "prompt": "a car"
+    },
+    {
+      "text": "image banao ek ghode ka",
+      "prompt": "ghode"
+    },
+    {
+      "text": "image bana do ek cat ki",
+      "prompt": "cat"
+    },
+    {
+      "text": "ek image banao",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "photo bana do",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "photo banao",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "ek red apple ki photo banao",
+      "prompt": "red apple"
+    },
+    {
+      "text": "pic banao ek sunset ki",
+      "prompt": "sunset"
+    },
+    {
+      "text": "picture banao mountains ki",
+      "prompt": "mountains"
+    },
+    {
+      "text": "ek image generate karo",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "image generate kar do",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "ek dog ki image generate kar do",
+      "prompt": "dog"
+    },
+    {
+      "text": "mujhe ek image bana do please",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "चित्र बनाओ",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "फोटो बनाओ",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "फ़ोटो बनाओ",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "इमेज बनाओ एक बिल्ली की",
+      "prompt": "बिल्ली"
+    },
+    {
+      "text": "तस्वीर बनाओ",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "एक सेब की तस्वीर बनाओ",
+      "prompt": "सेब"
+    },
+    {
+      "text": "चित्र बना दो",
+      "prompt": "beautiful realistic artwork"
+    },
+    {
+      "text": "What is an image?",
+      "prompt": null
+    },
+    {
+      "text": "Image quality kya hai?",
+      "prompt": null
+    },
+    {
+      "text": "Photo editing kaise karte hain?",
+      "prompt": null
+    },
+    {
+      "text": "Draw a conclusion",
+      "prompt": null
+    },
+    {
+      "text": "Picture this scenario",
+      "prompt": null
+    },
+    {
+      "text": "Image processing samjhao",
+      "prompt": null
+    },
+    {
+      "text": "generate a report on sales",
+      "prompt": null
+    },
+    {
+      "text": "generate a password",
+      "prompt": null
+    },
+    {
+      "text": "generate a list of names for my startup",
+      "prompt": null
+    },
+    {
+      "text": "generate a random number",
+      "prompt": null
+    },
+    {
+      "text": "what is the image of a function?",
+      "prompt": null
+    },
+    {
+      "text": "draw a blank",
+      "prompt": null
+    },
+    {
+      "text": "how do I make a photo collage?",
+      "prompt": null
+    },
+    {
+      "text": "website banao",
+      "prompt": null
+    },
+    {
+      "text": "ek story likho",
+      "prompt": null
+    }
+  ],
+  "code_workspace": [
+    {
+      "text": "draw a cat using HTML canvas",
+      "prompt": null
+    },
+    {
+      "text": "generate an image of a red fox",
+      "prompt": null
+    }
+  ]
+}

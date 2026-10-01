@@ -139,8 +139,16 @@ export function useHomeChat(params: UseHomeChatParams) {
       if (!response.ok) {
         const upgradeError = await parseUpgradeGate(response);
         if (upgradeError) throw upgradeError;
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        // Show the server's own message ({"detail": "..."}), never raw JSON.
+        const errorText = await response.text().catch(() => "");
+        let message = "";
+        try {
+          const detail = JSON.parse(errorText)?.detail;
+          if (typeof detail === "string") message = detail;
+        } catch {
+          // Not JSON (e.g. a proxy's HTML error page): fall through.
+        }
+        throw new Error(message || `Request failed (${response.status}). Please try again.`);
       }
 
       const contentType = response.headers.get("content-type") || "";

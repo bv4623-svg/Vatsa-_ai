@@ -106,6 +106,22 @@ def _load_history(req: ChatRequest, user: User, db: Session) -> Tuple[Optional[C
     return conv, history
 
 
+def _enforce_conversation_workspace(req: ChatRequest, user: User, db: Session) -> None:
+    """A conversation belongs to one workspace: a code project is never
+    continued from the chat, nor a chat from /code (both send to this
+    endpoint, told apart by req.workspace). Rows saved without a workspace
+    are chats. Runs before any work, so a refused request costs nothing."""
+    if not req.conversation_id:
+        return
+    row = db.query(Conversation.workspace).filter_by(id=req.conversation_id, user_id=user.id).first()
+    if row is None:
+        return
+    owner = row[0] or "chat"
+    if owner != (req.workspace or "chat"):
+        place = "Code" if owner == "code" else "Chat"
+        raise HTTPException(status_code=400, detail=f"This conversation belongs to {place} — open it there.")
+
+
 def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     """
     Normalizes the client's attachment shape into what AIService._build_messages
@@ -321,6 +337,7 @@ async def chat_endpoint(
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     enforce_rate_limit(f"chat-burst:user:{user.id}", limit=CHAT_BURST_LIMIT, window_seconds=CHAT_BURST_WINDOW_SECONDS)
+    _enforce_conversation_workspace(req, user, db)
 
     user_settings = user.settings or {}
     chosen_model = req.model or req.preferred_model or user_settings.get("defaultModel") or "auto"

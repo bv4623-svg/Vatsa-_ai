@@ -31,8 +31,8 @@ Hostinger's own list (11 items) hasn't been compared yet.
 | DOMPurify IN_PLACE hook ([GHSA-p98j-92pf-mc4p](https://github.com/advisories/GHSA-p98j-92pf-mc4p)), also reported as `monaco-editor` | Low ×2 | Dependency of the code editor | `dompurify` 3.4.15, pinned in `overrides` | pin raised to 3.4.16 | **Fixed** (step 2) |
 | esbuild dev server accepts any site's requests ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)) | Moderate ×4 | Dev-only, unused (`drizzle-kit` chain) | `drizzle-kit` 0.31.10 | removed the unused drizzle template and its packages (as in PR #11) | **Fixed** (step 3a) |
 | Minerva timing attack (CVE-2024-23342) | Low here | Backend dependency | `ecdsa` 0.19.2, via `python-jose` | none released; tokens use HS256, which never calls `ecdsa` | Not exploitable; replace `python-jose` with PyJWT later |
-| `X-Powered-By: Next.js` | Low | Information leak | `next.config.js` | `poweredByHeader: false` | Step 3 |
-| No `Permissions-Policy`; CSP only upgrades http to https | Medium | Missing headers | `next.config.js` | add the header; CSP in report-only mode first | Steps 3 and 6 |
+| `X-Powered-By: Next.js` | Low | Information leak | `next.config.js` | `poweredByHeader: false` | **Fixed** (step 3) |
+| No `Permissions-Policy`; CSP only upgrades http to https | Medium | Missing headers | `next.config.js` | `Permissions-Policy` added (step 3); CSP in report-only mode (step 6) | Permissions-Policy **fixed**; CSP open |
 
 **`next/og` exposure:**
 - `src/app/opengraph-image.tsx`, `icon.tsx` and `apple-icon.tsx` use `ImageResponse`.
@@ -88,3 +88,24 @@ Hostinger's own list (11 items) hasn't been compared yet.
 | Smoke test | all pages OK | `/`, `/pricing`, `/signup`, `/login`, `/privacy`, `/terms` and the three image routes → 200; `/code` → 307; no console errors on `/`, `/signup` |
 
 **Rollback:** revert the step 3a commit; `npm ci` restores the packages.
+
+## Step 3: safe headers
+
+`frontend/next.config.js`:
+- **`Strict-Transport-Security`:** `max-age=63072000; includeSubDomains` → `max-age=31536000; includeSubDomains`. No `preload`, by the owner's decision: preloading commits every subdomain to HTTPS permanently.
+- **`Permissions-Policy: camera=(), microphone=(self), geolocation=()`:**
+  - The microphone stays allowed for our own pages, because voice dictation (`src/lib/voice/stt.ts`, the voice button on `/code`) uses it. `microphone=()` would have broken it.
+  - Nothing uses the camera or location.
+- **`poweredByHeader: false`:** removes `X-Powered-By: Next.js`.
+- **Unchanged:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`. There is still no enforced CSP; step 6 adds it in report-only mode.
+
+| Check (local `next start`) | Result |
+|---|---|
+| `/`, `/pricing`, `/signup`, `/code` response headers | the new HSTS and Permissions-Policy; no `X-Powered-By`; HSTS has no `preload` |
+| Browser feature policy | microphone allowed, camera and location blocked, speech recognition available |
+| Pages | all 200 (`/code` 307 to sign-in), no console errors on `/` |
+| `next build`, `tsc`, `eslint` | OK, clean, the same 10 existing errors |
+
+**After deploy:** `curl -sI https://vatsaai.com/` should show the same headers. Hostinger's LiteSpeed already passed this app's headers through, as it does today.
+
+**Rollback:** revert the step 3 commit.

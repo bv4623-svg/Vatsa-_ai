@@ -31,4 +31,7 @@ async def preview_generated_image(
         logger.error(f"Generated image row {image_id} has no file on disk at {abs_path}")
         raise HTTPException(status_code=404, detail="Image not found")
 
-    return FileResponse(abs_path, media_type="image/png")
+    # The chat shows this with <img> on the frontend's origin, which differs
+    # from the API's; under the default same-origin policy browsers refuse
+    # to display it. Access control is the per-user media token, not CORP.
+    return FileResponse(abs_path, media_type="image/png", headers={"Cross-Origin-Resource-Policy": "cross-origin"})

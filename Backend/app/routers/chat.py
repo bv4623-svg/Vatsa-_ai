@@ -126,14 +126,15 @@ def _parse_attachments(req: ChatRequest) -> List[Dict[str, Any]]:
     return parsed
 
 
-def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
+def _enforce_daily_limit(db: Session, user: User, feature: str, charge: bool = True) -> None:
     """
     Raises 429 (with the shape the frontend's upgrade UI expects) once a
     user's free/pro/business daily cap for `feature` is hit, else records
     this call against today's count. Chat and Code share one endpoint
     (distinguished only by req.workspace in the body), so this can't be
     a route-level dependency the way vision's require_feature() is --
-    it has to run after the request body is parsed.
+    it has to run after the request body is parsed. charge=False only
+    checks; the caller then counts the use once it has succeeded.
     """
     allowed, used, limit = check_daily_limit(db, user, feature)
     if not allowed:
@@ -145,7 +146,8 @@ def _enforce_daily_limit(db: Session, user: User, feature: str) -> None:
             "resets_at": "midnight UTC",
             "upgrade_url": "/pricing",
         })
-    increment_usage(db, user, feature)
+    if charge:
+        increment_usage(db, user, feature)
 
 
 def _enforce_storage_quota(db: Session, user: User, estimated_bytes: int) -> None:
@@ -333,7 +335,9 @@ async def chat_endpoint(
     # when the caller asked for stream=true). ---
     img_prompt = detect_image_gen(req.message)
     if img_prompt:
-        _enforce_daily_limit(db, user, "image_gen")
+        # Counted only once an image exists: a provider failure mustn't use
+        # up one of the day's images.
+        _enforce_daily_limit(db, user, "image_gen", charge=False)
         # A processed PNG from this pipeline is typically 1-3MB; 2MB is a
         # conservative pre-check so a user right at their ceiling is
         # blocked before spending the generation call, not after.
@@ -342,7 +346,8 @@ async def chat_endpoint(
             img_data = await generate_and_store_image(db, user.id, img_prompt)
         except Exception as e:
             logger.error(f"Image generation failed for user {user.id}: {e}")
-            raise HTTPException(status_code=502, detail="Image generation is temporarily unavailable. Please try again.")
+            raise HTTPException(status_code=502, detail="Image generation is temporarily unavailable. Try again in a minute.")
+        increment_usage(db, user, "image_gen")
 
         media_token = create_media_token(user.id)
         image_url = f"{BACKEND_PUBLIC_URL}/api/files/{img_data['image_id']}/preview?token={media_token}"

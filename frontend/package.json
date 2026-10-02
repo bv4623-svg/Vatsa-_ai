@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check:pricing": "node scripts/check-pricing-consistency.js",
-    "check:business": "node scripts/check-business-info.js"
+    "check:business": "node scripts/check-business-info.js",
+    "test:image-intent": "node --experimental-strip-types scripts/check-image-query.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

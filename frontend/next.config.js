@@ -40,6 +40,12 @@ const nextConfig = {
     ];
   },
 
+  // Crawlers guess /about-us; the page lives at /about. permanent: true
+  // sends a 308, which search engines treat like a 301.
+  async redirects() {
+    return [{ source: "/about-us", destination: "/about", permanent: true }];
+  },
+
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

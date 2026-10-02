@@ -1,0 +1,25 @@
+# https://vatsaai.com/robots.txt
+# No blank lines inside the group below: older parsers end a group at a
+# blank line and would drop every rule after it.
+User-agent: *
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin/
+# Signed-in pages. Visitors without a session are sent to /login, so there is
+# nothing here to index. Keep in step with PROTECTED_PREFIXES in
+# src/lib/proxy/routes.ts. No trailing slash: "/settings" also covers
+# "/settings/...", while "/settings/" would leave the page itself crawlable.
+Disallow: /home
+Disallow: /code
+Disallow: /workspace
+Disallow: /settings
+Disallow: /library
+Disallow: /projects
+Disallow: /scheduled
+Disallow: /billing
+Disallow: /checkout
+# Last on purpose: some crawlers obey the first rule that matches, and an
+# "Allow: /" above would let them into everything listed here.
+Allow: /
+
+Sitemap: https://vatsaai.com/sitemap.xml

@@ -132,6 +132,23 @@ def _ensure_column(table: str, column: str, ddl_type: str, *, postgres_ddl_type:
                 )
                 conn.commit()
 
+def _backfill_conversation_workspace() -> int:
+    """Gives conversations saved without a workspace (NULL or "") the value
+    "chat". The column is nullable with no database default (alembic
+    71eeb219e6a3); only the model's Python default filled it in, so older
+    rows can be empty. Chats and /code projects are told apart by this
+    column, and the chat list asks for workspace=chat, so an empty row
+    would be invisible in both lists. Idempotent: after the first run
+    nothing matches. Returns the number of rows changed."""
+    with engine.begin() as conn:
+        result = conn.exec_driver_sql(
+            "UPDATE conversations SET workspace = 'chat' WHERE workspace IS NULL OR workspace = ''"
+        )
+        changed = result.rowcount or 0
+    if changed:
+        logger.info("Backfilled workspace='chat' on %d conversation(s) saved without one", changed)
+    return changed
+
 def init_db():
     """Ensure all models are registered and create missing tables.
 
@@ -173,4 +190,5 @@ def init_db():
     _ensure_column("users", "two_factor_enabled", "BOOLEAN NOT NULL DEFAULT 0", postgres_ddl_type="BOOLEAN NOT NULL DEFAULT FALSE")
     _ensure_column("users", "backup_codes", "JSON")
     _ensure_column("users", "oauth_linked", "BOOLEAN NOT NULL DEFAULT 0", postgres_ddl_type="BOOLEAN NOT NULL DEFAULT FALSE")
+    _backfill_conversation_workspace()
 

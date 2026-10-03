@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { UpgradeModal } from "./UpgradeModal";
 import type { PlanId } from "@/data/plans";
+import { track } from "@/lib/analytics/events";
 
 /** Where the upgrade was triggered from. Sent with the analytics event so we
  * can tell which surface actually converts. */
@@ -73,20 +74,11 @@ export function useUpgrade(): UpgradeContextValue {
   return ctx;
 }
 
-/** Fires a client analytics event if one is wired up; stays silent otherwise
- * rather than pretending an analytics pipeline exists. */
+/** Sends upgrade_click to GA4 (only with analytics consent; see lib/analytics). */
 function trackUpgradeIntent(args: OpenUpgradeArgs) {
-  if (typeof window === "undefined") return;
-  const w = window as typeof window & {
-    dataLayer?: unknown[];
-    gtag?: (...a: unknown[]) => void;
-  };
-  const payload = {
-    event: "upgrade_intent",
+  track("upgrade_click", {
     source: args.source,
     feature: args.feature ?? null,
     suggested_tier: args.suggestedTier ?? null,
-  };
-  if (Array.isArray(w.dataLayer)) w.dataLayer.push(payload);
-  if (typeof w.gtag === "function") w.gtag("event", "upgrade_intent", payload);
+  });
 }

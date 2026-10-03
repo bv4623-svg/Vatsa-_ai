@@ -5,6 +5,7 @@ import { uid, normalizeResponse } from "@/lib/code/parsing";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { parseUpgradeGate, UpgradeRequiredError, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
 import { API_BASE } from "@/config/api";
+import { track } from "@/lib/analytics/events";
 
 
 interface UseCodeChatParams {
@@ -145,6 +146,7 @@ export function useCodeChat(params: UseCodeChatParams) {
           } catch {}
           throw new Error(msg);
         }
+        track("chat_message", { workspace: "code" });
 
         const contentType = response.headers.get("content-type") || "";
         let text = "";

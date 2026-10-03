@@ -4,6 +4,7 @@ import type { Attachment } from "@/types/home";
 import { API_BASE } from "@/lib/home/constants";
 import { isImageGenQuery } from "@/lib/home/imageQuery";
 import { UpgradeRequiredError, parseUpgradeGate, type UpgradeGateInfo } from "@/lib/billing/upgradeError";
+import { track } from "@/lib/analytics/events";
 
 export { UpgradeRequiredError, type UpgradeGateInfo };
 
@@ -150,6 +151,7 @@ export function useHomeChat(params: UseHomeChatParams) {
         }
         throw new Error(message || `Request failed (${response.status}). Please try again.`);
       }
+      track("chat_message", { workspace: "chat" });
 
       const contentType = response.headers.get("content-type") || "";
       let textContent = "";
@@ -281,6 +283,7 @@ export function useHomeChat(params: UseHomeChatParams) {
         addMessageToConversation(convId, assistantMsg);
       }
 
+      if (willGenImage && imageUrl) track("generate_image", {});
       setErrorState(null);
     } catch (error: any) {
       const isAbort = error.name === "AbortError";

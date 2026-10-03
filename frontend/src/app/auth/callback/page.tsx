@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { establishSession } from "@/lib/session";
 import { useLocalYear } from "@/hooks/useLocalTime";
+import { takeOAuthProvider, track, type AuthMethod } from "@/lib/analytics/events";
 
 function CallbackInner() {
   const router = useRouter();
@@ -19,9 +20,12 @@ function CallbackInner() {
   const [birthYear, setBirthYear] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [onboardingError, setOnboardingError] = useState("");
+  // Which button started this sign-in (google/github), read once for analytics.
+  const methodRef = useRef<AuthMethod | null>(null);
 
   // ─── 1. On mount: handle token, fetch user, decide onboarding ───
   useEffect(() => {
+    if (methodRef.current === null) methodRef.current = takeOAuthProvider();
     // Support both "token" and "access_token"
     const token = params.get("access_token") || params.get("token");
     const email = params.get("email");
@@ -79,6 +83,7 @@ function CallbackInner() {
         const isOnboardingDone = profileCompleted || birthMonthExists !== null;
 
         if (isOnboardingDone) {
+          track("login", { method: methodRef.current ?? "oauth" });
           router.replace("/home");
         } else {
           setShowOnboarding(true);
@@ -152,6 +157,8 @@ function CallbackInner() {
         throw new Error(errorDetail);
       }
 
+      // Finishing onboarding is the end of a first-time OAuth sign-up.
+      track("sign_up", { method: methodRef.current ?? "oauth" });
       router.replace("/home");
     } catch (err: any) {
       setOnboardingError(

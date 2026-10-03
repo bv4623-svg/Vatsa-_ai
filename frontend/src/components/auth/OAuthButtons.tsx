@@ -1,11 +1,13 @@
 "use client";
 
 import { API_BASE } from "@/lib/session";
+import { rememberOAuthProvider } from "@/lib/analytics/events";
 
 const PROVIDERS = ["google", "github"] as const;
 
 export function OAuthButtons() {
   const oauth = (provider: (typeof PROVIDERS)[number]) => {
+    rememberOAuthProvider(provider);
     window.location.assign(`${API_BASE}/auth/${provider}/login`);
   };
 

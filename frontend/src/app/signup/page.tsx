@@ -8,6 +8,7 @@ import { SignupDetailsStep, type SignupDetails } from "@/components/auth/SignupD
 import { SignupVerifyStep } from "@/components/auth/SignupVerifyStep";
 import { establishSession } from "@/lib/session";
 import { safeRedirect } from "@/lib/redirect";
+import { track } from "@/lib/analytics/events";
 
 function SignupFlow() {
   const router = useRouter();
@@ -34,6 +35,7 @@ function SignupFlow() {
         onBack={() => setPendingDetails(null)}
         onRegistered={(accessToken, user) => {
           establishSession(user as any, accessToken);
+          track("sign_up", { method: "email" });
           router.replace(redirectTo);
         }}
       />

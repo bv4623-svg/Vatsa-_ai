@@ -11,6 +11,7 @@ import { LoginVisual } from "@/components/auth/LoginVisual";
 import { OAuthButton } from "@/components/auth/OAuthButton";
 import { API_BASE } from "@/config/api";
 import { safeRedirect } from "@/lib/redirect";
+import { rememberOAuthProvider } from "@/lib/analytics/events";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   google_not_configured: "Google sign-in isn't available right now. Try GitHub, or contact support.",
@@ -38,6 +39,7 @@ function LoginContent() {
 
   const startOAuth = (provider: "google" | "github") => {
     setPendingProvider(provider);
+    rememberOAuthProvider(provider);
     window.location.assign(`${API_BASE}/api/auth/${provider}/login`);
   };
 

@@ -5,6 +5,7 @@ import type { User } from "@/stores/auth";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { API_BASE } from "@/config/api";
 import { parseUpgradeGate } from "@/lib/billing/upgradeError";
+import { track } from "@/lib/analytics/events";
 
 
 /**
@@ -147,6 +148,7 @@ export function useCodeConversations(
         user_id: user?.id ? Number(user.id) : 0,
       };
       setConversations((prev) => (prev.some((c) => c.id === id) ? prev : [conv, ...prev]));
+      track("create_code_project", {});
       return id;
     },
     [accessToken, user]

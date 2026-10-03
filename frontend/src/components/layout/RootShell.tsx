@@ -8,6 +8,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UpgradeProvider } from "@/components/billing/UpgradeProvider";
 import { useSyncProfileLocale } from "@/hooks/i18n/useSyncProfileLocale";
+import CookieBanner from "@/components/CookieBanner";
+import { Analytics } from "@/components/analytics/Analytics";
 
 export function RootShell({ children }: { children: ReactNode }) {
   // usePathname instead of window.location: reading window during render
@@ -32,6 +34,8 @@ export function RootShell({ children }: { children: ReactNode }) {
           </motion.div>
         </AnimatePresence>
         <SettingsModal open={false} onClose={() => {}} />
+        <CookieBanner />
+        <Analytics />
         </UpgradeProvider>
       </SessionProvider>
     </AuthProvider>
